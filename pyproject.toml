@@ -1,0 +1,26 @@
+[project]
+name = "fitness-aggregator"
+version = "0.1.0"
+description = "Agent connectors (MCP servers) for MyFitnessPal and Hevy"
+requires-python = ">=3.13"
+dependencies = [
+    # Pinned to the commits tested against the real accounts. Both talk to
+    # unofficial APIs, so bump deliberately and re-test.
+    "mfp-mcp[autorefresh] @ git+https://github.com/Mason-Levyy/myfitnesspal-mcp@566abb111e0009618720da498ef6cda5efad4e4a",
+    "hevy-unofficial[browser] @ git+https://github.com/Sahil624/hevy-unofficial@27192ee76738346710b9389e5047efcfb8720eca#subdirectory=packages/hevy",
+    "mcp>=1.8,<2",
+]
+
+[project.scripts]
+fa-mfp-mcp = "fitness_aggregator.mfp:serve"
+fa-hevy-mcp = "fitness_aggregator.hevy_mcp:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fitness_aggregator"]

@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "mfp": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--quiet", "fa-mfp-mcp"]
+    },
+    "hevy": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--quiet", "fa-hevy-mcp"]
+    }
+  }
+}
