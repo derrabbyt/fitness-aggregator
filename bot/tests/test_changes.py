@@ -298,3 +298,25 @@ def test_old_cards_without_quick_adds_still_load(store):
     assert ChangeStore.__module__ and "quick_adds" not in raw
     from fa_bot.changes import Change
     assert Change.from_json(raw).quick_adds == []
+
+
+def test_history_keeps_only_what_was_said(tmp_path):
+    from pydantic_ai import BinaryContent
+    from pydantic_ai.messages import ModelRequest, ModelResponse, TextPart, ToolCallPart, ToolReturnPart, UserPromptPart
+
+    from fa_bot.history import History
+
+    run = [
+        ModelRequest(parts=[UserPromptPart(content=[BinaryContent(data=b"x", media_type="image/jpeg"), "hab ich gegessen"])]),
+        ModelResponse(parts=[ToolCallPart(tool_name="fitness_draft_food", args={"query": "x"})]),
+        ModelRequest(parts=[ToolReturnPart(tool_name="fitness_draft_food", content={"options": ["huge"] * 1000})]),
+        ModelResponse(parts=[TextPart("Passt 👍")]),
+    ]
+    h = History(tmp_path / "bot.db")
+    h.save(1, run)
+    h.note(1, "The user confirmed card abc")
+    loaded = h.load(1)
+    assert [type(m).__name__ for m in loaded] == ["ModelRequest", "ModelResponse", "ModelRequest", "ModelResponse"]
+    assert loaded[0].parts[0].content == ["[photo]", "hab ich gegessen"]
+    assert loaded[1].parts[0].content == "Passt 👍"
+    assert "huge" not in str(loaded)

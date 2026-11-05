@@ -1,5 +1,11 @@
 """Short conversation memory per chat: the last few exchanges of the last hours,
-in SQLite (state/bot/bot.db). Photos are not kept, only a placeholder."""
+in SQLite (state/bot/bot.db).
+
+Only what was said is kept: the user's messages, the bot's replies, and notes
+about cards (shown, confirmed, cancelled). Tool calls and their results (food
+searches, day listings) are dropped: they made every later message carry tens
+of thousands of tokens, and the model looks things up again when it needs to.
+Photos are kept as a placeholder."""
 
 import sqlite3
 import time
@@ -36,11 +42,13 @@ class History:
         ).fetchall()
         messages: list[ModelMessage] = []
         for (raw,) in reversed(rows):
-            messages.extend(ModelMessagesTypeAdapter.validate_json(raw))
+            messages.extend(compact(ModelMessagesTypeAdapter.validate_json(raw)))  # rows saved before compacting
         return messages
 
     def save(self, chat_id: int, messages: list[ModelMessage]) -> None:
-        stripped = [_strip_binary(m) for m in messages]
+        stripped = compact(messages)
+        if not stripped:
+            return
         self.db.execute(
             "INSERT INTO history (chat_id, ts, messages) VALUES (?, ?, ?)",
             (chat_id, self.clock(), ModelMessagesTypeAdapter.dump_json(stripped).decode()),
@@ -56,14 +64,28 @@ class History:
         )
 
 
-def _strip_binary(message: ModelMessage) -> ModelMessage:
-    if not isinstance(message, ModelRequest):
-        return message
-    parts = []
-    for part in message.parts:
-        if isinstance(part, UserPromptPart) and not isinstance(part.content, str):
-            content = ["[photo]" if isinstance(c, BinaryContent) else c for c in part.content]
-            part = replace(part, content=content)
-        parts.append(part)
-    return replace(message, parts=parts)
+def compact(messages: list[ModelMessage]) -> list[ModelMessage]:
+    """User prompts (photos as "[photo]") and the model's text replies only,
+    as alternating request/response pairs."""
+    out: list[ModelMessage] = []
+    for message in messages:
+        if isinstance(message, ModelRequest):
+            parts = []
+            for part in message.parts:
+                if not isinstance(part, UserPromptPart):
+                    continue  # tool returns, retry prompts
+                if not isinstance(part.content, str):
+                    part = replace(part, content=["[photo]" if isinstance(c, BinaryContent) else c for c in part.content])
+                parts.append(part)
+            if parts:
+                out.append(ModelRequest(parts=parts))
+        elif isinstance(message, ModelResponse):
+            text = "".join(p.content for p in message.parts if isinstance(p, TextPart)).strip()
+            if text and out and isinstance(out[-1], ModelRequest):
+                out.append(ModelResponse(parts=[TextPart(text)]))
+            elif text and out and isinstance(out[-1], ModelResponse):
+                out[-1] = ModelResponse(parts=[TextPart(out[-1].parts[0].content + "\n" + text)])
+    if out and isinstance(out[-1], ModelRequest):
+        out.append(ModelResponse(parts=[TextPart("(no reply)")]))
+    return out
 

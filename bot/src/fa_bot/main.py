@@ -12,6 +12,7 @@ import datetime
 import json
 import logging
 import os
+import re
 import tempfile
 import time
 from pathlib import Path
@@ -22,6 +23,7 @@ from pydantic_ai.messages import ToolCallPart
 from pydantic_ai.usage import UsageLimits
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.constants import ChatAction, ParseMode
+from telegram.error import NetworkError
 from telegram.ext import Application, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
 from .config import STATE, load_env
@@ -128,6 +130,7 @@ class Bot:
             change.chat_id, card_text(change), parse_mode=ParseMode.HTML, reply_markup=keyboard
         )
         self.changes.set_message(change, sent.message_id)
+        self.history.note(change.chat_id, f"Card {change.id} shown, waiting for the user's tap: {_plain(card_text(change))}")
 
     # --- button taps -------------------------------------------------------
 
@@ -224,6 +227,18 @@ async def _run(*cmd: str) -> str:
     return stdout.decode(errors="replace")
 
 
+def _plain(html_text: str) -> str:
+    return re.sub(r"<[^>]+>", "", html_text).replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("&quot;", '"').replace("&#x27;", "'").replace("\n", " / ")
+
+
+async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Network hiccups (polling retries by itself) get one line; anything else a traceback."""
+    if isinstance(context.error, NetworkError):
+        logger.warning("telegram network error: %s", context.error)
+    else:
+        logger.error("unhandled error", exc_info=context.error)
+
+
 def _chunks(text: str):
     while text:
         yield text[:TELEGRAM_LIMIT]
@@ -253,5 +268,6 @@ def main() -> None:
         )
     )
     app.add_handler(CallbackQueryHandler(bot.on_tap))
+    app.add_error_handler(on_error)
     logger.info("fa-bot polling with model %s", bot.model)
     app.run_polling(allowed_updates=["message", "callback_query"], drop_pending_updates=False)
