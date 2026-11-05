@@ -1,0 +1,11 @@
+.git
+.venv
+.env
+state
+web/node_modules
+web/dist
+web/.angular
+**/__pycache__
+bot/.venv
+bot/tests
+**/.pytest_cache

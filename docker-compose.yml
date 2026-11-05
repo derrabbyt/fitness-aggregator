@@ -1,0 +1,64 @@
+# docker compose up -d --build
+#
+# Everything that must survive a rebuild or a move lives in ./state (gitignored):
+#   state/mfp, state/hevy   MFP session + auto-refresh profile, Hevy tokens
+#   state/bot               pending cards, short chat memory, usage.jsonl
+# Moving to another machine = repo + .env + state/.
+
+x-app: &app
+  image: fitness-aggregator:latest
+  restart: unless-stopped
+  volumes:
+    - ./state:/app/state
+  logging:
+    driver: json-file
+    options: { max-size: 10m, max-file: "3" }
+
+services:
+  # The only process that uses the MFP session: REST API + UI on :8000, and the
+  # MFP/Hevy MCP tools for the bot on :8001 (Docker network only, never
+  # published: whatever reaches it can write to the diary).
+  api:
+    <<: *app
+    build:
+      context: .
+      args:
+        UID: ${UID:-1000}
+        GID: ${GID:-1000}
+    command: ["fa-api"]
+    environment:
+      MFP_USERNAME: ${MFP_USERNAME:?set MFP_USERNAME in .env}
+      TZ: ${TZ:-Europe/Vienna}
+      FA_HOST: 0.0.0.0
+      FA_TOOLS_HOST: 0.0.0.0
+    # Localhost by default. On the server set FA_BIND to its Tailscale IP
+    # (100.x.y.z) so the UI is reachable only inside the tailnet.
+    ports:
+      - "${FA_BIND:-127.0.0.1}:${FA_PORT:-8000}:8000"
+    expose: ["8001"]
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # Telegram bot. Only one process may poll a bot token.
+  bot:
+    <<: *app
+    pull_policy: never  # same image as api
+    depends_on:
+      api: { condition: service_healthy }
+    command: ["/app/bot/.venv/bin/fa-bot"]
+    environment:
+      TZ: ${TZ:-Europe/Vienna}
+      FA_TOOLS_URL: http://api:8001
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:?set TELEGRAM_BOT_TOKEN in .env}
+      TELEGRAM_ALLOWED_USER_ID: ${TELEGRAM_ALLOWED_USER_ID:?set TELEGRAM_ALLOWED_USER_ID in .env}
+      BOT_MODEL: ${BOT_MODEL:-anthropic:claude-sonnet-5-5}
+      # Only the key for BOT_MODEL's provider is needed.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # Optional: a proxy or an OpenAI-compatible server (OpenRouter, Ollama,
+      # LiteLLM, ...). Empty = the provider's default.
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
+      OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}

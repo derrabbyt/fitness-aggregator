@@ -1,0 +1,32 @@
+[project]
+name = "fa-bot"
+version = "0.1.0"
+description = "Telegram bot for fitness-aggregator: Pydantic AI agent over the api's MCP tools"
+requires-python = ">=3.13"
+# Separate from the root project: mfp-mcp's exact pins (myfitnesspal==2.1.2)
+# would hold pydantic-ai back. The bot only talks to the api over HTTP.
+dependencies = [
+    "pydantic-ai-slim[anthropic,mcp,openai]>=2.66",
+    "python-telegram-bot>=22",
+]
+
+[project.scripts]
+fa-bot = "fa_bot.main:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fa_bot"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+    "pytest-asyncio>=1.4.1.post1",
+]

@@ -5,3 +5,4 @@ __pycache__/
 # Secrets, sessions, caches and logs
 .env
 state/
+.pytest_cache/
