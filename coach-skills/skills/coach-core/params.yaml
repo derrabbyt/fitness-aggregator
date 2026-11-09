@@ -1,0 +1,70 @@
+# Phase-independent parameters. The single source for these numbers:
+# skills refer to them by name, code reads them from here.
+# A phase's params.yaml may override any key with the same path.
+# Values marked "setup value" are null here and recorded by the agent at setup.
+# Values marked "assumption" were not decided in SPEC.md; confirm or tune them.
+
+version: 1
+
+data:
+  evaluation_period_days: 7
+  min_weighins_per_week: 5
+  sync_max_age_hours: 36            # assumption: older sync = stale data
+
+adherence:
+  require_all_eating_logged: true
+  weekly_intake_tolerance_pct: 5    # weekly average within ±5% of weekly target
+
+decisions:
+  confirmation_weeks: 2             # usable weeks pointing the same way before a calorie change
+  confirmation_weeks_fast_lane: 1   # for the phase's "too fast" scenario (reverse_bulk: E)
+  max_change_kcal: 200              # guardrail; not applied to a phase's first change
+  small_step_kcal: 100              # slightly outside the band
+  large_step_kcal: 200              # far off
+  far_off_margin_kg_per_week: 0.1   # assumption: "far off" = this far beyond the band edge
+  rejected_return_weeks: 2          # a rejected direction can come back after this many usable weeks still pointing that way
+
+maintenance_estimate:
+  kcal_per_kg: 7500
+  min_window_weeks: 3
+  exclude_glycogen_window: true
+
+training:
+  compare_best_of_last_sessions: 3  # "best of last 2-3": best of up to 3 previous sessions
+  min_sessions_for_compare: 2
+  lift_recency_days: 14
+  progression_min_share: 0.5        # at least half of counted lifts improved
+  stall_sessions: 3
+  decline_sessions_for_deload: 2
+  deload_min_lifts_declining: 2     # assumption: "several lifts"
+  big_drop_pct_ask_reset: 15        # assumption: drop that makes the agent ask "was this a reset?"
+  volume_note_max_sets_per_session: 20
+  volume_note_max_sets_per_muscle_per_session: 4
+
+nutrition:
+  carbs: remainder                  # carbs_g = (kcal - protein_g*4 - fat_g*9) / 4
+  fiber_g_per_kg: [0.3, 0.5]
+  produce_min_g_per_day: 500
+  macro_reference_weight: trend_7d  # assumption: g/kg uses the current 7-day trend weight
+
+activity:
+  soft_step_floor: 10000
+  soft_floor_min_days: null         # setup value: what "for a while" means
+  run_kcal_discount: null           # setup value, e.g. 0.75
+  wrestling_kcal_per_session: null  # setup value
+  planned_sessions_default_done: true
+
+measurements:
+  waist_every_weeks: 2
+  photos_every_weeks: 2
+  photos_enabled: true
+
+reviews:
+  block_length_weeks: [4, 6]
+  phase_review_every_weeks: [8, 12]
+
+messaging:
+  missing_log_reminders_per_day: 1
+  max_unprompted_messages_per_day: null   # setup value
+  weekly_checkin: null                    # setup value: weekday + time
+  evening_reminder_time: null             # setup value

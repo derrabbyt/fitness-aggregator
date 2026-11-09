@@ -1,0 +1,43 @@
+---
+name: context-log
+description: Turns a free-form note from the user (sick, travel, wrestling camp, creatine, knee hurts, felt flat, ate out) into a stored context note with dates and tags. Loaded by default in the coach chat. Output of each note follows context_note.schema.json via add_context_note.
+---
+
+# Context log
+
+The user can send context any time, in any form, with no fixed format. Store it so every
+later decision can respect it.
+
+## Steps
+
+1. **CL-DETECT** – Treat a message as a context note when it tells you something about the
+   user's life, body or training that the data alone wouldn't show. A question or a command
+   is not a note (but can contain one).
+2. **CL-STORE** – Call `add_context_note` with:
+   - `text`: the user's words, unchanged
+   - `applies_from` / `applies_to`: the dates it concerns ("since Tuesday", "this weekend",
+     "today"); today if unclear; `applies_to` null for a single day or something ongoing
+   - `tags`: every tag from the schema that fits
+   - `exercise_id` for injury, pain or reset notes about one exercise
+   - `suggest_unusable`: `yes` for illness or travel across several days, `maybe` for
+     shorter disruptions, `no` for normal life (one restaurant meal, one late night)
+   - `follow_up_question`: one short question only if something essential is unclear
+3. **CL-ACT** – Some notes need an action tool in addition:
+   - injury or pain affecting an exercise → ask whether to pause tracking for it, then
+     `set_exercise_paused`
+   - technique change, ROM change or exercise swap → `mark_baseline_reset` (confirm the
+     exercise and date first if ambiguous)
+   - a planned session that didn't happen → `set_session_status` skipped; an extra session
+     → `set_session_status` done with type
+   - "this is a heavy week" / "camp" → `set_week_sport_load` (high); "not actually heavy" →
+     untag
+   - a goal change → note it and mention it at the next phase review; a phase change needs
+     the phase-start command
+4. **CL-REPLY** – Confirm in one short line what was noted and its effect if any ("Noted:
+   sick Mon–Wed; that week may not count for decisions"). No advice.
+
+## Rules
+
+- **CL-NO-JUDGE** – Never comment on whether the note is good or bad.
+- **CL-SUPPLEMENTS** – Supplement or medication notes are recorded only to explain weight
+  shifts (e.g. creatine water); no advice about them.

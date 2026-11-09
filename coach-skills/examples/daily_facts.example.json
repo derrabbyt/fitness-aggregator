@@ -1,0 +1,127 @@
+{
+  "schema_version": 1,
+  "date": "2027-03-07",
+  "kind": "training",
+  "phase_id": "reverse_bulk",
+  "phase_week": 9,
+  "in_glycogen_window": false,
+  "messages_sent_today": 0,
+  "context_notes_today": [],
+  "session": {
+    "session_id": "s_0412",
+    "date": "2027-03-07",
+    "exercises": [
+      {
+        "exercise_id": "ex_smith_squat",
+        "name": "Smith squat",
+        "tracked": true,
+        "sets": [
+          {
+            "load_kg": 110,
+            "reps": 8
+          },
+          {
+            "load_kg": 110,
+            "reps": 7
+          }
+        ],
+        "status": "same",
+        "is_pr": false,
+        "drop_pct_vs_best_recent": 0,
+        "possible_reset": false,
+        "no_progress_streak": 3
+      },
+      {
+        "exercise_id": "ex_leg_ext",
+        "name": "Leg extension",
+        "tracked": false,
+        "sets": [
+          {
+            "load_kg": 60,
+            "reps": 10
+          }
+        ],
+        "status": "declined",
+        "is_pr": false,
+        "drop_pct_vs_best_recent": 25,
+        "possible_reset": true,
+        "no_progress_streak": 1
+      }
+    ]
+  },
+  "params": {
+    "version": 1,
+    "data": {
+      "evaluation_period_days": 7,
+      "min_weighins_per_week": 5,
+      "sync_max_age_hours": 36
+    },
+    "adherence": {
+      "require_all_eating_logged": true,
+      "weekly_intake_tolerance_pct": 5
+    },
+    "decisions": {
+      "confirmation_weeks": 2,
+      "confirmation_weeks_fast_lane": 1,
+      "max_change_kcal": 200,
+      "small_step_kcal": 100,
+      "large_step_kcal": 200,
+      "far_off_margin_kg_per_week": 0.1,
+      "rejected_return_weeks": 2
+    },
+    "maintenance_estimate": {
+      "kcal_per_kg": 7500,
+      "min_window_weeks": 3,
+      "exclude_glycogen_window": true
+    },
+    "training": {
+      "compare_best_of_last_sessions": 3,
+      "min_sessions_for_compare": 2,
+      "lift_recency_days": 14,
+      "progression_min_share": 0.5,
+      "stall_sessions": 3,
+      "decline_sessions_for_deload": 2,
+      "deload_min_lifts_declining": 2,
+      "big_drop_pct_ask_reset": 15,
+      "volume_note_max_sets_per_session": 20,
+      "volume_note_max_sets_per_muscle_per_session": 4
+    },
+    "nutrition": {
+      "carbs": "remainder",
+      "fiber_g_per_kg": [
+        0.3,
+        0.5
+      ],
+      "produce_min_g_per_day": 500,
+      "macro_reference_weight": "trend_7d"
+    },
+    "activity": {
+      "soft_step_floor": 10000,
+      "soft_floor_min_days": null,
+      "run_kcal_discount": null,
+      "wrestling_kcal_per_session": null,
+      "planned_sessions_default_done": true
+    },
+    "measurements": {
+      "waist_every_weeks": 2,
+      "photos_every_weeks": 2,
+      "photos_enabled": true
+    },
+    "reviews": {
+      "block_length_weeks": [
+        4,
+        6
+      ],
+      "phase_review_every_weeks": [
+        8,
+        12
+      ]
+    },
+    "messaging": {
+      "missing_log_reminders_per_day": 1,
+      "max_unprompted_messages_per_day": null,
+      "weekly_checkin": null,
+      "evening_reminder_time": null
+    }
+  }
+}

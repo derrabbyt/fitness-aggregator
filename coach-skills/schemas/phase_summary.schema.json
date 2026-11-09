@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "phase_summary.schema.json",
+  "title": "Phase summary",
+  "description": "Computed by code for the phase-review skill (every reviews.phase_review_every_weeks, or when the user ends a phase).",
+  "type": "object",
+  "required": ["schema_version", "phase_id", "reason", "start_date", "end_date", "weeks_elapsed", "usable_weeks", "weight", "targets", "changes", "training", "measurements", "calibration_check", "photos", "params"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "phase_id": { "type": "string" },
+    "reason": { "enum": ["scheduled", "phase_end"] },
+    "is_first_review_of_phase": { "type": "boolean" },
+    "start_date": { "type": "string", "format": "date" },
+    "end_date": { "type": "string", "format": "date" },
+    "weeks_elapsed": { "type": "integer" },
+    "usable_weeks": { "type": "integer" },
+    "time_goal_weeks": { "type": ["integer", "null"] },
+    "weight": {
+      "type": "object",
+      "required": ["start_trend_kg", "current_trend_kg", "change_kg", "avg_rate_kg_per_week_usable", "weeks_in_band", "weeks_below_band", "weeks_above_band", "weeks_above_limit"],
+      "additionalProperties": false,
+      "properties": {
+        "start_trend_kg": { "type": "number" },
+        "current_trend_kg": { "type": "number" },
+        "change_kg": { "type": "number" },
+        "avg_rate_kg_per_week_usable": { "type": ["number", "null"] },
+        "weeks_in_band": { "type": "integer" },
+        "weeks_below_band": { "type": "integer" },
+        "weeks_above_band": { "type": "integer" },
+        "weeks_above_limit": { "type": "integer" }
+      }
+    },
+    "targets": {
+      "type": "object",
+      "required": ["start_avg_daily_kcal", "current_avg_daily_kcal", "maintenance_estimate_history"],
+      "additionalProperties": false,
+      "properties": {
+        "start_avg_daily_kcal": { "type": "number" },
+        "current_avg_daily_kcal": { "type": "number" },
+        "maintenance_estimate_history": {
+          "type": "array",
+          "items": {
+            "type": "object", "required": ["date", "base_kcal"], "additionalProperties": false,
+            "properties": { "date": { "type": "string", "format": "date" }, "base_kcal": { "type": "number" } }
+          }
+        }
+      }
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object", "required": ["proposal_id", "applied_on", "type", "delta_kcal", "source"], "additionalProperties": false,
+        "properties": {
+          "proposal_id": { "type": "string" },
+          "applied_on": { "type": "string", "format": "date" },
+          "type": { "enum": ["calorie_change", "calibration_change"] },
+          "delta_kcal": { "type": ["number", "null"] },
+          "source": { "type": "string" }
+        }
+      }
+    },
+    "training": {
+      "type": "object",
+      "required": ["lifts"],
+      "additionalProperties": false,
+      "properties": {
+        "lifts": {
+          "type": "array",
+          "items": {
+            "type": "object", "required": ["exercise_id", "name", "baseline", "latest", "trend"], "additionalProperties": false,
+            "properties": {
+              "exercise_id": { "type": "string" },
+              "name": { "type": "string" },
+              "baseline": { "$ref": "weekly_facts.schema.json#/$defs/set_summary" },
+              "latest": { "$ref": "weekly_facts.schema.json#/$defs/set_summary" },
+              "trend": { "enum": ["improving", "holding", "declining", "too_little_data"] },
+              "resets_in_phase": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "measurements": {
+      "type": "object",
+      "required": ["waist_cm_start", "waist_cm_current", "bf_estimates"],
+      "additionalProperties": false,
+      "properties": {
+        "waist_cm_start": { "type": ["number", "null"] },
+        "waist_cm_current": { "type": ["number", "null"] },
+        "bf_estimates": {
+          "type": "array",
+          "items": { "$ref": "weekly_facts.schema.json#/properties/measurements/properties/latest_bf_estimate" }
+        }
+      }
+    },
+    "calibration_check": {
+      "type": "object",
+      "description": "Code's check whether activity calibration drifted: compares maintenance back-calculation residuals in weeks with many vs few runs / wrestling sessions.",
+      "required": ["run_kcal_discount", "wrestling_kcal_per_session"],
+      "additionalProperties": false,
+      "properties": {
+        "run_kcal_discount": { "$ref": "#/$defs/calibration_item" },
+        "wrestling_kcal_per_session": { "$ref": "#/$defs/calibration_item" }
+      }
+    },
+    "photos": {
+      "type": "object",
+      "required": ["enabled", "check_ins", "comparable_check_ins"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "check_ins": { "type": "integer" },
+        "comparable_check_ins": { "type": "integer" }
+      }
+    },
+    "params": { "type": "object" }
+  },
+  "$defs": {
+    "calibration_item": {
+      "type": "object",
+      "required": ["current", "suggested", "drifted", "evidence"],
+      "additionalProperties": false,
+      "properties": {
+        "current": { "type": ["number", "null"] },
+        "suggested": { "type": ["number", "null"] },
+        "drifted": { "type": "boolean" },
+        "evidence": { "type": "string" }
+      }
+    }
+  }
+}

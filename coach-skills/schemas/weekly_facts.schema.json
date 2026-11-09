@@ -1,0 +1,337 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "weekly_facts.schema.json",
+  "title": "Weekly facts",
+  "description": "Computed by code once per evaluation week and passed to the weekly-decision, weekly-report, block-review and phase-review skills. The model never recalculates these numbers. All weights in kg, energy in kcal, dates ISO 8601 (Europe/Vienna).",
+  "type": "object",
+  "required": ["schema_version", "week", "data_quality", "weight", "intake", "activity", "training", "targets", "history", "context_notes", "measurements", "params"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+
+    "week": {
+      "type": "object",
+      "required": ["iso_week", "start_date", "end_date", "phase_id", "phase_week", "in_glycogen_window", "phase_first_change_pending"],
+      "additionalProperties": false,
+      "properties": {
+        "iso_week": { "type": "string", "pattern": "^[0-9]{4}-W[0-9]{2}$" },
+        "start_date": { "type": "string", "format": "date" },
+        "end_date": { "type": "string", "format": "date" },
+        "phase_id": { "type": "string", "description": "Active phase skill id, e.g. reverse_bulk." },
+        "phase_week": { "type": "integer", "minimum": 1 },
+        "in_glycogen_window": { "type": "boolean", "description": "True while phase_week is inside the phase's glycogen_window_weeks." },
+        "phase_first_change_pending": { "type": "boolean", "description": "True until the phase's first change (e.g. the week-1 increase) has been applied. The max-change guardrail does not apply to that change." }
+      }
+    },
+
+    "data_quality": {
+      "type": "object",
+      "required": ["weigh_in_count", "food_days_logged", "food_log_complete", "sync_fresh", "last_sync_at", "code_usable", "code_unusable_reasons"],
+      "additionalProperties": false,
+      "properties": {
+        "weigh_in_count": { "type": "integer", "minimum": 0, "maximum": 7 },
+        "food_days_logged": { "type": "integer", "minimum": 0, "maximum": 7 },
+        "food_log_complete": { "type": "boolean", "description": "All days logged and no day flagged as partially logged." },
+        "sync_fresh": { "type": "boolean" },
+        "last_sync_at": { "type": "string", "format": "date-time" },
+        "code_usable": { "type": "boolean", "description": "Mechanical check only (weigh-ins, logs, sync). The skill additionally reads context notes." },
+        "code_unusable_reasons": {
+          "type": "array",
+          "items": { "enum": ["too_few_weigh_ins", "incomplete_food_log", "stale_sync"] }
+        }
+      }
+    },
+
+    "weight": {
+      "type": "object",
+      "required": ["avg_7d_kg", "prev_avg_7d_kg", "weekly_rate_kg", "band", "vs_band", "predicted_avg_7d_kg", "prediction_error_kg", "prediction_miss", "daily", "outlier_days"],
+      "additionalProperties": false,
+      "properties": {
+        "avg_7d_kg": { "type": ["number", "null"] },
+        "prev_avg_7d_kg": { "type": ["number", "null"] },
+        "weekly_rate_kg": { "type": ["number", "null"], "description": "avg_7d_kg - prev_avg_7d_kg." },
+        "band": {
+          "type": "object",
+          "required": ["low", "high", "lower_limit", "upper_limit"],
+          "additionalProperties": false,
+          "description": "Target rate band for this phase week (kg/week, signed) plus optional hard limits outside it.",
+          "properties": {
+            "low": { "type": "number" },
+            "high": { "type": "number" },
+            "lower_limit": { "type": ["number", "null"] },
+            "upper_limit": { "type": ["number", "null"] }
+          }
+        },
+        "vs_band": {
+          "enum": ["below_limit", "below_band", "in_band", "above_band", "above_limit", "not_evaluated"],
+          "description": "Numeric position of weekly_rate_kg relative to band. not_evaluated inside the glycogen window or when the week is not code_usable."
+        },
+        "predicted_avg_7d_kg": { "type": ["number", "null"], "description": "Code's prediction for this week, made at the start of the week from maintenance estimate and targets." },
+        "prediction_error_kg": { "type": ["number", "null"], "description": "avg_7d_kg - predicted_avg_7d_kg." },
+        "prediction_miss": { "type": "boolean", "description": "|prediction_error_kg| > (band.high - band.low). False when either value is null." },
+        "daily": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["date", "kg"],
+            "additionalProperties": false,
+            "properties": {
+              "date": { "type": "string", "format": "date" },
+              "kg": { "type": ["number", "null"] }
+            }
+          }
+        },
+        "outlier_days": { "type": "array", "items": { "type": "string", "format": "date" } }
+      }
+    },
+
+    "intake": {
+      "type": "object",
+      "required": ["weekly_target_kcal", "weekly_actual_kcal", "deviation_pct", "adherence_ok", "macro_targets", "fiber_target_g", "produce_min_g", "daily"],
+      "additionalProperties": false,
+      "properties": {
+        "weekly_target_kcal": { "type": "number" },
+        "weekly_actual_kcal": { "type": ["number", "null"] },
+        "deviation_pct": { "type": ["number", "null"], "description": "(actual - target) / target * 100." },
+        "adherence_ok": { "type": "boolean", "description": "All eating logged AND |deviation_pct| within the adherence tolerance." },
+        "macro_targets": {
+          "type": "object",
+          "required": ["protein_g", "fat_g", "carbs_g", "reference_weight_kg"],
+          "additionalProperties": false,
+          "description": "Average daily macro targets. Carbs are the remainder and vary per day with the calorie target.",
+          "properties": {
+            "protein_g": { "type": "number" },
+            "fat_g": { "type": "number" },
+            "carbs_g": { "type": "number" },
+            "reference_weight_kg": { "type": "number" }
+          }
+        },
+        "fiber_target_g": {
+          "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" },
+          "description": "[min, max] grams/day from fiber_g_per_kg x reference weight."
+        },
+        "produce_min_g": { "type": "number" },
+        "daily": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/intake_day" }
+        }
+      }
+    },
+
+    "activity": {
+      "type": "object",
+      "required": ["steps_daily", "avg_steps", "soft_step_floor", "days_below_floor", "sessions", "sport_load_high", "sport_load_source"],
+      "additionalProperties": false,
+      "properties": {
+        "steps_daily": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["date", "steps"],
+            "additionalProperties": false,
+            "properties": {
+              "date": { "type": "string", "format": "date" },
+              "steps": { "type": ["integer", "null"] }
+            }
+          }
+        },
+        "avg_steps": { "type": ["number", "null"] },
+        "soft_step_floor": { "type": "integer" },
+        "days_below_floor": { "type": "integer", "minimum": 0 },
+        "sessions": { "type": "array", "items": { "$ref": "#/$defs/session" } },
+        "sport_load_high": { "type": "boolean" },
+        "sport_load_source": { "enum": ["plan", "user_tag", "plan_and_user_tag", "user_untagged", "none"] }
+      }
+    },
+
+    "training": {
+      "type": "object",
+      "required": ["tracked_lifts", "counted_lifts", "share_improved", "progression_met", "deload_signal", "missed_sessions", "max_sets_in_a_session", "max_sets_per_muscle_in_a_session"],
+      "additionalProperties": false,
+      "properties": {
+        "tracked_lifts": { "type": "array", "items": { "$ref": "#/$defs/lift" } },
+        "counted_lifts": { "type": "integer", "minimum": 0, "description": "Tracked lifts trained within lift_recency_days and not paused / new baseline without history." },
+        "share_improved": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+        "progression_met": { "type": ["boolean", "null"], "description": "share_improved >= progression_min_share. null if no lift could be counted." },
+        "deload_signal": { "type": "boolean", "description": "At least deload_min_lifts_declining lifts declined for decline_sessions_for_deload sessions in a row." },
+        "missed_sessions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["planned_date", "type"],
+            "additionalProperties": false,
+            "properties": {
+              "planned_date": { "type": "string", "format": "date" },
+              "type": { "type": "string" }
+            }
+          }
+        },
+        "max_sets_in_a_session": { "type": ["integer", "null"] },
+        "max_sets_per_muscle_in_a_session": { "type": ["integer", "null"] }
+      }
+    },
+
+    "targets": {
+      "type": "object",
+      "required": ["surplus_kcal", "base_maintenance_kcal", "avg_daily_target_kcal", "maintenance_estimate", "mfp_goal_kcal"],
+      "additionalProperties": false,
+      "description": "Daily target = base_maintenance_kcal + that day's activity kcal + surplus_kcal. surplus_kcal can be negative (e.g. early reverse, cut).",
+      "properties": {
+        "surplus_kcal": { "type": "number" },
+        "base_maintenance_kcal": { "type": "number", "description": "Maintenance without counted activity." },
+        "avg_daily_target_kcal": { "type": "number" },
+        "maintenance_estimate": {
+          "type": "object",
+          "required": ["base_kcal", "window_weeks", "updated_on", "excluded_weeks"],
+          "additionalProperties": false,
+          "properties": {
+            "base_kcal": { "type": ["number", "null"], "description": "Latest back-calculated base maintenance (activity subtracted)." },
+            "window_weeks": { "type": "integer" },
+            "updated_on": { "type": ["string", "null"], "format": "date" },
+            "excluded_weeks": { "type": "array", "items": { "type": "string" }, "description": "Glycogen or unusable weeks left out of the calculation." }
+          }
+        },
+        "mfp_goal_kcal": { "type": ["number", "null"], "description": "Calorie goal currently set in MyFitnessPal (average daily target)." }
+      }
+    },
+
+    "history": {
+      "type": "object",
+      "required": ["weeks_since_last_change", "last_change", "previous_verdicts", "open_proposals", "last_rejected"],
+      "additionalProperties": false,
+      "properties": {
+        "weeks_since_last_change": { "type": ["integer", "null"], "description": "Usable weeks since the last applied calorie change; the week after a change counts as 1." },
+        "last_change": {
+          "type": ["object", "null"],
+          "required": ["proposal_id", "applied_on", "delta_kcal"],
+          "additionalProperties": false,
+          "properties": {
+            "proposal_id": { "type": "string" },
+            "applied_on": { "type": "string", "format": "date" },
+            "delta_kcal": { "type": "number" }
+          }
+        },
+        "previous_verdicts": {
+          "type": "array",
+          "description": "Most recent verdicts, newest first (up to 6), including unusable weeks.",
+          "items": {
+            "type": "object",
+            "required": ["iso_week", "usable", "scenario", "direction"],
+            "additionalProperties": false,
+            "properties": {
+              "iso_week": { "type": "string" },
+              "usable": { "type": "boolean" },
+              "scenario": { "type": "string" },
+              "direction": { "enum": ["increase", "decrease", "hold"] }
+            }
+          }
+        },
+        "open_proposals": { "type": "array", "items": { "$ref": "proposal.schema.json" } },
+        "last_rejected": {
+          "type": ["object", "null"],
+          "required": ["proposal_id", "direction", "rejected_on", "user_reason", "usable_weeks_since"],
+          "additionalProperties": false,
+          "properties": {
+            "proposal_id": { "type": "string" },
+            "direction": { "enum": ["increase", "decrease"] },
+            "rejected_on": { "type": "string", "format": "date" },
+            "user_reason": { "type": ["string", "null"] },
+            "usable_weeks_since": { "type": "integer", "minimum": 0 }
+          }
+        }
+      }
+    },
+
+    "context_notes": { "type": "array", "items": { "$ref": "context_note.schema.json" } },
+
+    "measurements": {
+      "type": "object",
+      "required": ["photos_enabled", "waist_cm_latest", "waist_cm_phase_start", "waist_cm_prev", "latest_bf_estimate"],
+      "additionalProperties": false,
+      "properties": {
+        "photos_enabled": { "type": "boolean" },
+        "waist_cm_latest": { "type": ["number", "null"] },
+        "waist_cm_prev": { "type": ["number", "null"] },
+        "waist_cm_phase_start": { "type": ["number", "null"] },
+        "latest_bf_estimate": {
+          "type": ["object", "null"],
+          "required": ["low_pct", "high_pct", "source", "date"],
+          "additionalProperties": false,
+          "properties": {
+            "low_pct": { "type": "number" },
+            "high_pct": { "type": "number" },
+            "source": { "enum": ["photo", "user"] },
+            "date": { "type": "string", "format": "date" }
+          }
+        }
+      }
+    },
+
+    "params": {
+      "type": "object",
+      "description": "Merged core + phase parameters (phase wins on equal keys), exactly as code used them. Skills refer to these by name."
+    }
+  },
+
+  "$defs": {
+    "intake_day": {
+      "type": "object",
+      "required": ["date", "logged", "target_kcal", "actual_kcal", "protein_g", "fat_g", "carbs_g", "fiber_g", "produce_g"],
+      "additionalProperties": false,
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "logged": { "enum": ["complete", "partial", "missing"] },
+        "target_kcal": { "type": "number" },
+        "actual_kcal": { "type": ["number", "null"] },
+        "protein_g": { "type": ["number", "null"] },
+        "fat_g": { "type": ["number", "null"] },
+        "carbs_g": { "type": ["number", "null"] },
+        "fiber_g": { "type": ["number", "null"] },
+        "produce_g": { "type": ["number", "null"], "description": "Fruit + vegetables, if derivable from the food log; null otherwise." }
+      }
+    },
+    "session": {
+      "type": "object",
+      "required": ["date", "type", "source", "kcal_counted", "status"],
+      "additionalProperties": false,
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "type": { "enum": ["lift", "run", "wrestling", "other"] },
+        "source": { "enum": ["training_log", "strava", "plan", "manual"] },
+        "kcal_counted": { "type": "number", "description": "Activity kcal added to that day's target (run kcal x discount, wrestling estimate, manual)." },
+        "status": { "enum": ["done", "assumed_done", "skipped"], "description": "Planned sessions count as assumed_done unless the user says no." },
+        "note": { "type": ["string", "null"] }
+      }
+    },
+    "lift": {
+      "type": "object",
+      "required": ["exercise_id", "name", "bodyweight_exercise", "status", "last_session_date", "sessions_considered", "best_recent", "latest", "no_progress_streak", "decline_streak"],
+      "additionalProperties": false,
+      "properties": {
+        "exercise_id": { "type": "string" },
+        "name": { "type": "string" },
+        "bodyweight_exercise": { "type": "boolean", "description": "Dips, pull-ups etc.: effective load includes bodyweight." },
+        "status": {
+          "enum": ["improved", "same", "declined", "new_baseline", "paused", "stale"],
+          "description": "improved/same/declined: latest vs best of the previous compare_best_of_last_sessions sessions. new_baseline: reset and not enough sessions since. paused: injury pause. stale: not trained within lift_recency_days."
+        },
+        "last_session_date": { "type": ["string", "null"], "format": "date" },
+        "sessions_considered": { "type": "integer", "minimum": 0 },
+        "best_recent": { "$ref": "#/$defs/set_summary" },
+        "latest": { "$ref": "#/$defs/set_summary" },
+        "no_progress_streak": { "type": "integer", "minimum": 0, "description": "Consecutive sessions without improvement." },
+        "decline_streak": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "set_summary": {
+      "type": ["object", "null"],
+      "required": ["load_kg", "reps", "effective_load_kg"],
+      "additionalProperties": false,
+      "properties": {
+        "load_kg": { "type": "number" },
+        "reps": { "type": "integer" },
+        "effective_load_kg": { "type": "number", "description": "load_kg, plus bodyweight for bodyweight exercises." }
+      }
+    }
+  }
+}

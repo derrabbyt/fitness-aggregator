@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "phase_params.schema.json",
+  "title": "Phase parameters",
+  "description": "Validates skills/phase-*/params.yaml. Code reads these numbers to compute facts; the phase SKILL.md refers to them by key name only. draft=true phases may contain null values marked TO DECIDE and must not be started until those are filled.",
+  "type": "object",
+  "required": ["phase_id", "name", "draft", "direction", "macros", "start", "glycogen_window_weeks", "weight_band_kg_per_week", "weight_lower_limit_kg_per_week", "weight_upper_limit_kg_per_week", "default_lever", "body_fat", "time_goal_weeks", "on_phase_end"],
+  "additionalProperties": false,
+  "properties": {
+    "phase_id": { "type": "string", "pattern": "^[a-z_]+$" },
+    "name": { "type": "string" },
+    "draft": { "type": "boolean" },
+    "direction": { "enum": ["gain", "loss", "hold"] },
+    "macros": {
+      "type": "object",
+      "required": ["protein_g_per_kg", "fat_g_per_kg_min", "fat_g_per_kg_max", "fat_g_per_kg_start"],
+      "additionalProperties": false,
+      "properties": {
+        "protein_g_per_kg": { "type": "number", "minimum": 1, "maximum": 4 },
+        "fat_g_per_kg_min": { "type": "number", "minimum": 0.3, "maximum": 2 },
+        "fat_g_per_kg_max": { "type": ["number", "null"], "minimum": 0.3, "maximum": 2 },
+        "fat_g_per_kg_start": { "type": ["number", "null"], "minimum": 0.3, "maximum": 2 }
+      }
+    },
+    "start": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "week1_increase_kcal": { "$ref": "#/$defs/range" },
+        "week1_activity_change": { "enum": ["none", "reduce"] },
+        "deficit_kcal": { "type": "number", "minimum": 0 },
+        "surplus_kcal": { "type": "number" }
+      }
+    },
+    "glycogen_window_weeks": { "type": "integer", "minimum": 0 },
+    "weight_band_kg_per_week": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "required": ["from_week", "to_week", "low", "high"],
+        "additionalProperties": false,
+        "properties": {
+          "from_week": { "type": "integer", "minimum": 1 },
+          "to_week": { "type": ["integer", "null"], "minimum": 1 },
+          "low": { "type": "number" },
+          "high": { "type": "number" }
+        }
+      }
+    },
+    "weight_lower_limit_kg_per_week": { "type": ["number", "null"] },
+    "weight_upper_limit_kg_per_week": { "type": ["number", "null"] },
+    "drift_threshold_kg_per_week": { "type": "number", "minimum": 0 },
+    "drift_confirmation_weeks": { "type": "integer", "minimum": 1 },
+    "stall_lever": { "enum": ["carbs", "activity"] },
+    "carb_step_g": { "$ref": "#/$defs/range" },
+    "default_lever": { "enum": ["calories", "activity"] },
+    "body_fat": {
+      "type": "object",
+      "required": ["advise_near_pct", "sources"],
+      "additionalProperties": false,
+      "properties": {
+        "advise_near_pct": { "oneOf": [{ "type": "null" }, { "$ref": "#/$defs/range" }] },
+        "sources": { "type": "array", "items": { "enum": ["user_estimate", "photo_estimate"] } }
+      }
+    },
+    "time_goal_weeks": { "type": ["integer", "null"], "minimum": 1 },
+    "on_phase_end": { "enum": ["ask_next"] }
+  },
+  "if": { "properties": { "draft": { "const": false } } },
+  "then": {
+    "properties": {
+      "weight_band_kg_per_week": { "type": "array", "minItems": 1 }
+    }
+  },
+  "$defs": {
+    "range": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } }
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "daily_facts.schema.json",
+  "title": "Daily facts",
+  "description": "Computed by code for the two daily skills. kind=evening for evening-recap, kind=training for training-feedback (sent once a logged lifting session has synced). Code rules (weigh-in outliers, the missing-log reminder) run without the model.",
+  "type": "object",
+  "required": ["schema_version", "date", "kind", "phase_id", "phase_week", "in_glycogen_window", "messages_sent_today", "context_notes_today", "params"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "date": { "type": "string", "format": "date" },
+    "kind": { "enum": ["evening", "training"] },
+    "phase_id": { "type": "string" },
+    "phase_week": { "type": "integer", "minimum": 1 },
+    "in_glycogen_window": { "type": "boolean" },
+    "messages_sent_today": { "type": "integer", "minimum": 0, "description": "Coach messages already sent today (code rules included)." },
+    "context_notes_today": { "type": "array", "items": { "$ref": "context_note.schema.json" } },
+
+    "day": {
+      "type": "object",
+      "description": "Required for kind=evening.",
+      "required": ["intake", "weight", "steps", "sessions", "week_to_date"],
+      "additionalProperties": false,
+      "properties": {
+        "intake": { "$ref": "weekly_facts.schema.json#/$defs/intake_day" },
+        "macro_targets": { "$ref": "weekly_facts.schema.json#/properties/intake/properties/macro_targets" },
+        "weight": {
+          "type": "object",
+          "required": ["kg", "avg_7d_kg", "outlier"],
+          "additionalProperties": false,
+          "properties": {
+            "kg": { "type": ["number", "null"] },
+            "avg_7d_kg": { "type": ["number", "null"] },
+            "outlier": { "type": "boolean" }
+          }
+        },
+        "steps": { "type": ["integer", "null"] },
+        "sessions": { "type": "array", "items": { "$ref": "weekly_facts.schema.json#/$defs/session" } },
+        "week_to_date": {
+          "type": "object",
+          "required": ["days_elapsed", "target_kcal_so_far", "actual_kcal_so_far", "deviation_pct"],
+          "additionalProperties": false,
+          "properties": {
+            "days_elapsed": { "type": "integer", "minimum": 1, "maximum": 7 },
+            "target_kcal_so_far": { "type": "number" },
+            "actual_kcal_so_far": { "type": ["number", "null"] },
+            "deviation_pct": { "type": ["number", "null"] }
+          }
+        }
+      }
+    },
+
+    "session": {
+      "type": "object",
+      "description": "Required for kind=training.",
+      "required": ["session_id", "date", "exercises"],
+      "additionalProperties": false,
+      "properties": {
+        "session_id": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "exercises": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["exercise_id", "name", "tracked", "sets", "status", "is_pr", "drop_pct_vs_best_recent", "possible_reset", "no_progress_streak"],
+            "additionalProperties": false,
+            "properties": {
+              "exercise_id": { "type": "string" },
+              "name": { "type": "string" },
+              "tracked": { "type": "boolean", "description": "Counts for the weekly progression check." },
+              "sets": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["load_kg", "reps"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "load_kg": { "type": "number" },
+                    "reps": { "type": "integer" }
+                  }
+                }
+              },
+              "status": { "$ref": "weekly_facts.schema.json#/$defs/lift/properties/status" },
+              "is_pr": { "type": "boolean", "description": "Best effective performance since the last baseline." },
+              "drop_pct_vs_best_recent": { "type": ["number", "null"] },
+              "possible_reset": { "type": "boolean", "description": "drop_pct_vs_best_recent >= big_drop_pct_ask_reset and no reset/injury note exists." },
+              "no_progress_streak": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+
+    "params": { "type": "object", "description": "Merged core + phase parameters." }
+  },
+  "allOf": [
+    { "if": { "properties": { "kind": { "const": "evening" } } }, "then": { "required": ["day"] } },
+    { "if": { "properties": { "kind": { "const": "training" } } }, "then": { "required": ["session"] } }
+  ]
+}

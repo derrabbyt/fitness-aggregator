@@ -1,0 +1,541 @@
+{
+  "schema_version": 1,
+  "week": {
+    "iso_week": "2027-W09",
+    "start_date": "2027-03-01",
+    "end_date": "2027-03-07",
+    "phase_id": "reverse_bulk",
+    "phase_week": 9,
+    "in_glycogen_window": false,
+    "phase_first_change_pending": false
+  },
+  "data_quality": {
+    "weigh_in_count": 7,
+    "food_days_logged": 7,
+    "food_log_complete": true,
+    "sync_fresh": true,
+    "last_sync_at": "2027-03-08T06:10:00+01:00",
+    "code_usable": true,
+    "code_unusable_reasons": []
+  },
+  "weight": {
+    "avg_7d_kg": 80.69,
+    "prev_avg_7d_kg": 80.65,
+    "weekly_rate_kg": 0.04,
+    "band": {
+      "low": 0.2,
+      "high": 0.4,
+      "lower_limit": null,
+      "upper_limit": 0.5
+    },
+    "vs_band": "below_band",
+    "predicted_avg_7d_kg": 80.85,
+    "prediction_error_kg": -0.16,
+    "prediction_miss": false,
+    "daily": [
+      {
+        "date": "2027-03-01",
+        "kg": 80.6
+      },
+      {
+        "date": "2027-03-02",
+        "kg": 80.9
+      },
+      {
+        "date": "2027-03-03",
+        "kg": 80.5
+      },
+      {
+        "date": "2027-03-04",
+        "kg": 80.7
+      },
+      {
+        "date": "2027-03-05",
+        "kg": 80.8
+      },
+      {
+        "date": "2027-03-06",
+        "kg": 80.6
+      },
+      {
+        "date": "2027-03-07",
+        "kg": 80.7
+      }
+    ],
+    "outlier_days": []
+  },
+  "intake": {
+    "weekly_target_kcal": 22050,
+    "weekly_actual_kcal": 21980,
+    "deviation_pct": -0.3,
+    "adherence_ok": true,
+    "macro_targets": {
+      "protein_g": 161,
+      "fat_g": 72,
+      "carbs_g": 432,
+      "reference_weight_kg": 80.7
+    },
+    "fiber_target_g": [
+      24.2,
+      40.4
+    ],
+    "produce_min_g": 500,
+    "daily": [
+      {
+        "date": "2027-03-01",
+        "logged": "complete",
+        "target_kcal": 2950,
+        "actual_kcal": 2930,
+        "protein_g": 165,
+        "fat_g": 70,
+        "carbs_g": 410,
+        "fiber_g": 31,
+        "produce_g": 520
+      },
+      {
+        "date": "2027-03-02",
+        "logged": "complete",
+        "target_kcal": 3350,
+        "actual_kcal": 3330,
+        "protein_g": 165,
+        "fat_g": 70,
+        "carbs_g": 510,
+        "fiber_g": 31,
+        "produce_g": 520
+      },
+      {
+        "date": "2027-03-03",
+        "logged": "complete",
+        "target_kcal": 2950,
+        "actual_kcal": 2990,
+        "protein_g": 165,
+        "fat_g": 70,
+        "carbs_g": 425,
+        "fiber_g": 31,
+        "produce_g": 520
+      },
+      {
+        "date": "2027-03-04",
+        "logged": "complete",
+        "target_kcal": 3250,
+        "actual_kcal": 3260,
+        "protein_g": 165,
+        "fat_g": 70,
+        "carbs_g": 492,
+        "fiber_g": 31,
+        "produce_g": 520
+      },
+      {
+        "date": "2027-03-05",
+        "logged": "complete",
+        "target_kcal": 3400,
+        "actual_kcal": 3380,
+        "protein_g": 165,
+        "fat_g": 70,
+        "carbs_g": 522,
+        "fiber_g": 31,
+        "produce_g": 520
+      },
+      {
+        "date": "2027-03-06",
+        "logged": "complete",
+        "target_kcal": 2950,
+        "actual_kcal": 2900,
+        "protein_g": 165,
+        "fat_g": 70,
+        "carbs_g": 402,
+        "fiber_g": 31,
+        "produce_g": 520
+      },
+      {
+        "date": "2027-03-07",
+        "logged": "complete",
+        "target_kcal": 3200,
+        "actual_kcal": 3190,
+        "protein_g": 165,
+        "fat_g": 70,
+        "carbs_g": 475,
+        "fiber_g": 31,
+        "produce_g": 520
+      }
+    ]
+  },
+  "activity": {
+    "steps_daily": [
+      {
+        "date": "2027-03-01",
+        "steps": 9100
+      },
+      {
+        "date": "2027-03-02",
+        "steps": 14800
+      },
+      {
+        "date": "2027-03-03",
+        "steps": 7600
+      },
+      {
+        "date": "2027-03-04",
+        "steps": 12200
+      },
+      {
+        "date": "2027-03-05",
+        "steps": 21000
+      },
+      {
+        "date": "2027-03-06",
+        "steps": 6800
+      },
+      {
+        "date": "2027-03-07",
+        "steps": 11500
+      }
+    ],
+    "avg_steps": 11857,
+    "soft_step_floor": 10000,
+    "days_below_floor": 3,
+    "sessions": [
+      {
+        "date": "2027-03-02",
+        "type": "lift",
+        "source": "training_log",
+        "kcal_counted": 0,
+        "status": "done",
+        "note": null
+      },
+      {
+        "date": "2027-03-02",
+        "type": "wrestling",
+        "source": "plan",
+        "kcal_counted": 400,
+        "status": "assumed_done",
+        "note": null
+      },
+      {
+        "date": "2027-03-04",
+        "type": "lift",
+        "source": "training_log",
+        "kcal_counted": 0,
+        "status": "done",
+        "note": null
+      },
+      {
+        "date": "2027-03-04",
+        "type": "run",
+        "source": "strava",
+        "kcal_counted": 300,
+        "status": "done",
+        "note": null
+      },
+      {
+        "date": "2027-03-05",
+        "type": "wrestling",
+        "source": "plan",
+        "kcal_counted": 450,
+        "status": "assumed_done",
+        "note": null
+      },
+      {
+        "date": "2027-03-07",
+        "type": "lift",
+        "source": "training_log",
+        "kcal_counted": 0,
+        "status": "done",
+        "note": null
+      },
+      {
+        "date": "2027-03-07",
+        "type": "run",
+        "source": "strava",
+        "kcal_counted": 250,
+        "status": "done",
+        "note": null
+      }
+    ],
+    "sport_load_high": false,
+    "sport_load_source": "none"
+  },
+  "training": {
+    "tracked_lifts": [
+      {
+        "exercise_id": "ex_smith_squat",
+        "name": "Smith squat",
+        "bodyweight_exercise": false,
+        "status": "same",
+        "last_session_date": "2027-03-07",
+        "sessions_considered": 3,
+        "best_recent": {
+          "load_kg": 110,
+          "reps": 8,
+          "effective_load_kg": 110
+        },
+        "latest": {
+          "load_kg": 110,
+          "reps": 8,
+          "effective_load_kg": 110
+        },
+        "no_progress_streak": 3,
+        "decline_streak": 0
+      },
+      {
+        "exercise_id": "ex_incline_db",
+        "name": "Incline DB press",
+        "bodyweight_exercise": false,
+        "status": "same",
+        "last_session_date": "2027-03-04",
+        "sessions_considered": 3,
+        "best_recent": {
+          "load_kg": 34,
+          "reps": 9,
+          "effective_load_kg": 34
+        },
+        "latest": {
+          "load_kg": 34,
+          "reps": 9,
+          "effective_load_kg": 34
+        },
+        "no_progress_streak": 2,
+        "decline_streak": 0
+      },
+      {
+        "exercise_id": "ex_pullup",
+        "name": "Pull-up",
+        "bodyweight_exercise": true,
+        "status": "improved",
+        "last_session_date": "2027-03-04",
+        "sessions_considered": 3,
+        "best_recent": {
+          "load_kg": 10,
+          "reps": 8,
+          "effective_load_kg": 90.6
+        },
+        "latest": {
+          "load_kg": 10,
+          "reps": 8,
+          "effective_load_kg": 90.7
+        },
+        "no_progress_streak": 0,
+        "decline_streak": 0
+      },
+      {
+        "exercise_id": "ex_sldl",
+        "name": "Stiff-legged deadlift",
+        "bodyweight_exercise": false,
+        "status": "declined",
+        "last_session_date": "2027-03-07",
+        "sessions_considered": 3,
+        "best_recent": {
+          "load_kg": 120,
+          "reps": 8,
+          "effective_load_kg": 120
+        },
+        "latest": {
+          "load_kg": 120,
+          "reps": 6,
+          "effective_load_kg": 120
+        },
+        "no_progress_streak": 2,
+        "decline_streak": 1
+      }
+    ],
+    "counted_lifts": 4,
+    "share_improved": 0.25,
+    "progression_met": false,
+    "deload_signal": false,
+    "missed_sessions": [],
+    "max_sets_in_a_session": 16,
+    "max_sets_per_muscle_in_a_session": 4
+  },
+  "targets": {
+    "surplus_kcal": 150,
+    "base_maintenance_kcal": 2800,
+    "avg_daily_target_kcal": 3150,
+    "maintenance_estimate": {
+      "base_kcal": 2810,
+      "window_weeks": 3,
+      "updated_on": "2027-03-07",
+      "excluded_weeks": [
+        "2027-W01",
+        "2027-W02"
+      ]
+    },
+    "mfp_goal_kcal": 3150
+  },
+  "history": {
+    "weeks_since_last_change": 3,
+    "last_change": {
+      "proposal_id": "p_0007",
+      "applied_on": "2027-02-08",
+      "delta_kcal": 100
+    },
+    "previous_verdicts": [
+      {
+        "iso_week": "2027-W08",
+        "usable": true,
+        "scenario": "C",
+        "direction": "increase"
+      },
+      {
+        "iso_week": "2027-W07",
+        "usable": true,
+        "scenario": "A",
+        "direction": "hold"
+      },
+      {
+        "iso_week": "2027-W06",
+        "usable": true,
+        "scenario": "C",
+        "direction": "increase"
+      }
+    ],
+    "open_proposals": [],
+    "last_rejected": null
+  },
+  "context_notes": [
+    {
+      "id": "n_0031",
+      "created_at": "2027-03-05T21:02:00+01:00",
+      "text": "pizza with friends tonight, logged it roughly",
+      "applies_from": "2027-03-05",
+      "applies_to": null,
+      "tags": [
+        "salty_or_large_meal"
+      ],
+      "suggest_unusable": "no"
+    }
+  ],
+  "measurements": {
+    "photos_enabled": true,
+    "waist_cm_latest": 81.5,
+    "waist_cm_prev": 81.5,
+    "waist_cm_phase_start": 80.0,
+    "latest_bf_estimate": {
+      "low_pct": 13,
+      "high_pct": 15,
+      "source": "photo",
+      "date": "2027-02-22"
+    }
+  },
+  "params": {
+    "version": 1,
+    "data": {
+      "evaluation_period_days": 7,
+      "min_weighins_per_week": 5,
+      "sync_max_age_hours": 36
+    },
+    "adherence": {
+      "require_all_eating_logged": true,
+      "weekly_intake_tolerance_pct": 5
+    },
+    "decisions": {
+      "confirmation_weeks": 2,
+      "confirmation_weeks_fast_lane": 1,
+      "max_change_kcal": 200,
+      "small_step_kcal": 100,
+      "large_step_kcal": 200,
+      "far_off_margin_kg_per_week": 0.1,
+      "rejected_return_weeks": 2
+    },
+    "maintenance_estimate": {
+      "kcal_per_kg": 7500,
+      "min_window_weeks": 3,
+      "exclude_glycogen_window": true
+    },
+    "training": {
+      "compare_best_of_last_sessions": 3,
+      "min_sessions_for_compare": 2,
+      "lift_recency_days": 14,
+      "progression_min_share": 0.5,
+      "stall_sessions": 3,
+      "decline_sessions_for_deload": 2,
+      "deload_min_lifts_declining": 2,
+      "big_drop_pct_ask_reset": 15,
+      "volume_note_max_sets_per_session": 20,
+      "volume_note_max_sets_per_muscle_per_session": 4
+    },
+    "nutrition": {
+      "carbs": "remainder",
+      "fiber_g_per_kg": [
+        0.3,
+        0.5
+      ],
+      "produce_min_g_per_day": 500,
+      "macro_reference_weight": "trend_7d"
+    },
+    "activity": {
+      "soft_step_floor": 10000,
+      "soft_floor_min_days": null,
+      "run_kcal_discount": null,
+      "wrestling_kcal_per_session": null,
+      "planned_sessions_default_done": true
+    },
+    "measurements": {
+      "waist_every_weeks": 2,
+      "photos_every_weeks": 2,
+      "photos_enabled": true
+    },
+    "reviews": {
+      "block_length_weeks": [
+        4,
+        6
+      ],
+      "phase_review_every_weeks": [
+        8,
+        12
+      ]
+    },
+    "messaging": {
+      "missing_log_reminders_per_day": 1,
+      "max_unprompted_messages_per_day": null,
+      "weekly_checkin": null,
+      "evening_reminder_time": null
+    },
+    "phase_id": "reverse_bulk",
+    "name": "Reverse into bulk",
+    "draft": false,
+    "direction": "gain",
+    "macros": {
+      "protein_g_per_kg": 2.0,
+      "fat_g_per_kg_min": 0.8,
+      "fat_g_per_kg_max": 1.0,
+      "fat_g_per_kg_start": null
+    },
+    "start": {
+      "week1_increase_kcal": [
+        300,
+        400
+      ],
+      "week1_activity_change": "none"
+    },
+    "glycogen_window_weeks": 2,
+    "weight_band_kg_per_week": [
+      {
+        "from_week": 1,
+        "to_week": 6,
+        "low": 0.1,
+        "high": 0.3
+      },
+      {
+        "from_week": 7,
+        "to_week": null,
+        "low": 0.2,
+        "high": 0.4
+      }
+    ],
+    "weight_lower_limit_kg_per_week": null,
+    "weight_upper_limit_kg_per_week": 0.5,
+    "default_lever": "calories",
+    "body_fat": {
+      "advise_near_pct": [
+        23,
+        24
+      ],
+      "sources": [
+        "user_estimate",
+        "photo_estimate"
+      ]
+    },
+    "time_goal_weeks": null,
+    "on_phase_end": "ask_next"
+  }
+}

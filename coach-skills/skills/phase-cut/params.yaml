@@ -1,0 +1,34 @@
+# Cut. DRAFT: numbers get tuned when a cut actually starts (see SPEC.md "Other phases").
+# Also used for a mini-cut during a bulk.
+
+phase_id: cut
+name: Cut
+draft: true
+direction: loss
+
+macros:
+  protein_g_per_kg: 2.5
+  fat_g_per_kg_min: 0.6             # floor
+  fat_g_per_kg_max: null            # not decided
+  fat_g_per_kg_start: null          # setup value
+
+start:
+  deficit_kcal: 750                 # vs current base maintenance + activity (surplus_kcal = -deficit)
+
+glycogen_window_weeks: 0
+
+weight_band_kg_per_week: null       # TO DECIDE before first use (signed, negative for loss)
+weight_lower_limit_kg_per_week: null  # TO DECIDE: losing faster than this = too fast
+weight_upper_limit_kg_per_week: null
+
+stall_lever: carbs
+carb_step_g: [25, 50]               # = 100-200 kcal per step
+
+default_lever: calories
+
+body_fat:
+  advise_near_pct: null             # target set at phase start, if any
+  sources: [user_estimate, photo_estimate]
+
+time_goal_weeks: null               # setup value, optional
+on_phase_end: ask_next

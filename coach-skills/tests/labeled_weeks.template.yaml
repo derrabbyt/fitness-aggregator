@@ -1,0 +1,76 @@
+# Replay test set: 10-15 labeled past weeks.
+# For each week, code rebuilds weekly_facts from the history as it was at the end of that
+# week (facts file path below), runs the weekly-decision skill, and compares the verdict
+# against `expected`. Rerun after every skill or params edit.
+#
+# Only list the fields you care about; anything not listed isn't checked.
+# Pick a spread: normal weeks, glycogen weeks, sick/travel weeks, a sport-load week,
+# scenarios A-E, an adherence-gate week, a reversal, a rejected proposal coming back.
+
+weeks:
+  - id: normal_hold
+    facts: tests/facts/2026-W14.json
+    expected:
+      scenario: A
+      direction: hold
+      proposal: null
+    note: in band, lifts moving
+
+  - id: glycogen_jump
+    facts: tests/facts/2026-W02.json
+    expected:
+      scenario: glycogen_window
+      proposal: null
+      flags_include: [glycogen_jump]
+
+  - id: sick_week
+    facts: tests/facts/2026-W20.json
+    expected:
+      usable: false
+      unusable_reasons_include: [illness]
+      proposal: null
+
+  - id: scenario_c_confirmed
+    facts: tests/facts/2026-W23.json
+    expected:
+      scenario: C
+      direction: increase
+      confirmation_met: true
+      proposal_delta_kcal_sign: positive
+      proposal_size: small        # or large
+
+  - id: scenario_c_first_week
+    facts: tests/facts/2026-W22.json
+    expected:
+      scenario: C
+      direction: increase
+      confirmation_met: false
+      proposal: null
+
+  - id: wrestling_camp
+    facts: tests/facts/2026-W25.json
+    expected:
+      sport_load_applied: true
+      direction: hold
+      proposal: null
+
+  - id: scenario_d
+    facts: tests/facts/2026-W30.json
+    expected:
+      scenario: D
+      proposal: null
+      flags_include: [training_needs_look]
+
+  - id: scenario_e_one_week
+    facts: tests/facts/2026-W31.json
+    expected:
+      scenario: E
+      direction: decrease
+      confirmation_met: true
+
+  - id: adherence_gate
+    facts: tests/facts/2026-W33.json
+    expected:
+      scenario: adherence_gate
+      adherence_gate: fail
+      proposal: null

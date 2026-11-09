@@ -1,0 +1,18 @@
+{
+  "send": true,
+  "urgent": true,
+  "text": "Smith squat: same as your best of the last 3 sessions – that's 3 sessions without progress (flag only).\nLeg extension dropped a lot vs recent sessions. Did you change the machine setup, range of motion or swap the exercise?",
+  "buttons": [
+    {
+      "label": "Yes, new baseline",
+      "action": "mark_reset",
+      "ref_id": "ex_leg_ext"
+    },
+    {
+      "label": "No",
+      "action": "not_a_reset",
+      "ref_id": "ex_leg_ext"
+    }
+  ],
+  "deferred_to_weekly": []
+}

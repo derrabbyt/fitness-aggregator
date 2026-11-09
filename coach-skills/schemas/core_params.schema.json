@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "core_params.schema.json",
+  "title": "Core parameters",
+  "description": "Validates skills/coach-core/params.yaml. Sections and keys are fixed so a typo fails validation instead of silently using a default.",
+  "type": "object",
+  "required": ["version", "data", "adherence", "decisions", "maintenance_estimate", "training", "nutrition", "activity", "measurements", "reviews", "messaging"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "data": {
+      "type": "object", "additionalProperties": false,
+      "required": ["evaluation_period_days", "min_weighins_per_week", "sync_max_age_hours"],
+      "properties": {
+        "evaluation_period_days": { "const": 7 },
+        "min_weighins_per_week": { "type": "integer", "minimum": 1, "maximum": 7 },
+        "sync_max_age_hours": { "type": "number", "minimum": 1 }
+      }
+    },
+    "adherence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["require_all_eating_logged", "weekly_intake_tolerance_pct"],
+      "properties": {
+        "require_all_eating_logged": { "type": "boolean" },
+        "weekly_intake_tolerance_pct": { "type": "number", "minimum": 0 }
+      }
+    },
+    "decisions": {
+      "type": "object", "additionalProperties": false,
+      "required": ["confirmation_weeks", "confirmation_weeks_fast_lane", "max_change_kcal", "small_step_kcal", "large_step_kcal", "far_off_margin_kg_per_week", "rejected_return_weeks"],
+      "properties": {
+        "confirmation_weeks": { "type": "integer", "minimum": 1 },
+        "confirmation_weeks_fast_lane": { "type": "integer", "minimum": 1 },
+        "max_change_kcal": { "type": "number", "minimum": 0 },
+        "small_step_kcal": { "type": "number", "minimum": 0 },
+        "large_step_kcal": { "type": "number", "minimum": 0 },
+        "far_off_margin_kg_per_week": { "type": "number", "minimum": 0 },
+        "rejected_return_weeks": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "maintenance_estimate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kcal_per_kg", "min_window_weeks", "exclude_glycogen_window"],
+      "properties": {
+        "kcal_per_kg": { "type": "number" },
+        "min_window_weeks": { "type": "integer", "minimum": 1 },
+        "exclude_glycogen_window": { "type": "boolean" }
+      }
+    },
+    "training": {
+      "type": "object", "additionalProperties": false,
+      "required": ["compare_best_of_last_sessions", "min_sessions_for_compare", "lift_recency_days", "progression_min_share", "stall_sessions", "decline_sessions_for_deload", "deload_min_lifts_declining", "big_drop_pct_ask_reset", "volume_note_max_sets_per_session", "volume_note_max_sets_per_muscle_per_session"],
+      "properties": {
+        "compare_best_of_last_sessions": { "type": "integer", "minimum": 1 },
+        "min_sessions_for_compare": { "type": "integer", "minimum": 1 },
+        "lift_recency_days": { "type": "integer", "minimum": 1 },
+        "progression_min_share": { "type": "number", "minimum": 0, "maximum": 1 },
+        "stall_sessions": { "type": "integer", "minimum": 1 },
+        "decline_sessions_for_deload": { "type": "integer", "minimum": 1 },
+        "deload_min_lifts_declining": { "type": "integer", "minimum": 1 },
+        "big_drop_pct_ask_reset": { "type": "number", "minimum": 0 },
+        "volume_note_max_sets_per_session": { "type": "integer" },
+        "volume_note_max_sets_per_muscle_per_session": { "type": "integer" }
+      }
+    },
+    "nutrition": {
+      "type": "object", "additionalProperties": false,
+      "required": ["carbs", "fiber_g_per_kg", "produce_min_g_per_day", "macro_reference_weight"],
+      "properties": {
+        "carbs": { "const": "remainder" },
+        "fiber_g_per_kg": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } },
+        "produce_min_g_per_day": { "type": "number" },
+        "macro_reference_weight": { "enum": ["trend_7d", "phase_start"] }
+      }
+    },
+    "activity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["soft_step_floor", "soft_floor_min_days", "run_kcal_discount", "wrestling_kcal_per_session", "planned_sessions_default_done"],
+      "properties": {
+        "soft_step_floor": { "type": "integer" },
+        "soft_floor_min_days": { "type": ["integer", "null"] },
+        "run_kcal_discount": { "type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 1 },
+        "wrestling_kcal_per_session": { "type": ["number", "null"] },
+        "planned_sessions_default_done": { "type": "boolean" }
+      }
+    },
+    "measurements": {
+      "type": "object", "additionalProperties": false,
+      "required": ["waist_every_weeks", "photos_every_weeks", "photos_enabled"],
+      "properties": {
+        "waist_every_weeks": { "type": "integer", "minimum": 1 },
+        "photos_every_weeks": { "type": "integer", "minimum": 1 },
+        "photos_enabled": { "type": "boolean" }
+      }
+    },
+    "reviews": {
+      "type": "object", "additionalProperties": false,
+      "required": ["block_length_weeks", "phase_review_every_weeks"],
+      "properties": {
+        "block_length_weeks": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "integer" } },
+        "phase_review_every_weeks": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "integer" } }
+      }
+    },
+    "messaging": {
+      "type": "object", "additionalProperties": false,
+      "required": ["missing_log_reminders_per_day", "max_unprompted_messages_per_day", "weekly_checkin", "evening_reminder_time"],
+      "properties": {
+        "missing_log_reminders_per_day": { "type": "integer", "minimum": 0 },
+        "max_unprompted_messages_per_day": { "type": ["integer", "null"] },
+        "weekly_checkin": { "type": ["string", "null"] },
+        "evening_reminder_time": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
