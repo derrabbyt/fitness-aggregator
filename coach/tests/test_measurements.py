@@ -10,7 +10,7 @@ on 23 Nov, 7 Dec, ..."""
 import datetime
 import json
 
-from fa_coach import phases
+from fa_coach import messaging, phases
 from fa_coach.features import measurements
 from fakes import TZ, reply, tool_call
 
@@ -127,6 +127,26 @@ async def test_a_missed_due_date_is_reminded_late_but_only_for_the_current_perio
 
     [text] = reminders(outbox)
     assert "waist" in text.lower() and "photo" in text.lower()
+
+
+async def test_reminders_count_toward_the_daily_message_limit(coach, outbox):
+    activate(coach)  # at most 2 unprompted messages a day
+    await coach.run_due_jobs(at("2026-11-09", 9))  # the baseline photo reminder
+    assert messaging.sent_today(coach, at("2026-11-09", 9)) == 1
+    outbox.clear()
+
+    early = at("2026-11-23", 6)
+    assert messaging.send(coach, "one", early, kind="test") and messaging.send(coach, "two", early, kind="test")
+    outbox.clear()
+    await coach.run_due_jobs(at("2026-11-23", 7))
+    await coach.run_due_jobs(at("2026-11-24", 6, 59))
+    assert reminders(outbox) == []  # held back by the limit, not lost
+
+    await coach.run_due_jobs(at("2026-11-24", 7))
+    await coach.run_due_jobs(at("2026-11-24", 8))
+    [text] = reminders(outbox)
+    assert "waist" in text.lower() and "photo" in text.lower()
+    assert messaging.sent_today(coach, at("2026-11-24", 8)) == 1
 
 
 async def test_no_reminder_without_an_active_phase(coach, outbox):

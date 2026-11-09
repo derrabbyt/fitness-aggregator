@@ -12,7 +12,7 @@
   active until confirm; confirm claims the setup atomically, so a second tap
   does nothing. Confirm stores the phase and its targets, marks the phase's
   first change applied and runs `phases.on_confirmed` hooks (the MFP goal
-  write, ticket 06).
+  write, features/phase_goal.py); lines they return are added to the card.
 - After the start, `record_setup_value` changes logistics, photos, time goal,
   waist and tracked lifts of the active phase; calibration values need a
   proposal and start values are fixed.
@@ -471,13 +471,20 @@ async def confirm_phase_start(coach, ref_id: str, now: datetime.datetime) -> Non
         phases.set_targets(coach, phase_row_id, stored["targets"], valid_from=now.date(), source="phase_start",
                            now=now)
         coach.db.execute("UPDATE phase_setups SET status = 'confirmed', confirmed_at = ? WHERE id = ?", (at, setup_id))
-    coach.edit(_ref(setup), f"{render_card(stored)}\n\n✅ Started {full['start_date']}. These targets apply from today.")
+    started = f"{render_card(stored)}\n\n✅ Started {full['start_date']}. These targets apply from today."
+    coach.edit(_ref(setup), started)
     phase = phases.active(coach)
+    lines = []
     for hook in phases.confirm_hooks:
         try:
-            await hook(coach, phase, now)
+            line = await hook(coach, phase, now)
         except Exception:
             logger.exception("phase confirm hook %s failed", getattr(hook, "__name__", hook))
+            continue
+        if line:
+            lines.append(line)
+    if lines:
+        coach.edit(_ref(setup), "\n".join([started, *lines]))
 
 
 @registry.button("edit_phase_start")

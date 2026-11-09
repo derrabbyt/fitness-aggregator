@@ -183,6 +183,29 @@ docker compose exec api curl -s 'http://127.0.0.1:8000/api/sync/hevy?start=2026-
   newest first. `exercise_id` is Hevy's exercise template id, `type` its set
   indicator (normal, warmup, ...); missing fields are null.
 
+### MFP goal (api tools, coach code only)
+
+Confirming a phase start (and, later, approving a calorie change) sets the
+MFP goal to the average daily target and macros. Coach code
+(`coach/src/fa_coach/mfp_goal.py`, `set_once`) sends it once per change,
+reads it back once, says on the card whether MFP shows it, and never retries;
+the coach's targets stand either way. The tools on `:8001/mfp/mcp`
+(`src/fitness_aggregator/mfp_goal.py`):
+
+- `fitness_get_goal(date?)`: `{"date", "goal": {"valid_from", "calories",
+  "protein", "carbs", "fat"}}` (grams; null if MFP has none).
+- `fitness_set_goal(calories, protein, carbs, fat)`: the same goal on every
+  weekday, valid from today. One POST, made outside mfp-mcp's
+  refresh-and-retry wrapper; returns `{"ok", "write": "sent" | "rejected" |
+  "uncertain" | "not_sent", "requested", "stored", "matches", "error"}`.
+  Never in the food bot's allowlist or the coach model's tools. Never re-run
+  it to "retry": an uncertain write may still land. Read the goal instead.
+
+```bash
+docker compose exec api python scripts/mcp_call.py mfp '[["fitness_get_goal", {}]]'
+docker compose exec api python scripts/mcp_call.py mfp '[["fitness_set_goal", {"calories": 2300, "protein": 161, "carbs": 251, "fat": 72}]]'
+```
+
 ## Layout
 
 ```

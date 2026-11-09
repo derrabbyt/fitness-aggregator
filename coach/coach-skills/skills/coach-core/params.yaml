@@ -12,6 +12,7 @@ data:
   sync_max_age_hours: 36            # assumption: older sync = stale data
   weight_outlier_kg: 1.5            # assumption: a weigh-in this far from the median of its neighbours is an outlier
   weight_outlier_window_days: 3     # assumption: neighbours = other weigh-ins within this many days either side (at least 2)
+  implausible_intake_factor: 2      # assumption: a day above this many times its target is likely a typo; the evening recap asks
 
 adherence:
   require_all_eating_logged: true

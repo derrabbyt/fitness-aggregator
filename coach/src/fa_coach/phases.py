@@ -19,8 +19,8 @@ Read API for features:
   `trend_weight(coach, day)`, `phase_week(phase, day)`, `in_glycogen_window(coach, day)`.
 - `maintenance_estimate(coach, end, params)`: back-calculated from logged
   intake and the weight trend over 3+ usable weeks.
-- `on_confirmed`: hooks run once after a phase start is confirmed (ticket 06
-  sets the MFP goal there).
+- `on_confirmed`: hooks run once after a phase start is confirmed (the MFP
+  goal is set there, features/phase_goal.py).
 
 Setup collection (features/phase_start.py): `open_setup`, `pending_setup`,
 `prefill`, `preview`.
@@ -472,13 +472,15 @@ def preview(coach: "Coach", setup: dict[str, Any], now: datetime.datetime) -> di
 
 # --- confirm hooks -------------------------------------------------------------------
 
-ConfirmHook = Callable[["Coach", dict[str, Any], datetime.datetime], Awaitable[None]]
+ConfirmHook = Callable[["Coach", dict[str, Any], datetime.datetime], Awaitable[str | None]]
 confirm_hooks: list[ConfirmHook] = []
 
 
 def on_confirmed(fn: ConfirmHook) -> ConfirmHook:
     """Run `fn(coach, phase, now)` once after a phase start is confirmed (the
-    phase and its targets are already stored). Ticket 06 registers the MFP
-    goal write here: `phase` has the new phase and `targets(coach)` the goal."""
+    phase and its targets are already stored and the card says so). A hook
+    may return a line to add to the confirmation card. The MFP goal write
+    (features/phase_goal.py) is one: `phase` has the new phase and
+    `targets(coach)` the goal."""
     confirm_hooks.append(fn)
     return fn

@@ -216,7 +216,9 @@ async def test_full_start_previews_then_confirms_once(diet_history, model, outbo
     assert params["messaging"]["evening_reminder_time"] == "20:30"
     assert params["macros"]["fat_g_per_kg_start"] == 0.9
     edits = [e for e in outbox.edits if e.ref == preview_card.ref]
-    assert len(edits) == 1 and edits[0].buttons == ()
+    # "Started", then again with the MFP goal line (test_mfp_goal.py); never buttons again.
+    assert edits and all(e.buttons == () for e in edits)
+    assert "✅ Started 2026-11-09" in edits[0].text
 
     before = list(outbox.items)
     await coach.on_button(confirm.action, confirm.ref_id)  # double tap

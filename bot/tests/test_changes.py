@@ -203,7 +203,11 @@ async def test_failed_write_that_landed_anyway_says_so():
 def test_model_gets_no_write_tools():
     from fa_bot.agent import MFP_READ_TOOLS
 
-    assert not [t for t in MFP_READ_TOOLS if any(w in t for w in ("log_", "delete", "modify", "clear", "write"))]
+    writes = ("log_", "delete", "modify", "clear", "write", "set_", "quick_add", "add_")
+    assert not [t for t in MFP_READ_TOOLS if any(w in t for w in writes)]
+    # The MFP goal write is for coach code only (src/fitness_aggregator/mfp_goal.py).
+    assert {"fitness_set_goal", "fitness_quick_add"}.isdisjoint(MFP_READ_TOOLS)
+    assert not [t for t in MFP_READ_TOOLS if "goal" in t]
 
 
 def test_past_foods_groups_filters_and_ranks():
