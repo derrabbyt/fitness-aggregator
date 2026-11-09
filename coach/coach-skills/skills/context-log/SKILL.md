@@ -30,7 +30,8 @@ later decision can respect it.
    - technique change, ROM change or exercise swap → `mark_baseline_reset` (confirm the
      exercise and date first if ambiguous)
    - a planned session that didn't happen → `set_session_status` skipped; an extra session
-     → `set_session_status` extra with type and kcal
+     → `set_session_status` extra with its type and either the user's kcal or the activity
+     and duration (code estimates; see coach-chat CC-PLAN)
    - "this is a heavy week" / "camp" → the note itself carries the tag `sport_load` and
      covers the heavy days; "not actually heavy" → `get_context_notes`, then
      `delete_context_note` for that note
