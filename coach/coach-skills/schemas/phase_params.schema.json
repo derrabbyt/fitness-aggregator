@@ -33,6 +33,7 @@
       }
     },
     "glycogen_window_weeks": { "type": "integer", "minimum": 0 },
+    "glycogen_jump_kg": { "$ref": "#/$defs/range", "description": "Expected early weight jump from glycogen and water (said in advance at phase start)." },
     "weight_band_kg_per_week": {
       "type": ["array", "null"],
       "items": {

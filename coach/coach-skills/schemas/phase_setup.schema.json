@@ -4,7 +4,7 @@
   "title": "Phase setup",
   "description": "Setup values collected by the phase-start skill (Telegram 'start <phase>'). Stored by the start_phase tool, which returns a week-1 preview computed by code. The phase starts only after the user taps confirm. Values that already exist from an earlier phase are reused unless the user changes them.",
   "type": "object",
-  "required": ["phase_id", "start_date", "tracked_lifts", "starting_calories_kcal", "starting_trend_weight_kg", "maintenance_estimate_kcal", "training_plan_source", "run_kcal_discount", "wrestling_kcal_per_session", "fat_g_per_kg_start", "photos_enabled"],
+  "required": ["phase_id", "start_date", "tracked_lifts", "starting_calories_kcal", "starting_trend_weight_kg", "maintenance_estimate_kcal", "training_plan_source", "run_kcal_discount", "wrestling_kcal_per_session", "lifting_kcal_per_session", "fat_g_per_kg_start", "photos_enabled", "logistics"],
   "additionalProperties": false,
   "properties": {
     "phase_id": { "type": "string" },
@@ -16,29 +16,30 @@
         "required": ["exercise_id", "name", "bodyweight_exercise"],
         "additionalProperties": false,
         "properties": {
-          "exercise_id": { "type": "string", "description": "Stable id from the lift data source." },
+          "exercise_id": { "type": ["string", "null"], "description": "Hevy exercise template id. Null for a lift not in the synced Hevy history yet; code matches it by name once it syncs." },
           "name": { "type": "string" },
           "bodyweight_exercise": { "type": "boolean" }
         }
       }
     },
-    "starting_calories_kcal": { "type": "number", "description": "Last diet intake (daily average)." },
-    "starting_trend_weight_kg": { "type": "number" },
-    "maintenance_estimate_kcal": { "type": "number", "description": "From the last diet weeks; code converts it to base maintenance by subtracting average counted activity." },
+    "starting_calories_kcal": { "type": "number", "minimum": 800, "maximum": 6000, "description": "Last diet intake (daily average)." },
+    "starting_trend_weight_kg": { "type": "number", "minimum": 30, "maximum": 250 },
+    "maintenance_estimate_kcal": { "type": "number", "minimum": 1000, "maximum": 7000, "description": "From the last diet weeks; code converts it to base maintenance by subtracting average counted activity." },
     "maintenance_includes_activity": { "type": "boolean", "default": true },
     "training_plan_source": { "enum": ["saved_plan"], "description": "The training plan saved in the coach (seeded once from the CSV, changed in chat)." },
     "run_kcal_discount": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
-    "wrestling_kcal_per_session": { "type": "number", "minimum": 0 },
-    "fat_g_per_kg_start": { "type": "number" },
+    "wrestling_kcal_per_session": { "type": "number", "minimum": 0, "maximum": 3000 },
+    "lifting_kcal_per_session": { "type": "number", "minimum": 0, "maximum": 2000, "description": "kcal counted per lifting session that shows up in Hevy." },
+    "fat_g_per_kg_start": { "type": "number", "description": "Within the phase's macros.fat_g_per_kg_min..max." },
     "week1_increase_kcal": { "type": ["number", "null"], "description": "reverse_bulk only; within start.week1_increase_kcal." },
     "time_goal_weeks": { "type": ["integer", "null"], "minimum": 1 },
     "photos_enabled": { "type": "boolean" },
-    "waist_cm_start": { "type": ["number", "null"] },
+    "waist_cm_start": { "type": ["number", "null"], "minimum": 40, "maximum": 200 },
     "logistics": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "weekly_checkin": { "type": ["string", "null"], "description": "e.g. 'sun 18:00'" },
+        "weekly_checkin": { "type": ["string", "null"], "pattern": "^(mon|tue|wed|thu|fri|sat|sun) ([01][0-9]|2[0-3]):[0-5][0-9]$", "description": "Weekday and time, e.g. 'sun 18:00'." },
         "evening_reminder_time": { "type": ["string", "null"], "pattern": "^([01][0-9]|2[0-3]):[0-5][0-9]$" },
         "max_unprompted_messages_per_day": { "type": ["integer", "null"], "minimum": 1 },
         "soft_floor_min_days": { "type": ["integer", "null"], "minimum": 1 }

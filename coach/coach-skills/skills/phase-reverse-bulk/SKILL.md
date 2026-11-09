@@ -24,7 +24,8 @@ read their values from `params` in the facts.
 ## Glycogen window
 
 - **RB-GLY** – During the first `glycogen_window_weeks` phase weeks
-  (`week.in_glycogen_window`), an early weight jump from glycogen and water is expected.
+  (`week.in_glycogen_window`), an early weight jump from glycogen and water
+  (`glycogen_jump_kg`) is expected.
   Say so in advance and when it happens. Do not classify the weight trend, do not propose a
   decrease, and do not count these weeks toward confirmation. Scenario = `glycogen_window`,
   direction = `hold`.
