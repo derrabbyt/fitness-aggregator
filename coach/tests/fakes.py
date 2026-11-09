@@ -53,6 +53,30 @@ class FakeApi:
         found = [s for s in self.sessions if start.isoformat() <= s["date"] <= end.isoformat()]
         return sorted(found, key=lambda s: s["start"], reverse=True)  # newest first, like Hevy
 
+    # --- the MFP goal (`fitness_set_goal` / `fitness_get_goal`) ---
+    # `goal` is what MFP stores. `goal_write` decides what a set does:
+    # "ok" stores it, "rejected" (MFP said no) and "error" (api unreachable,
+    # raises) store nothing, "lost" stores it but the reply never arrives (raises).
+    goal: dict[str, Any] | None = None
+    goal_write: str = "ok"
+
+    async def set_mfp_goal(self, goal: dict[str, Any]) -> dict[str, Any]:
+        self.calls.append(("set_mfp_goal", {"goal": dict(goal)}))
+        if self.goal_write in ("ok", "lost"):
+            self.goal = dict(goal)
+        if self.goal_write in ("error", "lost"):
+            raise RuntimeError("api /mfp/mcp: timed out")
+        if self.goal_write == "rejected":
+            return {"write": "rejected", "stored": self.goal, "error": "MFP answered 500"}
+        return {"write": "sent", "stored": self.goal, "error": None}
+
+    async def mfp_goal(self) -> dict[str, Any] | None:
+        self._call("mfp_goal")
+        return self.goal
+
+    def goal_writes(self) -> list[dict[str, Any]]:
+        return [a["goal"] for n, a in self.calls if n == "set_mfp_goal"]
+
     def _call(self, name: str, **args: Any) -> None:
         self.calls.append((name, args))
         if name in self.fail:
