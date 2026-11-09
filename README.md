@@ -17,7 +17,7 @@ Both use unofficial APIs, which can break or get an account flagged.
 
 | Service | What |
 |---|---|
-| `api` (`fa-api`) | FastAPI + web UI on `:8000` (`/api/day?date=YYYY-MM-DD`, `/api/today`), and the MFP/Hevy MCP tools on `:8001` (`/mfp/mcp`, `/hevy/mcp`). The only user of the MFP session. |
+| `api` (`fa-api`) | FastAPI + web UI on `:8000` (`/api/day?date=YYYY-MM-DD`, `/api/today`, `/api/sync/{mfp,hevy}` for the coach), and the MFP/Hevy MCP tools on `:8001` (`/mfp/mcp`, `/hevy/mcp`). The only user of the MFP session. |
 | `bot` (`fa-bot`) | Food bot (Telegram). Pydantic AI agent on `BOT_MODEL` with the api's MCP tools; voice notes via whisper.cpp. |
 | `coach` (`fa-coach`) | The coach (its own Telegram bot). Syncs MFP and Hevy data through the api into `state/coach/coach.db`, calls Claude through the Anthropic SDK. |
 
@@ -125,13 +125,49 @@ from `.env` (and `cookie.txt`) afterwards.
 - **Claude:** `COACH_MODEL` for chat and daily messages, `COACH_DECISION_MODEL`
   for the weekly decision; `COACH_ANTHROPIC_API_KEY` / `COACH_ANTHROPIC_BASE_URL`
   fall back to `ANTHROPIC_*`.
-- **Commands:** `/profile` shows the coach profile.
+- **Sync:** on start and every 4 hours (and `/sync`, which says what came in),
+  the coach reads MFP and Hevy through the api's sync endpoints below. The
+  first sync loads 16 weeks; later ones read from where the last one stopped
+  and re-read the last 7 days so late edits land. Weigh-ins far from their
+  neighbours (`data.weight_outlier_*` in coach-core params) are marked as
+  outliers, silently, and left out of the trend. If no sync has succeeded for
+  `data.sync_max_age_hours`, the coach says so once.
+- **Commands:** `/profile` shows the coach profile; `/sync` syncs now.
 - **Code:** `coach/src/fa_coach/core.py` is the `Coach` core: no Telegram or
   network code, driven by tests with fakes. Features are modules in
   `coach/src/fa_coach/features/` that register commands, buttons, jobs,
   syncers and model tools (`registry.py`); tables come from
   `coach/src/fa_coach/migrations/NN_<name>.sql`. The skills package
   (`coach/coach-skills`: skills, params, schemas, validator) ships in the image.
+
+### Sync endpoints (api, read-only)
+
+The coach's only way to MFP and Hevy. Both read through the api's single
+MFP session and Hevy client, and change nothing. `end` defaults to today;
+dates are local (`TZ`). By hand, inside the api container:
+
+```bash
+docker compose exec api curl -s 'http://127.0.0.1:8000/api/sync/mfp?start=2026-11-02&end=2026-11-08'
+docker compose exec api curl -s 'http://127.0.0.1:8000/api/sync/hevy?start=2026-10-01'
+```
+
+- `GET /api/sync/mfp?start=&end=` (at most 31 days; MFP is read day by day,
+  two requests per day, so a month takes a while):
+  `{"start", "end", "days": [{"date", "food": {"kcal", "protein_g", "carbs_g",
+  "fat_g", "fiber_g", "produce_g", "complete", "entries"}, "weight_kg",
+  "steps", "exercises": [{"name", "source", "run", "kcal", "distance_km",
+  "minutes", "start"}], "error"}]}`, oldest first. Food totals are null on a
+  day without entries; `fiber_g` is null unless the diary shows a Fiber
+  column; `produce_g` is always null (not derivable); `complete` is MFP's
+  "Complete this entry"; `weight_kg` is that day's weigh-in in the account's
+  unit (kg); `run` = the exercise name says run or jog. A day MFP fails on
+  has `error` set and null data; a dead session fails the request (502).
+- `GET /api/sync/hevy?start=&end=` (at most 400 days; read in pages of 5):
+  `{"start", "end", "sessions": [{"id", "name", "date", "start", "end",
+  "minutes", "exercises": [{"exercise_id", "title", "exercise_type", "sets":
+  [{"type", "weight_kg", "reps", "distance_m", "duration_s", "rpe"}]}]}]}`,
+  newest first. `exercise_id` is Hevy's exercise template id, `type` its set
+  indicator (normal, warmup, ...); missing fields are null.
 
 ## Layout
 

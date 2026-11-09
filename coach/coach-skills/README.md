@@ -98,6 +98,7 @@ changes the schema, the skills that reference it, the examples, and reruns
 | --- | --- | --- |
 | `decisions.far_off_margin_kg_per_week` | 0.1 | SPEC says ~100 kcal "slightly outside", ~200 "far off" but doesn't define "far" |
 | `data.sync_max_age_hours` | 36 | stale-data check needs a threshold |
+| `data.weight_outlier_kg`, `data.weight_outlier_window_days` | 1.5 kg vs the median of the weigh-ins within 3 days either side | SPEC says outliers are flagged, not how |
 | `training.deload_min_lifts_declining` | 2 | SPEC says "several lifts declining" |
 | `training.big_drop_pct_ask_reset` | 15 | when the agent asks "was this a reset?" |
 | `training.compare_best_of_last_sessions` | 3 | SPEC says "best of last 2–3" |
