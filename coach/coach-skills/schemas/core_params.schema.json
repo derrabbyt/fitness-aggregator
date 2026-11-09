@@ -78,8 +78,15 @@
     },
     "activity": {
       "type": "object", "additionalProperties": false,
-      "required": ["soft_step_floor", "soft_floor_min_days", "run_kcal_discount", "wrestling_kcal_per_session", "lifting_kcal_per_session"],
+      "required": ["soft_step_floor", "soft_floor_min_days", "run_kcal_discount", "wrestling_kcal_per_session", "lifting_kcal_per_session", "met_by_activity"],
       "properties": {
+        "met_by_activity": {
+          "type": "object",
+          "description": "MET per activity type (lowercase key, underscores) for sessions reported without kcal: code estimates kcal = MET x 7-day trend weight (kg) x hours. Activities not listed get the model's own estimate, marked as such.",
+          "propertyNames": { "pattern": "^[a-z][a-z_]*$" },
+          "additionalProperties": { "type": "number", "exclusiveMinimum": 1, "maximum": 20 },
+          "minProperties": 1
+        },
         "soft_step_floor": { "type": "integer" },
         "soft_floor_min_days": { "type": ["integer", "null"] },
         "run_kcal_discount": { "type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 1 },
