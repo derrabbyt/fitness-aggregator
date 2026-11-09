@@ -25,6 +25,7 @@ decisions:
   large_step_kcal: 200              # far off
   far_off_margin_kg_per_week: 0.1   # assumption: "far off" = this far beyond the band edge
   rejected_return_weeks: 2          # a rejected direction can come back after this many usable weeks still pointing that way
+  prediction_miss_kg: 0.3           # a weekly prediction error above this is a miss (log check, lower confidence)
 
 maintenance_estimate:
   kcal_per_kg: 7500

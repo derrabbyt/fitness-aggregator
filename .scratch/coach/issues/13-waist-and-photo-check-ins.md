@@ -9,7 +9,7 @@
 - [x] Waist and photo due dates are computed in code from the measurement params and the phase start; reminders are sent once when due (photos only when photos are enabled)
 - [x] The photo prompt includes the protocol: same spot and light, camera at hip height, morning, fasted, unpumped, same poses
 - [x] Photos sent to the coach chat are stored as a dated photo set in the coach's state directory; waist values are stored with their date
-- [ ] The weekly report's "due next week" includes waist and photos per the due dates
+- [x] The weekly report's "due next week" includes waist and photos per the due dates
 - [x] Switching photos off (in chat) stops photo reminders and nothing else changes
 - [x] Tests cover due dates, a reminder sent once, storing a photo set and a waist value, and photos off
 

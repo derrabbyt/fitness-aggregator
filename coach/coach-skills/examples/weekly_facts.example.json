@@ -253,7 +253,7 @@
       }
     ],
     "sport_load_high": false,
-    "sport_load_source": "none"
+    "sport_load_note_ids": []
   },
   "training": {
     "tracked_lifts": [
@@ -365,6 +365,7 @@
     "weeks_since_last_change": 3,
     "last_change": {
       "proposal_id": "p_0007",
+      "source": "weekly_decision",
       "applied_on": "2027-02-08",
       "delta_kcal": 100
     },
@@ -373,21 +374,31 @@
         "iso_week": "2027-W08",
         "usable": true,
         "scenario": "C",
-        "direction": "increase"
+        "direction": "increase",
+        "counts_for_confirmation": true,
+        "skip_reason": null
       },
       {
         "iso_week": "2027-W07",
         "usable": true,
         "scenario": "A",
-        "direction": "hold"
+        "direction": "hold",
+        "counts_for_confirmation": true,
+        "skip_reason": null
       },
       {
         "iso_week": "2027-W06",
         "usable": true,
         "scenario": "C",
-        "direction": "increase"
+        "direction": "increase",
+        "counts_for_confirmation": true,
+        "skip_reason": null
       }
     ],
+    "confirmation_streaks": {
+      "increase": 1,
+      "decrease": 0
+    },
     "open_proposals": [],
     "last_rejected": null
   },
@@ -436,7 +447,8 @@
       "small_step_kcal": 100,
       "large_step_kcal": 200,
       "far_off_margin_kg_per_week": 0.1,
-      "rejected_return_weeks": 2
+      "rejected_return_weeks": 2,
+      "prediction_miss_kg": 0.3
     },
     "maintenance_estimate": {
       "kcal_per_kg": 7500,

@@ -43,21 +43,26 @@ every rule you applied in `rules_applied`.
   active phase skill's weight classes and decision table, and set `scenario`, `direction`,
   `weight_assessment`, `progression`. Cite the phase rule id (e.g. RB-C).
 - **WD-REVERSAL** – If the trend flipped unexpectedly versus `history.previous_verdicts`, or
-  `weight.prediction_miss` is true, check the logs first: incomplete or odd days, or a
+  `weight.prediction_miss` is true (error above `decisions.prediction_miss_kg`), check the logs first: incomplete or odd days, or a
   context note, explain it → treat the week as unusable (step 1). Otherwise continue with
   `confidence: low` and flag `trend_reversal` / `prediction_miss`.
-- **WD-SPORT** – If `activity.sport_load_high` and the table result is a "no progression"
-  scenario that would change calories or flag training (reverse_bulk: C or D), don't make
-  that call: direction `hold`, no proposal, no `training_needs_look` flag,
-  `sport_load_applied: true`, flag `sport_load_week`. Stalls that week are explained by load.
+- **WD-SPORT** – If `activity.sport_load_high` (a context note tagged `sport_load` covers
+  part of the week) and the table result is a "no progression" scenario that would change
+  calories or flag training (reverse_bulk: C or D), don't make that call: direction `hold`,
+  no proposal, no `training_needs_look` flag, `sport_load_applied: true`, flag
+  `sport_load_week`. Stalls that week are explained by load. The week is skipped for
+  confirmation: it neither counts nor breaks a streak. Code enforces this on the stored
+  verdict.
 
 ## Step 5 – Confirmation and proposal
 
-- **WD-CONFIRM** – Count consecutive usable weeks pointing the same direction, this week
-  included, going back through `history.previous_verdicts`. Skip (don't count, don't break)
-  weeks that are unusable or have scenario `glycogen_window` or `adherence_gate`. Stop at a
-  usable week with a different direction, and never count further back than
-  `history.weeks_since_last_change`. Required: `decisions.confirmation_weeks`, or
+- **WD-CONFIRM** – Code already counted the earlier weeks: `history.confirmation_streaks`
+  holds the consecutive earlier weeks pointing to an increase or a decrease since the last
+  change, with skipped weeks (`previous_verdicts[].counts_for_confirmation` false: unusable,
+  glycogen window, adherence gate, sport load) left out – they neither count nor break a
+  streak. If this week counts (steps 1–4 didn't skip it) and points the same way, the
+  consecutive count is that streak plus this week; a skipped week (this one included)
+  never counts. Required: `decisions.confirmation_weeks`, or
   `decisions.confirmation_weeks_fast_lane` for the phase's "too fast" scenario (reverse_bulk
   E). Fill `confirmation`.
 - **WD-PROPOSE** – Propose only if direction is `increase` or `decrease`, the week is usable,
@@ -119,4 +124,5 @@ proposal `calorie_change` small step, rules `WD-USABLE-CODE, WD-ADHERENCE, WD-TA
 WD-CONFIRM, WD-PROPOSE, RB-SIZE`.
 
 Same week but `sport_load_high: true` (wrestling camp) → WD-SPORT: direction hold, no
-proposal, `sport_load_applied: true`, flag `sport_load_week`; the increase streak resets.
+proposal, `sport_load_applied: true`, flag `sport_load_week`; the week is skipped for
+confirmation, so the increase streak neither grows nor resets.

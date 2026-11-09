@@ -18,7 +18,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from . import history, phases, weekdata
-from .features import context_notes
+from .features import context_notes, measurements
 
 if TYPE_CHECKING:
     from .core import Coach
@@ -82,13 +82,7 @@ def compute(coach: "Coach", end: Date, now: datetime.datetime) -> dict[str, Any]
         },
         "history": _history(coach, phase, start),
         "context_notes": notes,
-        "measurements": {
-            "photos_enabled": bool(p["measurements"]["photos_enabled"]),
-            "waist_cm_latest": None,
-            "waist_cm_prev": None,
-            "waist_cm_phase_start": phase["setup"].get("waist_cm_start"),
-            "latest_bf_estimate": None,
-        },
+        "measurements": _measurements(coach, phase, end, p),
         "params": p,
     }
     for hook in facts_hooks:
@@ -201,6 +195,17 @@ def _training(sessions: list[dict[str, Any]]) -> dict[str, Any]:
                             for s in sessions if s["status"] == "skipped"],
         "max_sets_in_a_session": None,
         "max_sets_per_muscle_in_a_session": None,
+    }
+
+
+def _measurements(coach, phase, end: Date, p) -> dict[str, Any]:
+    waist = [w["cm"] for w in measurements.waist_values(coach) if w["date"] <= end.isoformat()]
+    return {
+        "photos_enabled": bool(p["measurements"]["photos_enabled"]),
+        "waist_cm_latest": waist[-1] if waist else None,
+        "waist_cm_prev": waist[-2] if len(waist) > 1 else None,
+        "waist_cm_phase_start": phase["setup"].get("waist_cm_start"),
+        "latest_bf_estimate": None,
     }
 
 

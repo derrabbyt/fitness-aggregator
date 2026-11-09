@@ -33,7 +33,7 @@
         "food_days_logged": { "type": "integer", "minimum": 0, "maximum": 7 },
         "food_log_complete": { "type": "boolean", "description": "All days logged and no day flagged as partially logged." },
         "sync_fresh": { "type": "boolean" },
-        "last_sync_at": { "type": "string", "format": "date-time" },
+        "last_sync_at": { "type": ["string", "null"], "format": "date-time", "description": "Older of the MFP and Hevy last successful syncs; null until both have synced." },
         "code_usable": { "type": "boolean", "description": "Mechanical check only (weigh-ins, logs, sync). The skill additionally reads context notes." },
         "code_unusable_reasons": {
           "type": "array",
@@ -66,9 +66,9 @@
           "enum": ["below_limit", "below_band", "in_band", "above_band", "above_limit", "not_evaluated"],
           "description": "Numeric position of weekly_rate_kg relative to band. not_evaluated inside the glycogen window or when the week is not code_usable."
         },
-        "predicted_avg_7d_kg": { "type": ["number", "null"], "description": "Code's prediction for this week, made at the start of the week from maintenance estimate and targets." },
+        "predicted_avg_7d_kg": { "type": ["number", "null"], "description": "Code's prediction for this week, made at the start of the week: prev_avg_7d_kg + the surplus in force then x 7 / maintenance_estimate.kcal_per_kg (the targets assume the maintenance estimate)." },
         "prediction_error_kg": { "type": ["number", "null"], "description": "avg_7d_kg - predicted_avg_7d_kg." },
-        "prediction_miss": { "type": "boolean", "description": "|prediction_error_kg| > (band.high - band.low). False when either value is null." },
+        "prediction_miss": { "type": "boolean", "description": "|prediction_error_kg| > decisions.prediction_miss_kg. False when either value is null." },
         "daily": {
           "type": "array",
           "items": {
@@ -120,7 +120,7 @@
 
     "activity": {
       "type": "object",
-      "required": ["steps_daily", "avg_steps", "soft_step_floor", "days_below_floor", "sessions", "sport_load_high", "sport_load_source"],
+      "required": ["steps_daily", "avg_steps", "soft_step_floor", "days_below_floor", "sessions", "sport_load_high", "sport_load_note_ids"],
       "additionalProperties": false,
       "properties": {
         "steps_daily": {
@@ -139,8 +139,8 @@
         "soft_step_floor": { "type": "integer" },
         "days_below_floor": { "type": "integer", "minimum": 0 },
         "sessions": { "type": "array", "items": { "$ref": "#/$defs/session" } },
-        "sport_load_high": { "type": "boolean" },
-        "sport_load_source": { "enum": ["plan", "user_tag", "plan_and_user_tag", "user_untagged", "none"] }
+        "sport_load_high": { "type": "boolean", "description": "A context note tagged sport_load applies to a day of this week. Such a week is skipped for confirmation and gives no C/D call." },
+        "sport_load_note_ids": { "type": "array", "items": { "type": "string" }, "description": "Ids of those notes (in context_notes)." }
       }
     },
 
@@ -197,33 +197,46 @@
 
     "history": {
       "type": "object",
-      "required": ["weeks_since_last_change", "last_change", "previous_verdicts", "open_proposals", "last_rejected"],
+      "required": ["weeks_since_last_change", "last_change", "previous_verdicts", "confirmation_streaks", "open_proposals", "last_rejected"],
       "additionalProperties": false,
       "properties": {
-        "weeks_since_last_change": { "type": ["integer", "null"], "description": "Usable weeks since the last applied calorie change; the week after a change counts as 1." },
+        "weeks_since_last_change": { "type": ["integer", "null"], "description": "Weeks since the last applied calorie change that count for confirmation, this week included (counted as 1)." },
         "last_change": {
           "type": ["object", "null"],
-          "required": ["proposal_id", "applied_on", "delta_kcal"],
+          "required": ["proposal_id", "source", "applied_on", "delta_kcal"],
           "additionalProperties": false,
           "properties": {
-            "proposal_id": { "type": "string" },
+            "proposal_id": { "type": ["string", "null"], "description": "null for the phase start." },
+            "source": { "type": "string", "description": "phase_start or the proposal's source." },
             "applied_on": { "type": "string", "format": "date" },
             "delta_kcal": { "type": "number" }
           }
         },
         "previous_verdicts": {
           "type": "array",
-          "description": "Most recent verdicts, newest first (up to 6), including unusable weeks.",
+          "description": "Most recent verdicts, newest first (up to 6), including skipped weeks.",
           "items": {
             "type": "object",
-            "required": ["iso_week", "usable", "scenario", "direction"],
+            "required": ["iso_week", "usable", "scenario", "direction", "counts_for_confirmation", "skip_reason"],
             "additionalProperties": false,
             "properties": {
               "iso_week": { "type": "string" },
               "usable": { "type": "boolean" },
               "scenario": { "type": "string" },
-              "direction": { "enum": ["increase", "decrease", "hold"] }
+              "direction": { "enum": ["increase", "decrease", "hold"] },
+              "counts_for_confirmation": { "type": "boolean" },
+              "skip_reason": { "enum": ["unusable", "glycogen_window", "adherence_gate", "sport_load", null], "description": "Why code skipped the week for confirmation (neither counts nor breaks a streak)." }
             }
+          }
+        },
+        "confirmation_streaks": {
+          "type": "object",
+          "required": ["increase", "decrease"],
+          "additionalProperties": false,
+          "description": "Consecutive earlier weeks (this week not included) pointing to an increase / a decrease since the last change, skipped weeks left out. Add this week if it points the same way.",
+          "properties": {
+            "increase": { "type": "integer", "minimum": 0 },
+            "decrease": { "type": "integer", "minimum": 0 }
           }
         },
         "open_proposals": { "type": "array", "items": { "$ref": "proposal.schema.json" } },

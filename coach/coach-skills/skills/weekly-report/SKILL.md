@@ -12,8 +12,9 @@ Input (assembled by code):
 - `proposal_result` – the stored proposal returned by `propose_change` (status `open` or
   `blocked_by_guardrail` with violations), or null
 - `changes_applied` – proposals approved since the last report
-- `deferred` – observations held back from daily messages this week
-- `due` – `{ "waist": bool, "photos": bool }` per `measurements.*_every_weeks`
+- `deferred` – observations held back from daily messages this week (`[{date, text}]`)
+- `due` – waist and photo check-ins due in the coming week, `[{date, kind}]` with kind
+  `waist` or `photos` (photos only while they're on); empty when nothing is due
 
 Output: one JSON object matching `coach_message.schema.json` (`send: true`).
 
@@ -31,14 +32,15 @@ Output: one JSON object matching `coach_message.schema.json` (`send: true`).
 4. **Food** – weekly average vs target and whether the adherence gate passed. Macro, fiber
    or produce flags in one line each.
 5. **Training** – how many counted lifts improved; PRs from the week; stalls and deload
-   signals as flags only; sport-load note if applied. For scenario D: "training needs a look",
+   signals as flags only; sport-load note if applied. If `training.progression_met` is null,
+   say in a few words that lift progression wasn't evaluated, and list the sessions only. For scenario D: "training needs a look",
    nothing more specific.
 6. **Activity** – average steps only if relevant (step floor flag, unusual week).
 7. **Changes applied this week** – for each: what changed, why, what to expect, when it gets
    re-checked (per the confirmation rules).
 8. **Deferred items** – merged into the sections above if they fit, otherwise one short list.
 9. **Next week** – what to expect (e.g. the band for next week, the jump after a carb
-   increase) and anything due: waist, photos (if `photos_enabled`).
+   increase) and anything due from `due`: waist, photos, with the day.
 10. **Questions** – the verdict's `questions_for_user`, if any.
 
 ## Rules

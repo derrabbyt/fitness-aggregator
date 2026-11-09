@@ -29,7 +29,7 @@
     },
     "decisions": {
       "type": "object", "additionalProperties": false,
-      "required": ["confirmation_weeks", "confirmation_weeks_fast_lane", "max_change_kcal", "small_step_kcal", "large_step_kcal", "far_off_margin_kg_per_week", "rejected_return_weeks"],
+      "required": ["confirmation_weeks", "confirmation_weeks_fast_lane", "max_change_kcal", "small_step_kcal", "large_step_kcal", "far_off_margin_kg_per_week", "rejected_return_weeks", "prediction_miss_kg"],
       "properties": {
         "confirmation_weeks": { "type": "integer", "minimum": 1 },
         "confirmation_weeks_fast_lane": { "type": "integer", "minimum": 1 },
@@ -37,7 +37,8 @@
         "small_step_kcal": { "type": "number", "minimum": 0 },
         "large_step_kcal": { "type": "number", "minimum": 0 },
         "far_off_margin_kg_per_week": { "type": "number", "minimum": 0 },
-        "rejected_return_weeks": { "type": "integer", "minimum": 1 }
+        "rejected_return_weeks": { "type": "integer", "minimum": 1 },
+        "prediction_miss_kg": { "type": "number", "exclusiveMinimum": 0, "description": "weekly_facts.weight.prediction_miss is true when |prediction_error_kg| exceeds this." }
       }
     },
     "maintenance_estimate": {

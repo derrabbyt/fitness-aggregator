@@ -105,9 +105,9 @@ changes the schema, the skills that reference it, the examples, and reruns
 | `training.compare_best_of_last_sessions` | 3 | SPEC says "best of last 2–3" |
 | `activity.met_by_activity` | running 8.0, cycling 7.5, swimming 6.0, football 7.0, basketball 6.5, tennis 7.0, hiking 6.0, walking 3.5, rowing 6.0, martial_arts 6.0 (grappling, BJJ, boxing …; wrestling and lifting use their setup values instead) | estimating kcal for sessions reported without kcal (MET × 7-day trend weight × hours); conservative "general" values in the style of the Compendium of Physical Activities. Other activities, or no trend weight yet: the model's own estimate, stored as `model_estimate` |
 | `nutrition.macro_reference_weight` | trend_7d | which weight g/kg uses; recalculated weekly |
-| `weight.prediction_miss` | error > band width | flags a missed weekly prediction without a new param |
-| Adherence-gate weeks | skipped like unusable weeks for confirmation | SPEC says no changes when adherence fails, not how they count |
-| Sport-load weeks | C/D become direction "hold", so an increase streak restarts | SPEC says no C or D proposals from them |
+| `decisions.prediction_miss_kg` | 0.3 | a weekly prediction error above this is a miss (log check, lower confidence) |
+| Adherence-gate weeks | skipped like unusable weeks for confirmation (code records the skip with each stored verdict) | SPEC says no changes when adherence fails, not how they count |
+| Sport-load weeks | a week with a `sport_load` context note gives no C/D call and is skipped for confirmation (neither counts nor breaks a streak) | SPEC says no C or D proposals from them |
 | Cut weight classes | `above_band` = losing too slowly, `below_limit` = too fast | signed band; numbers still TO DECIDE |
 | Maintenance macros | reused from reverse_bulk | not decided |
 
