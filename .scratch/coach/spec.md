@@ -40,7 +40,7 @@ A second Telegram bot, the **coach**, running as its own service. It syncs my fo
 16. As the user, I want runs to count toward a day's target only when a run actually synced or I report it, so that optional easy runs need no message when I skip them.
 17. As the user, I want lifting to count with a fixed kcal estimate per session when the session shows up in Hevy, so that lifting days get a fair target without me reporting anything.
 18. As the user, I want wrestling to count as planned unless I say it didn't happen, so that the usual week needs no messages.
-19. As the user, I want to report an extra session by just saying what I did and for how long (or with its kcal if I know them), so that unplanned activity is counted; code estimates the kcal when I don't give them.
+19. As the user, I want to report an extra session by just saying what I did and for how long (or with its kcal if I know them), so that unplanned activity is counted; code estimates the kcal when I don't give them (or the model, marked as its estimate, when code can't).
 20. As the user, I want run calories discounted by my run discount, so that inflated Strava numbers don't overfeed me.
 21. As the user, I want my daily target = base maintenance + counted activity + surplus, computed in code, so that targets are consistent and never invented by the model.
 22. As the user, I want the coach to ignore MFP's own activity-adjusted goal, so that there is one source of targets.
@@ -164,7 +164,7 @@ The Telegram layer is a thin adapter: it turns updates into `on_message` / `on_b
 - `COACH_MODEL` (default `claude-sonnet-5-5`) for chat, evening recap, training feedback, phase start and the weekly report. `COACH_DECISION_MODEL` (default `claude-opus-5-5`) for the weekly decision (and later the reviews).
 - Prompt layout per call: cached prefix (coach-core + active phase skill + tool definitions), then the task skill, then a short state snapshot and the input JSON. Chat keeps only a short history.
 - The weekly decision returns JSON validated against the weekly-verdict schema; an invalid verdict is not acted on.
-- The model never calculates: every number it sees comes from code-computed facts or tool results.
+- The model never calculates: every number it sees comes from code-computed facts or tool results. Only exception: the kcal of a reported session code can't estimate (unknown activity, no trend weight), stored as a model estimate.
 
 ### Facts, rules and guardrails (code)
 

@@ -298,7 +298,7 @@
         "date": { "type": "string", "format": "date" },
         "type": { "enum": ["lift", "run", "wrestling", "other"] },
         "source": { "enum": ["training_log", "strava", "plan", "manual"] },
-        "kcal_counted": { "type": "number", "description": "Activity kcal added to that day's target: Strava run kcal x run discount, lifting kcal per Hevy session, wrestling kcal per planned session, reported kcal for extras (runs discounted). 0 when skipped." },
+        "kcal_counted": { "type": "number", "description": "Activity kcal added to that day's target: Strava run kcal x run discount, lifting kcal per Hevy session, wrestling kcal per planned session, reported kcal for extras: the user's, code-estimated or model-estimated (runs discounted). 0 when skipped." },
         "status": { "enum": ["done", "planned", "skipped"], "description": "done: synced (Strava, Hevy) or reported by the user. planned: wrestling counted as planned, no report. skipped: a planned session the user reported skipped (counts 0). Optional or unsynced sessions that did not happen are not listed." },
         "note": { "type": ["string", "null"] }
       }

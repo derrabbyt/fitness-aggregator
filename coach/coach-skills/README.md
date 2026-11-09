@@ -10,7 +10,7 @@ and is read at runtime by `fa_coach/skills.py`. `tools/validate.py` runs as part
 - **Code** syncs MyFitnessPal into the database, computes every number (the *facts*), runs
   the scheduler and Telegram buttons, and enforces guardrails in `propose_change`.
 - **Skills** make the decisions and do all interpretation and writing.
-- **The model never calculates.** It reads facts and returns structured output.
+- **The model never calculates.** It reads facts and returns structured output. (Only exception: the kcal of a reported session code can't estimate, stored as `model_estimate`.)
 
 ```
 coach-skills/
@@ -103,6 +103,7 @@ changes the schema, the skills that reference it, the examples, and reruns
 | `training.deload_min_lifts_declining` | 2 | SPEC says "several lifts declining" |
 | `training.big_drop_pct_ask_reset` | 15 | when the agent asks "was this a reset?" |
 | `training.compare_best_of_last_sessions` | 3 | SPEC says "best of last 2–3" |
+| `activity.met_by_activity` | running 8.0, cycling 7.5, swimming 6.0, football 7.0, basketball 6.5, tennis 7.0, hiking 6.0, walking 3.5, rowing 6.0, martial_arts 6.0 (grappling, BJJ, boxing …; wrestling and lifting use their setup values instead) | estimating kcal for sessions reported without kcal (MET × 7-day trend weight × hours); conservative "general" values in the style of the Compendium of Physical Activities. Other activities, or no trend weight yet: the model's own estimate, stored as `model_estimate` |
 | `nutrition.macro_reference_weight` | trend_7d | which weight g/kg uses; recalculated weekly |
 | `weight.prediction_miss` | error > band width | flags a missed weekly prediction without a new param |
 | Adherence-gate weeks | skipped like unusable weeks for confirmation | SPEC says no changes when adherence fails, not how they count |
