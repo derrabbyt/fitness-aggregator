@@ -12,6 +12,8 @@
 - Reminder job: from `REMINDER_TIME` on a due date, one message asks for
   what is due (photos with the protocol); sent once per due date, or late
   (still once) if the coach was down, unless the value already came in.
+  Reminders count toward the daily message limit (`messaging.send`); one held
+  back by the limit goes out on the next day from `REMINDER_TIME`.
 - Photos sent to the chat are stored under the coach's state directory as
   `photos/<date>/<n>.jpg`, one set per day, and acknowledged. Waist values
   ("waist 84.5", or a bare "84.5" while a waist reminder is open) are stored
@@ -23,7 +25,7 @@ import datetime
 import re
 from typing import TYPE_CHECKING, Any
 
-from .. import phases
+from .. import messaging, phases
 from ..registry import registry
 
 if TYPE_CHECKING:
@@ -76,19 +78,25 @@ async def remind(coach: "Coach", now: datetime.datetime) -> None:
     phase = phases.active(coach)
     if phase is None:
         return
-    today = now.date()
+    # Only from REMINDER_TIME: a reminder held back by the daily message
+    # limit goes out the next morning, not right after midnight.
     if now.time() < REMINDER_TIME:
-        today -= datetime.timedelta(days=1)
+        return
+    today = now.date()
     m = phases.params(coach)["measurements"]
     longest = max(m["waist_every_weeks"], m["photos_every_weeks"]) * 7
     latest: dict[str, str] = {}
     for item in measurements_due(coach, today - datetime.timedelta(days=longest - 1), today):
         latest[item["kind"]] = item["date"]  # in date order: the last one wins
-    asked = [kind for kind, due in sorted(latest.items(), key=lambda kv: KINDS.index(kv[0]))
-             if not _received_since(coach, kind, due)
-             and coach.db.once(f"measurement-reminder:{phase['id']}:{kind}:{due}", now)]
+    open_ = [(kind, due) for kind, due in sorted(latest.items(), key=lambda kv: KINDS.index(kv[0]))
+             if not _received_since(coach, kind, due)]
+    # Counts toward the daily message limit; at the limit nothing is claimed,
+    # so the reminder goes out on a later day (still once).
+    if not open_ or not messaging.can_send(coach, now):
+        return
+    asked = [kind for kind, due in open_ if coach.db.once(f"measurement-reminder:{phase['id']}:{kind}:{due}", now)]
     if asked:
-        coach.say(_reminder_text(asked))
+        messaging.send(coach, _reminder_text(asked), now, kind="measurement-reminder")
 
 
 def _received_since(coach: "Coach", kind: str, day: str) -> bool:

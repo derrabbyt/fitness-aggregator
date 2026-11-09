@@ -34,4 +34,7 @@
   `day.weight.withheld` (in the glycogen window code withholds weight values), `week_to_date.days_logged`.
   New core param `data.implausible_intake_factor: 2` (assumption, listed in the skills README).
 - A recap the model wants to send past the limit is stored as a deferred item. Recap buttons are ignored.
-
+- Ticket 13's waist/photo reminders now go through `messaging.send` and count toward the limit
+  (see 13's Comments). The stale-data notice (`features/sync.py`) still uses `coach.say` and
+  doesn't count; chat replies never count.
+- The evening job needs an active phase with targets for today; without them it does nothing.

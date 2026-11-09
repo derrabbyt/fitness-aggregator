@@ -47,6 +47,7 @@ async def reverse(coach, api, model, outbox):
     confirm = card(outbox).buttons[0][0]
     await coach.on_button(confirm.action, confirm.ref_id)
     assert phases.active(coach)["start_date"] == "2026-11-09"
+    await coach.run_due_jobs(at("2026-11-09", datetime.time(9, 5)))  # the baseline photo reminder goes out
     outbox.clear()
     model.requests.clear()
     return coach

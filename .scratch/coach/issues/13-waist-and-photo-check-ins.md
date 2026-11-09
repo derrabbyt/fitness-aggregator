@@ -29,5 +29,8 @@
 - Waist input is code-only: "waist 84.5", a sentence with "waist" and one plausible number
   (40-200 cm), or a bare number while a waist reminder is open. Questions go to the chat.
   Photos are stored whenever they arrive (also with photos off or no phase), one set per day.
-- Reminders don't count against `max_unprompted_messages_per_day` yet: ticket 11's shared
-  counter wasn't on coach-v1 when this was done.
+- Reminders count toward `max_unprompted_messages_per_day` through ticket 11's shared counter
+  (`messaging.send`). At the limit nothing is claimed, so the reminder goes out on a later day
+  (still once per due date). Reminders now go out only from 07:00 (`REMINDER_TIME`), also late
+  ones, so a held-back reminder isn't sent right after midnight (test
+  `test_reminders_count_toward_the_daily_message_limit`).

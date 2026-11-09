@@ -42,7 +42,7 @@ async def evening(coach, now: datetime.datetime) -> None:
     if not reminder_at or now.time() < datetime.time.fromisoformat(reminder_at):
         return
     today = now.date()
-    if phases.phase_week(phase, today) < 1 or not coach.db.once(f"evening:{today.isoformat()}", now):
+    if phases.daily_target(coach, today) is None or not coach.db.once(f"evening:{today.isoformat()}", now):
         return
     await coach.sync(now)
     record = _day(coach, today)
