@@ -102,7 +102,7 @@
       "soft_floor_min_days": null,
       "run_kcal_discount": null,
       "wrestling_kcal_per_session": null,
-      "planned_sessions_default_done": true
+      "lifting_kcal_per_session": null
     },
     "measurements": {
       "waist_every_weeks": 2,

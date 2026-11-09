@@ -15,7 +15,7 @@ Rule for every write tool: **code validates, code applies.** The model only asks
 | `get_lift_history` | `exercise_id`, `n_sessions` | sessions since last baseline: date, sets (load, reps), effective load, status, notes |
 | `get_context_notes` | `from`, `to` | list of `context_note.schema.json` |
 | `get_targets` | – | current `targets` block + per-day targets for the current week |
-| `get_training_plan` | – | saved default week + this week's changes |
+| `get_training_plan` | – | the saved plan in force today (sessions per weekday with ids, exercise lists) + this week day by day with the user's reports + upcoming lasting changes |
 | `get_proposals` | `status` (optional) | list of `proposal.schema.json` |
 | `get_coach_profile` | – | `{profile: {key: value}}`: short entries (preferences, known issues); also in every call's state snapshot |
 | `load_skill` | `name` | SKILL.md of another skill from the index |
@@ -30,9 +30,19 @@ Rule for every write tool: **code validates, code applies.** The model only asks
 | `delete_context_note` | `id` | Removes a wrong note (e.g. a `sport_load` week that wasn't heavy after all). |
 | `mark_baseline_reset` | `exercise_id`, `date`, `reason` | Starts a new baseline for that exercise from `date`. |
 | `set_exercise_paused` | `exercise_id`, `paused`, `reason` | Injury pause on/off. |
-| `set_session_status` | `date`, `type`, `status` (`done`/`skipped`), optional `kcal` | Planned session confirmed, skipped, or an extra session added. |
-| `update_training_plan` | `changes` (day → sessions) | Edits the saved default week. |
-| `repull_training_plan` | – | Re-reads the Google Sheet into the saved plan; returns the diff. |
+| `set_session_status` | `date` (this or last week), `status` (`skipped`/`done`/`extra`/`clear`), `session_id` (planned session) or `type` + `name` + `kcal` (extra), `extra_id` (clear an extra) | One day only: a planned session skipped or done, an extra session with its kcal, or a report undone. Returns that day. |
+| `update_training_plan` | `days` (weekday → full session list), `exercise_lists` (name → items or null), optional `from` | Lasting change: a new plan version from `from` (default today, this week at the earliest); earlier days keep their plan. Returns the new plan. |
+
+The plan is seeded once from the CSV in `coach/data/training_plan.csv` and afterwards
+changes only through these two tools; the CSV is never re-read.
+
+**Counted activity** (code, per day): Strava runs count at their kcal × `run_kcal_discount`
+(HealthKit copies and HealthKit "Strength training" never count); a planned run marked done
+counts with its reported kcal (discounted) only when Strava has no run that day. Each Hevy
+session counts `lifting_kcal_per_session` (a planned lift marked done without a Hevy session
+counts the same). Planned wrestling counts `wrestling_kcal_per_session` unless reported
+skipped. Extras count with their reported kcal (runs discounted). Optional sessions that
+didn't happen count nothing and need no report.
 | `record_setup_value` | `key`, `value` | Stores a setup value (run discount, wrestling kcal, logistics, …). Validates against `phase_setup.schema.json` / `core_params.schema.json`. |
 | `start_phase` | `phase_setup` | Validates, stores as pending, returns a **week-1 preview** computed by code (daily targets by day type, macros, MFP goal). The phase starts only when the user taps `confirm_phase_start`. |
 | `update_coach_profile` | `patch`: `{key: value or null}` | Sets or (null) removes short entries; returns the whole profile. The reply tells the user what changed; `/profile` shows it. |

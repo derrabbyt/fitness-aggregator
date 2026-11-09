@@ -132,6 +132,14 @@ from `.env` (and `cookie.txt`) afterwards.
   neighbours (`data.weight_outlier_*` in coach-core params) are marked as
   outliers, silently, and left out of the trend. If no sync has succeeded for
   `data.sync_max_age_hours`, the coach says so once.
+- **Training plan:** seeded once, on first start, from
+  `coach/data/training_plan.csv` (the export of the training sheet: week grid
+  with times and optional runs, exercise lists per session). After that it
+  lives in the database and changes only in the chat, for good or for single
+  days this week; editing the CSV has no effect on a seeded coach. Counted
+  activity per day: Strava runs × run discount (HealthKit copies never count),
+  a fixed kcal per Hevy session, wrestling as planned unless skipped, and
+  reported extras (`features/training_plan.py`, `counted_activity`).
 - **Commands:** `/profile` shows the coach profile; `/sync` syncs now.
 - **Chat:** free text goes to the model with the coach-chat and context-log
   skills. Context (sick, travel, camp week, creatine) is stored as a dated,

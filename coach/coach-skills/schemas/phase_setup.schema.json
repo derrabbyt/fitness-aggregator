@@ -26,7 +26,7 @@
     "starting_trend_weight_kg": { "type": "number" },
     "maintenance_estimate_kcal": { "type": "number", "description": "From the last diet weeks; code converts it to base maintenance by subtracting average counted activity." },
     "maintenance_includes_activity": { "type": "boolean", "default": true },
-    "training_plan_source": { "enum": ["google_sheet", "saved_plan"] },
+    "training_plan_source": { "enum": ["saved_plan"], "description": "The training plan saved in the coach (seeded once from the CSV, changed in chat)." },
     "run_kcal_discount": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
     "wrestling_kcal_per_session": { "type": "number", "minimum": 0 },
     "fat_g_per_kg_start": { "type": "number" },

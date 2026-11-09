@@ -208,7 +208,7 @@
         "type": "wrestling",
         "source": "plan",
         "kcal_counted": 400,
-        "status": "assumed_done",
+        "status": "planned",
         "note": null
       },
       {
@@ -232,7 +232,7 @@
         "type": "wrestling",
         "source": "plan",
         "kcal_counted": 450,
-        "status": "assumed_done",
+        "status": "planned",
         "note": null
       },
       {
@@ -469,7 +469,7 @@
       "soft_floor_min_days": null,
       "run_kcal_discount": null,
       "wrestling_kcal_per_session": null,
-      "planned_sessions_default_done": true
+      "lifting_kcal_per_session": null
     },
     "measurements": {
       "waist_every_weeks": 2,

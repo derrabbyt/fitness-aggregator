@@ -54,7 +54,7 @@ activity:
   soft_floor_min_days: null         # setup value: what "for a while" means
   run_kcal_discount: null           # setup value, e.g. 0.75
   wrestling_kcal_per_session: null  # setup value
-  planned_sessions_default_done: true
+  lifting_kcal_per_session: null    # setup value: kcal counted per lifting session (Hevy)
 
 measurements:
   waist_every_weeks: 2

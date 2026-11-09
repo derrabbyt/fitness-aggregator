@@ -21,7 +21,8 @@ that moment (ending is always the user's call).
    - starting calories (last diet intake, daily average)
    - starting trend weight
    - maintenance estimate from the last diet weeks
-   - training and sport plan (default week from the Google Sheet or the saved plan)
+   - training and sport plan (the saved plan from `get_training_plan`; changes go through
+     `update_training_plan`)
    - run kcal discount and wrestling kcal per session
    - fat start in g/kg within the phase's `macros.fat_g_per_kg_min`..`max`
    - phase specifics: reverse_bulk the week-1 increase within `start.week1_increase_kcal`

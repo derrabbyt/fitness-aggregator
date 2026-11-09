@@ -91,6 +91,7 @@ RUN cd coach && uv sync --no-install-project
 COPY --chown=app:app coach/src/ coach/src/
 RUN cd coach && uv sync
 COPY --chown=app:app coach/coach-skills/ coach/coach-skills/
+COPY --chown=app:app coach/data/ coach/data/
 COPY --from=web --chown=app:app /web/dist web/dist
 
 ENV HOME=/home/app PATH=/app/.venv/bin:$PATH

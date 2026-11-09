@@ -77,13 +77,13 @@
     },
     "activity": {
       "type": "object", "additionalProperties": false,
-      "required": ["soft_step_floor", "soft_floor_min_days", "run_kcal_discount", "wrestling_kcal_per_session", "planned_sessions_default_done"],
+      "required": ["soft_step_floor", "soft_floor_min_days", "run_kcal_discount", "wrestling_kcal_per_session", "lifting_kcal_per_session"],
       "properties": {
         "soft_step_floor": { "type": "integer" },
         "soft_floor_min_days": { "type": ["integer", "null"] },
         "run_kcal_discount": { "type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 1 },
         "wrestling_kcal_per_session": { "type": ["number", "null"] },
-        "planned_sessions_default_done": { "type": "boolean" }
+        "lifting_kcal_per_session": { "type": ["number", "null"], "minimum": 0 }
       }
     },
     "measurements": {

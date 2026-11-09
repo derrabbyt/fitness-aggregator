@@ -32,9 +32,12 @@ Keep tool calls few; use aggregated tools, never raw dumps.
   preferences.
   A rejected direction can come back only after `decisions.rejected_return_weeks` usable
   weeks still pointing that way.
-- **CC-PLAN** – "Re-pull the plan" → `repull_training_plan` and show the diff. "Move
-  wrestling to Thursday", "no run this week" → `update_training_plan` or
-  `set_session_status`. Planned sessions count as done unless the user says no.
+- **CC-PLAN** – "What's my plan?" → `get_training_plan`. A lasting change ("wrestling is
+  on Thursdays from now on") → `update_training_plan`. One day this week ("no wrestling
+  this Friday", "did an extra 400 kcal bike ride") → `set_session_status`. If it's unclear
+  whether a change is for good or just this week, ask. Runs and lifting count when they
+  sync from Strava or Hevy; wrestling counts as planned unless skipped; optional sessions
+  that didn't happen need nothing. Confirm what changed in one line.
 - **CC-SPORT-LOAD** – "This is a camp week" → a context note tagged `sport_load` for
   those days (context-log). "It wasn't actually heavy" → find that note with
   `get_context_notes` and `delete_context_note` it.

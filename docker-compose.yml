@@ -107,6 +107,7 @@ services:
       - ./coach/src:/app/coach/src:ro
       - ./coach/tests:/app/coach/tests:ro
       - ./coach/coach-skills:/app/coach/coach-skills:ro
+      - ./coach/data:/app/coach/data:ro
     command:
       - sh
       - -c
