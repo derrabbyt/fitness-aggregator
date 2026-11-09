@@ -25,14 +25,3 @@ CREATE TABLE weekly_checkins (
 );
 CREATE INDEX weekly_checkins_week ON weekly_checkins (iso_week, status);
 
--- Observations held back from daily messages for the weekly report
--- (ticket 11 writes them with deferred.add; the report marks them reported).
-CREATE TABLE deferred_items (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    date          TEXT NOT NULL,  -- ISO date the observation is about
-    source        TEXT NOT NULL,  -- e.g. 'evening-recap'
-    text          TEXT NOT NULL,
-    created_at    TEXT NOT NULL,
-    reported_week TEXT            -- iso_week of the report that carried it
-);
-CREATE INDEX deferred_items_open ON deferred_items (reported_week, date);

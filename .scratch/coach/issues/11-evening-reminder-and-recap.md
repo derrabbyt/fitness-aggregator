@@ -12,7 +12,7 @@
 - [x] An implausible entry (e.g. a day far beyond any normal intake) produces a typo-or-real question
 - [x] The daily message limit (setup value) is respected
 - [x] No weight comments during the glycogen window
-- [ ] Tests cover a missing-log reminder, a silent evening with a deferred item, an off-target week note, the message limit, and that the deferred item appears in the next weekly report
+- [x] Tests cover a missing-log reminder, a silent evening with a deferred item, an off-target week note, the message limit, and that the deferred item appears in the next weekly report
 
 ## Comments
 

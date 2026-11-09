@@ -20,8 +20,7 @@
 
 - Code: `fa_coach/weekly_facts.py` (`compute(coach, end, now)`; `facts_hooks` for ticket 08's
   `training`, ticket 09's `history.open_proposals` / `last_rejected`), `fa_coach/weekdata.py`
-  (shared per-day intake vs targets, `intake_summary`, steps; for ticket 11's week so far),
-  `fa_coach/deferred.py` (`add` / `pending` / `mark_reported`, the hook ticket 11 writes to),
+  (per-day intake vs targets, `intake_summary`, steps; shareable with the daily facts),
   `features/weekly_checkin.py` (job, `/checkin`, code rules on the verdict, storage, report;
   `report_hooks` for ticket 09's `proposal_result` / `changes_applied`; `stored(coach, iso_week)`),
   table `migrations/07_weekly.sql`, tests `coach/tests/test_weekly_checkin.py`.
@@ -48,7 +47,10 @@
 - **Schema changes:** `data_quality.last_sync_at` nullable; `history.last_change` gets `source`
   (`proposal_id` null for the phase start); `previous_verdicts[]` get `counts_for_confirmation`
   and `skip_reason`; `history.confirmation_streaks`. The report's `due` is the list from
-  `measurements.measurements_due` for the 7 days from the check-in day; `deferred` is `[{date, text}]`.
+  `measurements.measurements_due` for the 7 days from the check-in day; `deferred` is `[{date, text}]` from ticket 11's
+  `messaging.deferred` for the week's days.
+- **Sending:** every check-in message (report, failure, "first check-in comes …") goes through
+  `messaging.send(..., exempt=True)`: the daily message limit never holds it back.
 - **Failures:** an invalid verdict (schema, or wrong week/phase) or an unreachable model stores
   a failed attempt and tells the user; `/checkin` runs it again. If the report model fails,
   code sends a short fallback report from the verdict's reasoning and the numbers.

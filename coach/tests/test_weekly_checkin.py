@@ -16,7 +16,7 @@ import datetime
 
 import pytest
 
-from fa_coach import deferred
+from fa_coach import messaging
 from fa_coach.features import weekly_checkin
 from fakes import TZ, exercise, food, reply, reply_json, session, tool_call
 from test_phase_start import SETUP, card, start_and_collect
@@ -272,10 +272,11 @@ async def test_a_sport_load_week_is_skipped_and_gives_no_increase_or_training_ca
 # --- report inputs ---------------------------------------------------------------------
 
 
-async def test_deferred_items_and_due_measurements_go_into_the_report_once(phase, api, clock, model):
+async def test_the_weeks_deferred_items_and_due_measurements_go_into_the_report(phase, api, clock, model):
     fill_week(api, 1)
     fill_week(api, 2)
-    deferred.add(phase, datetime.date(2026, 11, 12), "Protein was low on Thursday.", "evening-recap", at("2026-11-12", 21))
+    messaging.defer(phase, datetime.date(2026, 11, 12), "Protein was low on Thursday.", "evening-recap",
+                    at("2026-11-12", 21))
     await check_in(phase, clock, model, "2026-11-16", verdict("2026-W46", scenario="glycogen_window"))
 
     report = model.requests[-1].input
@@ -284,7 +285,7 @@ async def test_deferred_items_and_due_measurements_go_into_the_report_once(phase
 
     await check_in(phase, clock, model, "2026-11-23", verdict("2026-W47", scenario="glycogen_window"))
     report = model.requests[-1].input
-    assert report["deferred"] == []  # reported once
+    assert report["deferred"] == []  # only the week's own items
     # Waist every 2 weeks after the start, photos at the start and every 2 weeks: both on 23 Nov.
     assert report["due"] == [{"date": "2026-11-23", "kind": "waist"}, {"date": "2026-11-23", "kind": "photos"}]
 
@@ -293,3 +294,28 @@ async def test_the_first_check_in_waits_for_a_full_phase_week(phase, api, clock,
     clock.current = at("2026-11-15", 18)
     await phase.run_due_jobs()  # moment Mon 9 Nov 09:00 was before the phase started
     assert reports(outbox) == [] and model.requests[-1].task_skills == ("phase-start",)
+
+
+async def test_an_item_the_evening_recap_held_back_appears_in_the_next_weekly_report(phase, api, clock, model):
+    fill_week(api, 1)
+    clock.current = at("2026-11-12", 21)
+    model.script(reply_json({"send": False, "text": "", "buttons": [],
+                             "deferred_to_weekly": ["Fiber was low on Thursday."]}))
+    await phase.run_due_jobs()  # the evening recap, silent
+    assert model.requests[-1].task_skills == ("evening-recap",)
+
+    await check_in(phase, clock, model, "2026-11-16", verdict("2026-W46", scenario="glycogen_window"))
+
+    assert model.requests[-1].input["deferred"] == [{"date": "2026-11-12", "text": "Fiber was low on Thursday."}]
+
+
+async def test_the_daily_message_limit_never_holds_the_report_back(phase, api, clock, model, outbox):
+    fill_week(api, 1)
+    for n in range(2):  # the setup's limit: 2 unprompted messages a day
+        assert messaging.send(phase, f"note {n}", at("2026-11-16", 8), kind="test")
+    assert not messaging.can_send(phase, at("2026-11-16", 8))
+
+    await check_in(phase, clock, model, "2026-11-16", verdict("2026-W46", scenario="glycogen_window"),
+                   report="Week 1 report.")
+
+    assert reports(outbox) == ["Week 1 report."]

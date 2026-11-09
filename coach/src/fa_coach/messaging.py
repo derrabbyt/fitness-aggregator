@@ -8,7 +8,8 @@ value; no limit while it is unset):
 - `send(coach, text, now, kind=..., buttons=..., ref=..., exempt=False)`:
   sends through `coach.say` and counts it, unless today's limit is reached,
   then sends nothing and returns False. `exempt=True` always sends and does
-  not count (only the "was this a reset?" question is exempt, story 81).
+  not count (the "was this a reset?" question, story 81, and the weekly
+  check-in, the one weekly message the user expects).
 - `sent_today(coach, now)`: counted messages sent today (local date of `now`).
 - `limit(coach)`, `can_send(coach, now)`.
 

@@ -5,8 +5,9 @@ once per week, code computes the weekly facts for the 7 days ending the day
 before the check-in day (weekly_facts.py), the decision model turns them
 into a verdict (weekly-decision, COACH_DECISION_MODEL), code applies its own
 rules to it, stores it with the facts and rule ids, and the weekly-report
-skill writes the report. An invalid verdict is not acted on: the user is
-told the check-in failed and can run it again with /checkin.
+skill writes the report. Its messages are exempt from the daily message
+limit (`messaging.send(..., exempt=True)`). An invalid verdict is not acted
+on: the user is told the check-in failed and can run it again with /checkin.
 
 Code's rules on the verdict:
 - A week with a `sport_load` context note gives no "raise calories" and no
@@ -19,8 +20,8 @@ Code's rules on the verdict:
 Hooks for later tickets:
 - `report_hooks`: `fn(coach, facts, verdict, now) -> dict` merged into the
   weekly-report input (proposals: `proposal_result`, `changes_applied`).
-- Deferred items come from `deferred.py`; due measurements from
-  `measurements.measurements_due`.
+- Deferred items come from `messaging.deferred` (the week's days); due
+  measurements from `measurements.measurements_due` (the 7 days from the check-in day).
 
 Read API: `stored(coach, iso_week=None)`: the stored check-in (latest week
 by default) with facts and verdict.
@@ -32,7 +33,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from .. import deferred, phases, weekly_facts
+from .. import messaging, phases, weekly_facts
 from ..ports import Button, ModelError
 from ..registry import registry
 from . import measurements
@@ -110,8 +111,8 @@ async def _run(coach, phase, moment: datetime.datetime, end: Date, now: datetime
     start = end - 6 * DAY
     if start < Date.fromisoformat(phase["start_date"]):
         nxt = moment + 7 * DAY
-        coach.say(f"No weekly check-in today: the first full week of the phase isn't over yet. "
-                  f"The first one comes {nxt.strftime('%A %d %b')} at {nxt.strftime('%H:%M')}.")
+        _send(coach, f"No weekly check-in today: the first full week of the phase isn't over yet. "
+              f"The first one comes {nxt.strftime('%A %d %b')} at {nxt.strftime('%H:%M')}.", now)
         return
     iso = weekly_facts.iso_week(end)
     facts = None
@@ -135,8 +136,8 @@ async def _run(coach, phase, moment: datetime.datetime, end: Date, now: datetime
     except CheckinError as exc:
         logger.warning("weekly check-in %s failed: %s %s", iso, exc, exc.details)
         _store_failed(coach, phase, iso, start, end, facts, [str(exc), *exc.details], now)
-        coach.say(f"⚠️ The weekly check-in for {iso} failed: {exc}. Nothing was changed. "
-                  f"Send /checkin to try again.")
+        _send(coach, f"⚠️ The weekly check-in for {iso} failed: {exc}. Nothing was changed. "
+              f"Send /checkin to try again.", now)
         return
 
     verdict, adjustments = apply_code_rules(verdict, facts)
@@ -145,7 +146,12 @@ async def _run(coach, phase, moment: datetime.datetime, end: Date, now: datetime
         verdict["proposal"] = None
         adjustments.append(f"proposal dropped: the week is skipped for confirmation ({skip})")
     checkin_id = _store_ok(coach, phase, iso, start, end, facts, verdict, skip, adjustments, now)
-    await _report(coach, checkin_id, facts, verdict, end, now)
+    await _report(coach, checkin_id, facts, verdict, start, end, now)
+
+
+def _send(coach, text: str, now: datetime.datetime, **kwargs: Any) -> None:
+    """The weekly message the user expects: the daily message limit never holds it back."""
+    messaging.send(coach, text, now, kind="weekly-checkin", exempt=True, **kwargs)
 
 
 class CheckinError(Exception):
@@ -186,15 +192,15 @@ def apply_code_rules(verdict: dict[str, Any], facts: dict[str, Any]) -> tuple[di
     return verdict, changes
 
 
-async def _report(coach, checkin_id: int, facts, verdict, end: Date, now: datetime.datetime) -> None:
-    held = deferred.pending(coach, end)
+async def _report(coach, checkin_id: int, facts, verdict, start: Date, end: Date, now: datetime.datetime) -> None:
+    held = messaging.deferred(coach, start, end)
     due = measurements.measurements_due(coach, end + DAY, end + 7 * DAY)
     report_input: dict[str, Any] = {
         "facts": facts,
         "verdict": verdict,
         "proposal_result": None,
         "changes_applied": [],
-        "deferred": [{"date": d["date"], "text": d["text"]} for d in held],
+        "deferred": [{"date": d["day"], "text": d["text"]} for d in held],
         "due": due,
     }
     for hook in report_hooks:
@@ -210,8 +216,7 @@ async def _report(coach, checkin_id: int, facts, verdict, end: Date, now: dateti
         logger.warning("weekly report model error: %s", exc)
     if text is None:
         text = _fallback(facts, verdict, held, due)
-    coach.say(text, buttons, ref=f"weekly:{checkin_id}")
-    deferred.mark_reported(coach, [d["id"] for d in held], facts["week"]["iso_week"])
+    _send(coach, text, now, buttons=buttons, ref=f"weekly:{checkin_id}")
     coach.db.execute("UPDATE weekly_checkins SET report = ? WHERE id = ?", (text, checkin_id))
 
 
