@@ -1,9 +1,10 @@
 # fitness-aggregator
 
-My fitness data from MyFitnessPal and Hevy: MCP connectors, a small web UI, and
-a Telegram bot for logging food (text, voice, photos) and quick questions. Runs
-in Docker on my home server; development happens there too, with nothing but
-Docker and git on the host.
+My fitness data from MyFitnessPal and Hevy: MCP connectors, a small web UI, a
+Telegram bot for logging food (text, voice, photos) and quick questions, and a
+coach (a second Telegram bot) that watches the data and proposes plan changes
+(`SPEC.md`, `.scratch/coach/`). Runs in Docker on my home server; development
+happens there too, with nothing but Docker and git on the host.
 
 | Connector | What | Source |
 |---|---|---|
@@ -17,7 +18,8 @@ Both use unofficial APIs, which can break or get an account flagged.
 | Service | What |
 |---|---|
 | `api` (`fa-api`) | FastAPI + web UI on `:8000` (`/api/day?date=YYYY-MM-DD`, `/api/today`), and the MFP/Hevy MCP tools on `:8001` (`/mfp/mcp`, `/hevy/mcp`). The only user of the MFP session. |
-| `bot` (`fa-bot`) | Telegram bot. Pydantic AI agent on `BOT_MODEL` with the api's MCP tools; voice notes via whisper.cpp. |
+| `bot` (`fa-bot`) | Food bot (Telegram). Pydantic AI agent on `BOT_MODEL` with the api's MCP tools; voice notes via whisper.cpp. |
+| `coach` (`fa-coach`) | The coach (its own Telegram bot). Syncs MFP and Hevy data through the api into `state/coach/coach.db`, calls Claude through the Anthropic SDK. |
 
 `:8000` is published on `FA_BIND`. `:8001` is published on the host's
 `127.0.0.1` only, for Claude Code: anything that reaches it can write to the
@@ -29,21 +31,40 @@ Everything runs in the one image; the host needs only Docker and git.
 
 ```bash
 docker compose up -d --build        # rebuild + restart after any code change
-docker compose logs -f bot          # or api
-docker compose run --rm test        # bot tests on the working tree, no rebuild needed
+docker compose logs -f coach        # or api, bot
+docker compose run --rm test        # tests on the working tree, no rebuild needed
 ```
 
+- **Tests:** `docker compose run --rm test` runs the food bot's tests, the
+  coach's tests and the coach-skills validator against the mounted sources,
+  with no network. Rebuild first only when dependencies change.
 - **Bot code** (`bot/src/fa_bot`): edit, `docker compose run --rm test`, then
   `docker compose up -d --build bot`. Only the last layers rebuild.
+- **Coach code** (`coach/src/fa_coach`, skills in `coach/coach-skills`): edit,
+  `docker compose run --rm test`, then `docker compose up -d --build coach`.
 - **Api code** (`src/fitness_aggregator`): `docker compose up -d --build api`
   (this restarts the bot too, since it depends on the api).
 - **Web UI** (`web/`): `docker compose up -d --build api` rebuilds it. No Node
   on the host; for a live dev server use
   `docker run --rm -it -v ./web:/web -w /web -p 4200:4200 node:22-bookworm-slim sh -c "npm ci && npx ng serve --host 0.0.0.0"`
   (its `/api` proxy expects the api on the same host's `:8000`).
-- **Dependencies:** `uv.lock` and `bot/uv.lock` are pinned. To change one,
-  e.g. `docker run --rm -v ./bot:/w -w /w ghcr.io/astral-sh/uv:0.11.29 uv lock --upgrade-package <pkg>`,
-  then rebuild.
+- **Dependencies:** `uv.lock`, `bot/uv.lock` and `coach/uv.lock` are pinned.
+  To change one, e.g.
+  `docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v ./coach:/w -w /w ghcr.io/astral-sh/uv:0.11.29-debian-slim uv lock --upgrade-package <pkg>`
+  (or `uv add <pkg>`), then rebuild.
+- **Second checkout or worktree:** every service uses the image named by
+  `FA_IMAGE` (default `fitness-aggregator:latest`). Give other checkouts their
+  own tag so their builds don't replace the image the running services use,
+  and pass dummies for the required variables if that checkout has no `.env`:
+
+  ```bash
+  export FA_IMAGE=fitness-aggregator:mybranch MFP_USERNAME=x TELEGRAM_BOT_TOKEN=x \
+    TELEGRAM_ALLOWED_USER_ID=1 COACH_TELEGRAM_BOT_TOKEN=x
+  docker compose build api && docker compose run --rm test
+  ```
+
+  Never `up` the services from a second checkout: each bot token and the MFP
+  session may have only one user.
 - **Calling the tools from a shell** (goes through the running api):
 
   ```bash
@@ -61,7 +82,7 @@ Both are one-off containers, run with the api stopped so only one process
 touches the sessions:
 
 ```bash
-docker compose stop api bot
+docker compose stop api bot coach
 # MyFitnessPal: put MFP_COOKIE (the __Secure-next-auth.session-token value from
 # a private-window login) in .env, then:
 docker compose run --rm --no-deps -v ./.env:/app/.env:ro api python scripts/mfp_auth.py
@@ -94,6 +115,24 @@ from `.env` (and `cookie.txt`) afterwards.
   (`anthropic:claude-sonnet-5-5`, `openai:…`); set that provider's API key, and
   `*_BASE_URL` for a proxy or an OpenAI-compatible server.
 
+## Coach
+
+- **Its own bot:** `COACH_TELEGRAM_BOT_TOKEN` is a second bot, not the food
+  bot's. Only one process may poll it. It answers only
+  `TELEGRAM_ALLOWED_USER_ID`, like the food bot.
+- **Data:** it syncs from the api (never from MFP or Hevy directly) into
+  `state/coach/coach.db`, which only the coach opens.
+- **Claude:** `COACH_MODEL` for chat and daily messages, `COACH_DECISION_MODEL`
+  for the weekly decision; `COACH_ANTHROPIC_API_KEY` / `COACH_ANTHROPIC_BASE_URL`
+  fall back to `ANTHROPIC_*`.
+- **Commands:** `/profile` shows the coach profile.
+- **Code:** `coach/src/fa_coach/core.py` is the `Coach` core: no Telegram or
+  network code, driven by tests with fakes. Features are modules in
+  `coach/src/fa_coach/features/` that register commands, buttons, jobs,
+  syncers and model tools (`registry.py`); tables come from
+  `coach/src/fa_coach/migrations/NN_<name>.sql`. The skills package
+  (`coach/coach-skills`: skills, params, schemas, validator) ships in the image.
+
 ## Layout
 
 ```
@@ -102,10 +141,14 @@ src/fitness_aggregator/    api: REST + UI, MCP tools over HTTP (tools_server.py)
 bot/                       fa-bot, its own uv project (pydantic-ai can't share
   src/fa_bot/              mfp-mcp's pinned deps): agent, cards, changes, memory
   tests/                   card/confirmation logic
+coach/                     fa-coach, its own uv project: Coach core, features,
+  src/fa_coach/            Telegram adapter, scheduler
+  coach-skills/            skills, params, schemas, validator
+  tests/                   through the Coach core, with fakes
 web/                       Angular UI
 scripts/                   auth and shell helpers
 state/                     sessions, tokens, bot data, logs (gitignored, 0700)
 ```
 
 Moving machines: the repo, `.env`, and `state/`, with the old copy stopped
-first (one MFP session owner, one bot poller).
+first (one MFP session owner, one poller per bot).

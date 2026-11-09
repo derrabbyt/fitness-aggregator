@@ -1,7 +1,9 @@
 # Coach skills package
 
 Skills, parameters and data contracts for the personal coaching agent described in
-`SPEC.md`. Hand this folder to the Claude Code session that implements the agent.
+`SPEC.md`. It lives in the coach project (`coach/coach-skills`), ships in the image,
+and is read at runtime by `fa_coach/skills.py`. `tools/validate.py` runs as part of
+`docker compose run --rm test`.
 
 **Split of responsibility (SPEC: Implementation approach)**
 

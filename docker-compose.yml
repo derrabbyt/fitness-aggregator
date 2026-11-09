@@ -3,10 +3,16 @@
 # Everything that must survive a rebuild or a move lives in ./state (gitignored):
 #   state/mfp, state/hevy   MFP session + auto-refresh profile, Hevy tokens
 #   state/bot               pending cards, short chat memory, usage.jsonl
+#   state/coach             coach.db (only the coach opens it), photos
 # Moving to another machine = repo + .env + state/.
+#
+# FA_IMAGE names the one image every service uses (default
+# fitness-aggregator:latest). A second checkout or worktree sets its own tag,
+# e.g. FA_IMAGE=fitness-aggregator:mybranch, so its builds and tests don't
+# replace the image the running services use.
 
 x-app: &app
-  image: fitness-aggregator:latest
+  image: ${FA_IMAGE:-fitness-aggregator:latest}
   restart: unless-stopped
   volumes:
     - ./state:/app/state
@@ -64,14 +70,46 @@ services:
       ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
 
-  # Bot tests against the working tree (bot/src and bot/tests mounted), no
-  # network:  docker compose run --rm test
+  # The coach. Its own Telegram bot (only one process may poll a token), its
+  # own database in state/coach. Reaches MFP and Hevy only through the api.
+  coach:
+    <<: *app
+    pull_policy: never  # same image as api
+    depends_on:
+      api: { condition: service_healthy }
+    command: ["/app/coach/.venv/bin/fa-coach"]
+    environment:
+      TZ: ${TZ:-Europe/Vienna}
+      FA_API_URL: http://api:8000
+      FA_TOOLS_URL: http://api:8001
+      COACH_TELEGRAM_BOT_TOKEN: ${COACH_TELEGRAM_BOT_TOKEN:?set COACH_TELEGRAM_BOT_TOKEN in .env}
+      TELEGRAM_ALLOWED_USER_ID: ${TELEGRAM_ALLOWED_USER_ID:?set TELEGRAM_ALLOWED_USER_ID in .env}
+      COACH_MODEL: ${COACH_MODEL:-claude-sonnet-5-5}
+      COACH_DECISION_MODEL: ${COACH_DECISION_MODEL:-claude-opus-5-5}
+      # Empty = the shared ANTHROPIC_* values below.
+      COACH_ANTHROPIC_API_KEY: ${COACH_ANTHROPIC_API_KEY:-}
+      COACH_ANTHROPIC_BASE_URL: ${COACH_ANTHROPIC_BASE_URL:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
+
+  # Food bot tests, coach tests and the coach-skills validator against the
+  # working tree (sources and tests mounted), no network:
+  #   docker compose run --rm test
   test:
-    image: fitness-aggregator:latest
+    image: ${FA_IMAGE:-fitness-aggregator:latest}
     pull_policy: never
     profiles: [dev]
-    working_dir: /app/bot
+    network_mode: none
+    working_dir: /app
     volumes:
       - ./bot/src:/app/bot/src:ro
       - ./bot/tests:/app/bot/tests:ro
-    command: [".venv/bin/pytest", "-q", "-p", "no:cacheprovider"]
+      - ./coach/src:/app/coach/src:ro
+      - ./coach/tests:/app/coach/tests:ro
+      - ./coach/coach-skills:/app/coach/coach-skills:ro
+    command:
+      - sh
+      - -c
+      - >-
+        cd /app/bot && .venv/bin/pytest -q -p no:cacheprovider &&
+        cd /app/coach && .venv/bin/pytest -q -p no:cacheprovider
