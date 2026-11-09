@@ -59,10 +59,11 @@ async def ask(
     output_schema: str | None = None,
     decision: bool = False,
     history: Sequence[ChatTurn] = (),
+    phase: str | None = None,
     now: datetime.datetime | None = None,
 ) -> Answer:
     now = now or coach.clock.now()
-    phase_id = coach.active_phase_id()
+    phase_id = phase or coach.active_phase_id()
     prefix = (CORE_SKILL,) + ((coach.skills.phase_skill_name(phase_id),) if phase_id else ())
     allowed = _tools(coach, tools)
     request = ModelRequest(

@@ -18,6 +18,7 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
 
+from . import phases
 from .ask import Answer, ask
 from .db import Database
 from .ports import ApiClient, Buttons, ChatTurn, Clock, Edit, ModelClient, Outbox, Send
@@ -121,12 +122,15 @@ class Coach:
         output_schema: str | None = None,
         decision: bool = False,
         history: Sequence[ChatTurn] = (),
+        phase: str | None = None,
         now: datetime.datetime | None = None,
     ) -> Answer:
         """Run one model task to its end. `tools`: names of registered tools
         the model may call (None = all of them, () = none); code validates and
-        executes each call once. With `output_schema`, `answer.data` is the
-        schema-valid JSON object, else None with `answer.errors`. Raises
+        executes each call once. `phase`: the phase whose skill goes in the
+        cached prefix instead of the active one (phase start loads the target
+        phase). With `output_schema`, `answer.data` is the schema-valid JSON
+        object, else None with `answer.errors`. Raises
         `ModelError` when the model can't be reached."""
         return await ask(
             self,
@@ -136,13 +140,15 @@ class Coach:
             output_schema=output_schema,
             decision=decision,
             history=history,
+            phase=phase,
             now=now,
         )
 
     def active_phase_id(self) -> str | None:
-        """The active phase; its skill joins the cached prefix. Phases come
-        with ticket 05; until then there is none."""
-        return None
+        """The active phase; its skill joins the cached prefix. None before
+        the user confirms a phase start."""
+        phase = phases.active(self)
+        return phase["phase_id"] if phase else None
 
     def state_snapshot(self, now: datetime.datetime) -> dict[str, Any]:
         """The short state snapshot every model task gets: the date, plus what

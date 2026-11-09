@@ -53,9 +53,10 @@ the active phase's `params.yaml` (phase wins on equal keys) and passes the resul
 | Every few weeks / phase end | phase-review | `phase_summary` | `coach_message` (+ calibration proposals via tool) |
 | Photo set received | photo-review | photos + previous set + previous estimate | `photo_review` (code sends `notes`) |
 | Coach chat message | coach-chat + context-log (others via `load_skill`) | message + tools | text reply |
-| "start …" command | phase-start (+ target phase skill) | message + tools | `coach_message` with confirm button |
+| "start …" command, and every message while that setup is open | phase-start (target phase skill in the prefix) | message + `setup` (recorded, still needed, prefill from history, lift options, limits) + tools | text; after `start_phase` code sends the preview card with confirm / edit buttons |
 
-Code-only rules (no model call): weigh-in outlier marking, missing-log reminder (one per
+Code-only rules (no model call): refusing a draft phase with TO DECIDE values, the phase-start
+preview card and its buttons, weigh-in outlier marking, missing-log reminder (one per
 day), data-freshness check, waist/photo due dates, applying approved proposals, setting the
 MyFitnessPal goal.
 

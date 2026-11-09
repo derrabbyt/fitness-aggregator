@@ -29,6 +29,32 @@ class SkillsPackage:
                 return path.parent.name
         raise KeyError(f"no phase skill with phase_id {phase_id!r}")
 
+    def phase_ids(self) -> list[str]:
+        return [_yaml(path).get("phase_id") for path in sorted((self.root / "skills").glob("phase-*/params.yaml"))]
+
+    def phase_params(self, phase_id: str) -> dict[str, Any]:
+        """The phase's own params.yaml (not merged)."""
+        return _yaml(self.root / "skills" / self.phase_skill_name(phase_id) / "params.yaml")
+
+    def undecided(self, phase_id: str) -> list[str]:
+        """Key paths in the phase's params.yaml marked TO DECIDE (draft phases
+        must not start while any are left)."""
+        path = self.root / "skills" / self.phase_skill_name(phase_id) / "params.yaml"
+        stack: list[tuple[int, str]] = []
+        found = []
+        for line in path.read_text(encoding="utf-8").splitlines():
+            body = line.split("#", 1)[0]
+            if ":" not in body or not body.strip() or body.strip().startswith("-"):
+                continue
+            indent = len(body) - len(body.lstrip())
+            key = body.strip().split(":", 1)[0].strip()
+            while stack and stack[-1][0] >= indent:
+                stack.pop()
+            stack.append((indent, key))
+            if "TO DECIDE" in line:
+                found.append(".".join(k for _, k in stack))
+        return found
+
     def params(self, phase_id: str | None = None) -> dict[str, Any]:
         """coach-core params, merged with the phase's params (phase wins on equal
         key paths). A fresh copy each call."""

@@ -17,6 +17,7 @@ start:
   week1_activity_change: none
 
 glycogen_window_weeks: 2            # first weeks after the diet ends
+glycogen_jump_kg: [1, 2]            # expected early jump from glycogen and water
 
 weight_band_kg_per_week:            # target band by phase week (7-day average rate)
   - { from_week: 1, to_week: 6, low: 0.1, high: 0.3 }
