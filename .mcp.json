@@ -1,14 +1,12 @@
 {
   "mcpServers": {
     "mfp": {
-      "type": "stdio",
-      "command": "uv",
-      "args": ["run", "--quiet", "fa-mfp-mcp"]
+      "type": "http",
+      "url": "http://127.0.0.1:8001/mfp/mcp"
     },
     "hevy": {
-      "type": "stdio",
-      "command": "uv",
-      "args": ["run", "--quiet", "fa-hevy-mcp"]
+      "type": "http",
+      "url": "http://127.0.0.1:8001/hevy/mcp"
     }
   }
 }

@@ -2,7 +2,8 @@
 
 My fitness data from MyFitnessPal and Hevy: MCP connectors, a small web UI, and
 a Telegram bot for logging food (text, voice, photos) and quick questions. Runs
-in Docker on my home server, reachable over Tailscale.
+in Docker on my home server; development happens there too, with nothing but
+Docker and git on the host.
 
 | Connector | What | Source |
 |---|---|---|
@@ -11,37 +12,66 @@ in Docker on my home server, reachable over Tailscale.
 
 Both use unofficial APIs, which can break or get an account flagged.
 
-## Setup
+## Services
 
-```bash
-uv sync                                   # Python 3.13, pinned deps
-cp .env.example .env && chmod 600 .env    # fill in MFP_USERNAME and MFP_COOKIE
-uv run playwright install chromium        # once, for MFP auto-refresh and Hevy login
-uv run scripts/mfp_auth.py                # connect MyFitnessPal (auto-refresh on)
-uv run scripts/hevy_auth.py               # connect Hevy (browser login, or --cookie)
-```
-
-## Running
-
-| Process | What |
+| Service | What |
 |---|---|
-| `fa-api` | FastAPI + web UI on `:8000` (`/api/day?date=YYYY-MM-DD`, `/api/today`), and the MFP/Hevy MCP tools on `:8001` (`/mfp/mcp`, `/hevy/mcp`). The only owner of the MFP session. |
-| `fa-bot` | Telegram bot. Pydantic AI agent on `BOT_MODEL` with the api's MCP tools; voice notes via whisper.cpp. |
+| `api` (`fa-api`) | FastAPI + web UI on `:8000` (`/api/day?date=YYYY-MM-DD`, `/api/today`), and the MFP/Hevy MCP tools on `:8001` (`/mfp/mcp`, `/hevy/mcp`). The only user of the MFP session. |
+| `bot` (`fa-bot`) | Telegram bot. Pydantic AI agent on `BOT_MODEL` with the api's MCP tools; voice notes via whisper.cpp. |
+
+`:8000` is published on `FA_BIND`. `:8001` is published on the host's
+`127.0.0.1` only, for Claude Code: anything that reaches it can write to the
+diary.
+
+## Development
+
+Everything runs in the one image; the host needs only Docker and git.
 
 ```bash
-docker compose up -d --build        # both services
-docker compose logs -f bot
-uv run pytest                       # card/confirmation logic, no network
+docker compose up -d --build        # rebuild + restart after any code change
+docker compose logs -f bot          # or api
+docker compose run --rm test        # bot tests on the working tree, no rebuild needed
 ```
 
-Locally without Docker: `(cd web && npm ci && npx ng build)`, then `uv run fa-api`
-and `uv run fa-bot` (needs `whisper-cli` and `ffmpeg` on the PATH for voice).
-For frontend work, `cd web && npx ng serve` (http://localhost:4200, proxies
-`/api` to :8000).
+- **Bot code** (`bot/src/fa_bot`): edit, `docker compose run --rm test`, then
+  `docker compose up -d --build bot`. Only the last layers rebuild.
+- **Api code** (`src/fitness_aggregator`): `docker compose up -d --build api`
+  (this restarts the bot too, since it depends on the api).
+- **Web UI** (`web/`): `docker compose up -d --build api` rebuilds it. No Node
+  on the host; for a live dev server use
+  `docker run --rm -it -v ./web:/web -w /web -p 4200:4200 node:22-bookworm-slim sh -c "npm ci && npx ng serve --host 0.0.0.0"`
+  (its `/api` proxy expects the api on the same host's `:8000`).
+- **Dependencies:** `uv.lock` and `bot/uv.lock` are pinned. To change one,
+  e.g. `docker run --rm -v ./bot:/w -w /w ghcr.io/astral-sh/uv:0.11.29 uv lock --upgrade-package <pkg>`,
+  then rebuild.
+- **Calling the tools from a shell** (goes through the running api):
 
-Moving machines: copy the repo, `.env`, and `state/`, then
-`docker compose up -d --build`. On the server, set `FA_BIND` to its Tailscale IP.
-Port 8001 is never published: anything that reaches it can write to the diary.
+  ```bash
+  docker compose exec api python scripts/mcp_call.py mfp --list
+  docker compose exec api python scripts/mcp_call.py hevy '[["hevy_list_workouts", {"limit": 3}]]'
+  ```
+
+- **Claude Code** on the host gets the same tools from `.mcp.json`
+  (`http://127.0.0.1:8001`), so it needs the api running. That includes MFP
+  write tools, unlike the bot.
+
+## Connecting accounts
+
+Both are one-off containers, run with the api stopped so only one process
+touches the sessions:
+
+```bash
+docker compose stop api bot
+# MyFitnessPal: put MFP_COOKIE (the __Secure-next-auth.session-token value from
+# a private-window login) in .env, then:
+docker compose run --rm --no-deps -v ./.env:/app/.env:ro api python scripts/mfp_auth.py
+# Hevy: paste the auth2.0-token cookie from hevy.com (no browser login on the server):
+docker compose run --rm --no-deps -T api python scripts/hevy_auth.py --cookie < cookie.txt
+docker compose up -d
+```
+
+`scripts/mfp_auth.py --check` tests the saved MFP session. Remove `MFP_COOKIE`
+from `.env` (and `cookie.txt`) afterwards.
 
 ## Telegram bot
 
@@ -61,28 +91,21 @@ Port 8001 is never published: anything that reaches it can write to the diary.
 - **Costs:** at most 15 model calls per message; usage per message in
   `state/bot/usage.jsonl`.
 - **Model:** `BOT_MODEL` is any Pydantic AI model string
-  (`anthropic:claude-sonnet-5-5`, `openai:…`); set that provider's API key.
-
-## Claude Code on the host
-
-`.mcp.json` registers the stdio `mfp` and `hevy` servers. The `mfp` one uses the
-same session files as `fa-api`, so don't use it while the api runs. From a
-shell:
-
-```bash
-uv run scripts/mcp_call.py mfp --list
-uv run scripts/mcp_call.py hevy '[["hevy_list_workouts", {"limit": 3}]]'
-```
+  (`anthropic:claude-sonnet-5-5`, `openai:…`); set that provider's API key, and
+  `*_BASE_URL` for a proxy or an OpenAI-compatible server.
 
 ## Layout
 
 ```
-src/fitness_aggregator/
-  api.py, tools_server.py  REST + UI, MCP tools over HTTP (one process)
-  bot/                     Telegram bot: agent, cards/confirmation, memory
-  mfp.py, hevy*.py         connector launchers, Hevy client and MCP server
+src/fitness_aggregator/    api: REST + UI, MCP tools over HTTP (tools_server.py),
+                           MFP launcher, Hevy client and MCP server
+bot/                       fa-bot, its own uv project (pydantic-ai can't share
+  src/fa_bot/              mfp-mcp's pinned deps): agent, cards, changes, memory
+  tests/                   card/confirmation logic
 web/                       Angular UI
 scripts/                   auth and shell helpers
-tests/                     confirmation logic
 state/                     sessions, tokens, bot data, logs (gitignored, 0700)
 ```
+
+Moving machines: the repo, `.env`, and `state/`, with the old copy stopped
+first (one MFP session owner, one bot poller).

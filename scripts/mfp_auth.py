@@ -1,4 +1,6 @@
-"""Connect MyFitnessPal once: uv run scripts/mfp_auth.py   (or --check)
+"""Connect MyFitnessPal once (or --check). With the api stopped, see README:
+
+    docker compose run --rm --no-deps -v ./.env:/app/.env:ro api python scripts/mfp_auth.py
 
 Reads MFP_COOKIE from .env, validates it with `mfp-mcp auth`, saves it to
 state/mfp and seeds the headless browser profile that renews the session from

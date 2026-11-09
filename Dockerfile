@@ -77,11 +77,12 @@ COPY --chown=app:app src/ src/
 COPY --chown=app:app scripts/ scripts/
 COPY --chown=app:app CLAUDE.md README.md ./
 RUN uv sync --no-dev
-# The bot has its own environment (bot/.venv): see bot/pyproject.toml.
+# The bot has its own environment (bot/.venv): see bot/pyproject.toml. It
+# includes pytest, so `docker compose run --rm test` works without uv on the host.
 COPY --chown=app:app bot/pyproject.toml bot/uv.lock bot/.python-version bot/
-RUN cd bot && uv sync --no-install-project --no-dev
+RUN cd bot && uv sync --no-install-project
 COPY --chown=app:app bot/src/ bot/src/
-RUN cd bot && uv sync --no-dev
+RUN cd bot && uv sync
 COPY --from=web --chown=app:app /web/dist web/dist
 
 ENV HOME=/home/app PATH=/app/.venv/bin:$PATH

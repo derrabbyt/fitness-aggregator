@@ -1,7 +1,7 @@
 """Connect Hevy once. Tokens are cached in state/hevy and refresh themselves.
 
-    uv run scripts/hevy_auth.py            # opens hevy.com in a browser to log in
-    wl-paste -n | uv run scripts/hevy_auth.py --cookie   # or paste the auth2.0-token cookie
+    docker compose run --rm --no-deps -T api python scripts/hevy_auth.py --cookie < cookie.txt
+    uv run scripts/hevy_auth.py   # browser login, only on a machine with a display
 """
 
 import sys

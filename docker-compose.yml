@@ -16,8 +16,9 @@ x-app: &app
 
 services:
   # The only process that uses the MFP session: REST API + UI on :8000, and the
-  # MFP/Hevy MCP tools for the bot on :8001 (Docker network only, never
-  # published: whatever reaches it can write to the diary).
+  # MFP/Hevy MCP tools on :8001 for the bot and for Claude Code on the host
+  # (.mcp.json). :8001 is published on the host's 127.0.0.1 only: whatever
+  # reaches it can write to the diary.
   api:
     <<: *app
     build:
@@ -35,7 +36,7 @@ services:
     # (100.x.y.z) so the UI is reachable only inside the tailnet.
     ports:
       - "${FA_BIND:-127.0.0.1}:${FA_PORT:-8000}:8000"
-    expose: ["8001"]
+      - "127.0.0.1:${FA_TOOLS_PORT:-8001}:8001"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/api/health"]
       interval: 30s
@@ -62,3 +63,15 @@ services:
       # LiteLLM, ...). Empty = the provider's default.
       ANTHROPIC_BASE_URL: ${ANTHROPIC_BASE_URL:-}
       OPENAI_BASE_URL: ${OPENAI_BASE_URL:-}
+
+  # Bot tests against the working tree (bot/src and bot/tests mounted), no
+  # network:  docker compose run --rm test
+  test:
+    image: fitness-aggregator:latest
+    pull_policy: never
+    profiles: [dev]
+    working_dir: /app/bot
+    volumes:
+      - ./bot/src:/app/bot/src:ro
+      - ./bot/tests:/app/bot/tests:ro
+    command: [".venv/bin/pytest", "-q", "-p", "no:cacheprovider"]
