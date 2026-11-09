@@ -16,6 +16,13 @@
 
 ## Decisions (user, 2026-11-09) — these override the text above where they differ
 
+**Revised (later the same day): no importance weights.** Each exercise is classified `counts` or `excluded` instead; the two weight bullets below are replaced by:
+- **Counts** (default): compounds, machines and most bigger isolation work (leg curl, leg extension, flys, rows, …). Only these decide `progression_met`: at least the configured share (half) of counted exercises improved vs the best of their last 3 sessions, one exercise one vote; null when none could be counted.
+- **Excluded**: exercises that typically stall for long or aren't meant to progress (prehab/rehab or slow movers: lateral raises, tibialis raises, Copenhagen plank, hip flexor raises, abs, plyometrics like pogo hops / box jumps). Still logged, PRs still named; no effect on A–E and no stall flags.
+- The model classifies each exercise (its judgement, stored per exercise), the coach shows the list at phase start and when a new exercise first appears, and the user can flip any in chat.
+
+Original decisions (weights superseded):
+
 - **Every exercise logged in Hevy is tracked** (the user logs only hypertrophy work). No picking tracked lifts at phase start; the user can exclude an exercise in chat. Change ticket 05's tracked-lifts setup step accordingly (phase start shows the weights instead of asking which lifts).
 - **Importance weight 1–3 per exercise**, set by the model's judgement (compound/main = 3, secondary = 2, small/prehab like tibialis raise, Copenhagen plank, abs = 1), shown to the user at phase start and when a new exercise first appears, changeable in chat. Stored per exercise; code uses it.
 - **`progression_met`**: the improved exercises' weights sum to at least half (the configured share) of the total weight of counted exercises; null when nothing could be counted.

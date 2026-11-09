@@ -18,7 +18,7 @@ A personal coaching agent with access to weight, training, steps, food intake an
 
 **Phase start inputs**
 
-- Lift importance weights (1–3) for A–E: every exercise logged in Hevy counts; the agent proposes the weights, I adjust or exclude
+- Which lifts count for A–E: the agent classifies every Hevy exercise as counting (compounds, machines, most bigger isolation work) or excluded (prehab/rehab and slow movers like lateral raises, tibialis raises, abs); I can flip any
 - Starting calories (last diet intake)
 - Starting trend weight
 - Maintenance estimate from the last diet weeks
@@ -56,7 +56,7 @@ The weekly decision compares the weight trend with gym progression, evaluated ev
 **Definitions**
 
 - Weight trend (7-day averages, outside the glycogen window), judged against the phase band: weeks 1–6 on target +0.1–0.3 kg/week, after that +0.2–0.4 kg/week. Below the band counts as not gaining. Between the top of the band and +0.5 kg/week is watched, not acted on. Too fast: above +0.5 kg/week.
-- Gym progression: the improved lifts carry at least half of the total importance weight (each exercise weighted 1–3, compounds highest), each vs the best of its last 3 sessions. Each lift uses its own sessions, whenever they happened; a lift counts if trained in the last \~2 weeks. Single-lift stalls are flags only.
+- Gym progression: at least half of the counting lifts improved, each vs the best of its last 3 sessions. Excluded lifts (prehab/rehab, slow movers) never decide it. Each lift uses its own sessions, whenever they happened; a lift counts if trained in the last \~2 weeks. Single-lift stalls are flags only.
 - Confirmation: a calorie change needs two consecutive usable weeks pointing the same way. Scenario E can trigger after one week. The week after a change is week 1 of the new window, so the earliest next change is after 2 weeks (E after 1).
 - Unusable weeks (too few weigh-ins, incomplete logs, a sick or travel note) are skipped for decisions; the usable weeks around them still count as consecutive.
 - Change size: \~100 kcal when slightly outside the band, \~200 kcal when far off. Scenario C uses calories by default, not activity.
@@ -97,7 +97,7 @@ One continuous phase: the reverse is the first stage of the bulk.
 
 - Progress = more load or reps at the same execution. Micro-progressions count.
 - A session is judged by its heaviest working set with 4–20 reps (warm-ups never count). Same load: more reps = improved. Different load: estimated 1RM (Epley), within ±1% = same.
-- Every exercise logged in Hevy is tracked, with an importance weight of 1–3. Alternatives (e.g. pull-ups vs lat pulldown) are separate exercises with their own history.
+- Every exercise logged in Hevy is recorded and classified as counting or excluded (excluded: still logged and PRs named, no stall flags, no effect on calories). Alternatives (e.g. pull-ups vs lat pulldown) are separate exercises with their own history.
 - A new exercise's first session starts its history: no PR, not judged.
 - After more than ~2 weeks off an exercise, the first session back isn't judged; the next one is compared with the pre-break best.
 - A session at another gym or on another machine: I say so and that day isn't judged (or I don't log it, or log a separate Hevy exercise).
