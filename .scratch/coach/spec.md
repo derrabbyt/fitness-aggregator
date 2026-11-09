@@ -40,7 +40,7 @@ A second Telegram bot, the **coach**, running as its own service. It syncs my fo
 16. As the user, I want runs to count toward a day's target only when a run actually synced or I report it, so that optional easy runs need no message when I skip them.
 17. As the user, I want lifting to count with a fixed kcal estimate per session when the session shows up in Hevy, so that lifting days get a fair target without me reporting anything.
 18. As the user, I want wrestling to count as planned unless I say it didn't happen, so that the usual week needs no messages.
-19. As the user, I want to report an extra session with its kcal, so that unplanned activity is counted.
+19. As the user, I want to report an extra session by just saying what I did and for how long (or with its kcal if I know them), so that unplanned activity is counted; code estimates the kcal when I don't give them.
 20. As the user, I want run calories discounted by my run discount, so that inflated Strava numbers don't overfeed me.
 21. As the user, I want my daily target = base maintenance + counted activity + surplus, computed in code, so that targets are consistent and never invented by the model.
 22. As the user, I want the coach to ignore MFP's own activity-adjusted goal, so that there is one source of targets.
