@@ -23,11 +23,12 @@
     "is_phase_first_change": { "type": "boolean", "default": false },
     "new_values": {
       "type": ["object", "null"],
-      "description": "calibration_change: new activity calibration values.",
-      "additionalProperties": false,
+      "description": "calibration_change: new activity calibration values. Ranges as in phase_setup.schema.json; code checks them (guardrail invalid_values), so a blocked proposal may hold values outside them.",
+      "additionalProperties": { "type": "number" },
       "properties": {
-        "run_kcal_discount": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
-        "wrestling_kcal_per_session": { "type": "number", "minimum": 0 }
+        "run_kcal_discount": { "type": "number" },
+        "wrestling_kcal_per_session": { "type": "number" },
+        "lifting_kcal_per_session": { "type": "number" }
       }
     },
 
@@ -45,6 +46,20 @@
         "violations": {
           "type": "array",
           "items": { "enum": ["exceeds_max_change", "lockout", "confirmation_not_met", "rejected_return_too_early", "week_unusable", "adherence_gate", "invalid_values"] }
+        },
+        "details": {
+          "type": "array",
+          "description": "One per violation, written by code: what failed and when the change could pass. earliest_checkin: the first weekly check-in that could pass it if the weeks until then count; null when waiting doesn't help (e.g. too large a change).",
+          "items": {
+            "type": "object",
+            "required": ["violation", "text", "earliest_checkin"],
+            "additionalProperties": false,
+            "properties": {
+              "violation": { "type": "string" },
+              "text": { "type": "string" },
+              "earliest_checkin": { "type": ["string", "null"], "format": "date" }
+            }
+          }
         }
       }
     }

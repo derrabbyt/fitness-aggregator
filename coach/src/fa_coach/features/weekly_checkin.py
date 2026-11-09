@@ -20,6 +20,9 @@ Code's rules on the verdict:
 Hooks for later tickets:
 - `report_hooks`: `fn(coach, facts, verdict, now) -> dict` merged into the
   weekly-report input (proposals: `proposal_result`, `changes_applied`).
+- `report_finish_hooks`: `fn(coach, report_input, text, buttons, by_model)
+  -> (text, buttons)`, run on the final report before it is sent (code
+  decides the proposal buttons; `by_model` False = code's fallback text).
 - Deferred items come from `messaging.deferred` (the week's days); due
   measurements from `measurements.measurements_due` (the 7 days from the check-in day).
 
@@ -34,7 +37,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from .. import messaging, phases, weekly_facts
-from ..ports import Button, ModelError
+from ..ports import Button, Buttons, ModelError
 from ..registry import registry
 from . import measurements
 
@@ -49,6 +52,8 @@ BUTTON_LABEL_LIMIT = 32
 
 ReportHook = Callable[[Any, dict[str, Any], dict[str, Any], datetime.datetime], Awaitable[dict[str, Any]]]
 report_hooks: list[ReportHook] = []
+FinishHook = Callable[[Any, dict[str, Any], str, Buttons, bool], tuple[str, Buttons]]
+report_finish_hooks: list[FinishHook] = []
 
 
 # --- schedule ------------------------------------------------------------------------
@@ -214,8 +219,11 @@ async def _report(coach, checkin_id: int, facts, verdict, start: Date, end: Date
             logger.warning("weekly report invalid: %s", answer.errors)
     except ModelError as exc:
         logger.warning("weekly report model error: %s", exc)
+    by_model = text is not None
     if text is None:
         text = _fallback(facts, verdict, held, due)
+    for finish in report_finish_hooks:
+        text, buttons = finish(coach, report_input, text, buttons, by_model)
     _send(coach, text, now, buttons=buttons, ref=f"weekly:{checkin_id}")
     coach.db.execute("UPDATE weekly_checkins SET report = ? WHERE id = ?", (text, checkin_id))
 
