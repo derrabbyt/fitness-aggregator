@@ -100,8 +100,9 @@ async def test_sync_command_says_which_source_failed(coach, api, outbox):
     ]
 
 
-async def test_a_weigh_in_far_from_its_neighbours_is_marked_silently_and_left_out_of_the_trend(coach, api, outbox):
-    weights = {"2026-11-02": 80.0, "2026-11-03": 80.2, "2026-11-04": 80.1, "2026-11-05": 82.4,
+async def test_a_typo_far_from_its_neighbours_is_marked_silently_and_left_out_of_the_trend(coach, api, outbox):
+    # 3.5 kg above the median (80.2) of the weigh-ins within 3 days either side
+    weights = {"2026-11-02": 80.0, "2026-11-03": 80.2, "2026-11-04": 80.1, "2026-11-05": 83.7,
                "2026-11-06": 80.3, "2026-11-07": 80.2, "2026-11-08": 80.4}
     for day, kg in weights.items():
         api.days[day] = {"weight_kg": kg}
@@ -112,8 +113,22 @@ async def test_a_weigh_in_far_from_its_neighbours_is_marked_silently_and_left_ou
     assert history.outlier_days(coach.db, "2026-11-01", "2026-11-09") == ["2026-11-05"]
     trend = history.weigh_ins(coach.db, "2026-11-01", "2026-11-09")
     assert "2026-11-05" not in trend and len(trend) == 6
-    assert history.weigh_ins(coach.db, "2026-11-01", "2026-11-09", include_outliers=True)["2026-11-05"] == 82.4
+    assert history.weigh_ins(coach.db, "2026-11-01", "2026-11-09", include_outliers=True)["2026-11-05"] == 83.7
     assert outbox.items == []
+
+
+async def test_a_normal_spike_stays_in_the_trend(coach, api):
+    """The scale records every weigh-in, so a spike of a few kg is real: only
+    clear typos (more than 3 kg from the neighbours) are dropped."""
+    weights = {"2026-11-02": 80.0, "2026-11-03": 80.2, "2026-11-04": 80.1, "2026-11-05": 82.7,
+               "2026-11-06": 80.3, "2026-11-07": 80.2, "2026-11-08": 80.4}
+    for day, kg in weights.items():
+        api.days[day] = {"weight_kg": kg}
+
+    await coach.sync()
+
+    assert history.outlier_days(coach.db, "2026-11-01", "2026-11-09") == []
+    assert history.weigh_ins(coach.db, "2026-11-01", "2026-11-09")["2026-11-05"] == 82.7
 
 
 async def test_a_steady_gain_is_not_an_outlier(coach, api):
