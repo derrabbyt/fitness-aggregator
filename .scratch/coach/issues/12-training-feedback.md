@@ -12,3 +12,7 @@
 - [ ] Unremarkable sessions send nothing; minor notes are deferred to the weekly report
 - [ ] `mark_baseline_reset` and `set_exercise_paused` work from chat (technique change, ROM change, swap, injury); an injury note leads to an offer to pause, not an automatic pause
 - [ ] Tests cover a PR, a first stall flag and no repeat, a reset question with both buttons, a paused exercise, and a silent session
+
+## Decisions (user, 2026-11-09)
+
+Use ticket 08's "Decisions" section: no PR on an exercise's first session; sessions on a day with an `other_location` context note get no PR, no stall flag and no reset question; the reset question compares the heaviest working set (4–20 reps) by estimated 1RM.

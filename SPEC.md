@@ -18,7 +18,7 @@ A personal coaching agent with access to weight, training, steps, food intake an
 
 **Phase start inputs**
 
-- Tracked lifts that count for A–E
+- Which lifts count for A–E: the agent classifies every Hevy exercise as counting (compounds, machines, most bigger isolation work) or excluded (prehab/rehab and slow movers like lateral raises, tibialis raises, abs); I can flip any
 - Starting calories (last diet intake)
 - Starting trend weight
 - Maintenance estimate from the last diet weeks
@@ -32,7 +32,7 @@ Most days the agent sends nothing; it messages only when something is missing or
 
 | When | What the agent does |
 | --- | --- |
-| Daily, on weigh-in | Updates the 7-day average and flags outliers (silent unless needed) |
+| Daily, on weigh-in | Updates the 7-day average; only clear typos (> 3 kg off the neighbouring weigh-ins) are left out, silently. Normal spikes stay in the average |
 | Daily, evening | One reminder if food, weight or steps are missing |
 | After training | Optional quick check. It can be skipped; the agent works from the training log |
 | Daily, when relevant | Actionable note only: something needs attention, or a PR |
@@ -56,11 +56,11 @@ The weekly decision compares the weight trend with gym progression, evaluated ev
 **Definitions**
 
 - Weight trend (7-day averages, outside the glycogen window), judged against the phase band: weeks 1–6 on target +0.1–0.3 kg/week, after that +0.2–0.4 kg/week. Below the band counts as not gaining. Between the top of the band and +0.5 kg/week is watched, not acted on. Too fast: above +0.5 kg/week.
-- Gym progression: at least half of the tracked lifts improved vs the best of their last 2–3 sessions. Each lift uses its own sessions, whenever they happened; a lift counts if trained in the last \~2 weeks. Single-lift stalls are flags only.
+- Gym progression: at least half of the counting lifts improved, each vs the best of its last 3 sessions. Excluded lifts (prehab/rehab, slow movers) never decide it. Each lift uses its own sessions, whenever they happened; a lift counts if trained in the last \~2 weeks. Single-lift stalls are flags only.
 - Confirmation: a calorie change needs two consecutive usable weeks pointing the same way. Scenario E can trigger after one week. The week after a change is week 1 of the new window, so the earliest next change is after 2 weeks (E after 1).
 - Unusable weeks (too few weigh-ins, incomplete logs, a sick or travel note) are skipped for decisions; the usable weeks around them still count as consecutive.
 - Change size: \~100 kcal when slightly outside the band, \~200 kcal when far off. Scenario C uses calories by default, not activity.
-- Sport load: high sport-load weeks come from the plan by default, and I can tag or untag a week. In those weeks, stalls are explained by load, and no C or D proposals are made from them.
+- Sport load: I mention a heavy week (e.g. a wrestling camp) and it's stored as a `sport_load` context note. Those weeks are skipped for confirmation (they neither count nor break it); stalls are explained by load, and no C or D proposals are made from them.
 - Scenario D or a deload signal: the agent only flags that training needs a look; I make any changes.
 - A–E steers toward the gain band; there is no separate gain-rate calibration.
 
@@ -96,6 +96,11 @@ One continuous phase: the reverse is the first stage of the bulk.
 ## Training data rules
 
 - Progress = more load or reps at the same execution. Micro-progressions count.
+- A session is judged by its heaviest working set with 4–20 reps (warm-ups never count). Same load: more reps = improved. Different load: estimated 1RM (Epley), within ±1% = same.
+- Every exercise logged in Hevy is recorded and classified as counting or excluded (excluded: still logged and PRs named, no stall flags, no effect on calories). Alternatives (e.g. pull-ups vs lat pulldown) are separate exercises with their own history.
+- A new exercise's first session starts its history: no PR, not judged.
+- After more than ~2 weeks off an exercise, the first session back isn't judged; the next one is compared with the pre-break best.
+- A session at another gym or on another machine: I say so and that day isn't judged (or I don't log it, or log a separate Hevy exercise).
 - A technique or ROM change, or an exercise swap, starts a new baseline. It counts as neither progress nor regression.
 - Dips, pull-ups and similar: bodyweight gained counts as added load.
 - A movement modified around an injury pauses tracking for that exercise.
@@ -107,7 +112,7 @@ One continuous phase: the reverse is the first stage of the bulk.
 
 Photos are on at the start of the reverse and may be switched off at any point, so nothing else depends on them.
 
-- Protocol reminder: same spot and light, camera at hip height, morning, fasted, unpumped.
+- Protocol reminder: same spot and light, camera at hip height, morning, fasted, unpumped. Waist and photo reminders come the evening before they're due; a baseline photo set is due on the phase start day.
 - Compare like for like, at similar leanness (e.g. end of cut vs end of cut). Mid-bulk vs start is unreliable.
 - Looking softer mid-bulk: point back to logbook progress instead of reacting.
 - Recomp rule: stable weight with a leaner waist or photos means muscle gained.
@@ -138,7 +143,7 @@ Photos are on at the start of the reverse and may be switched off at any point, 
 
 **Activity**
 
-- Daily target = base maintenance + that day's activity + surplus. Runs: Strava/MFP calories × a discount (e.g. 75%). Wrestling: a fixed estimate per session. Other sessions are added manually. Planned sessions count as done unless I say no. At phase review the agent proposes new run-discount and wrestling values when they drift; I confirm. Base maintenance excludes activity, which the back-calculation subtracts.
+- Daily target = base maintenance + that day's activity + surplus. Runs: Strava/MFP calories × a discount (e.g. 75%). Wrestling: a fixed estimate per session, counted as planned unless I say I skipped it. Lifting: a fixed estimate per session, counted when the session is in Hevy. Runs count only when Strava synced one (HealthKit duplicates never count) or I report it. Other sessions: I just say what I did and for how long; kcal are estimated (code from activity × duration × trend weight, else the model's estimate), and a number I give always wins. At phase review the agent proposes new run-discount and wrestling values when they drift; I confirm. Base maintenance excludes activity, which the back-calculation subtracts.
 - Steps are a measuring tool, not a target to enforce. Large swings (2k to 30k) are expected and not a problem.
 - Soft step floor of \~10k: a gentle note only if steps stay very low for a while and no other training happened.
 
@@ -222,10 +227,10 @@ Code computes the numbers and enforces a few guardrails; skills make the decisio
 | Guardrails in the propose\_change tool: nothing applied without my OK; max 200 kcal per change, except a phase's first change (follows the phase skill); lockout and two-week rule | Code |
 | On approval: set the MFP calorie goal to the average daily target | Code |
 
-- **Targets live in the app,** never MFP's activity-adjusted goal. Daily target = base maintenance + that day's activity + surplus (see Triggers, Activity). Training plan: a saved default week, first imported from a CSV export of my Google Sheet (a live Sheet integration comes later); I can tell it to re-import or change the saved plan in Telegram.
+- **Targets live in the app,** never MFP's activity-adjusted goal. Daily target = base maintenance + that day's activity + surplus (see Triggers, Activity). Training plan: a saved default week, seeded once from a CSV export of my Google Sheet (a live Sheet integration comes later); after that it changes only through Telegram, for this week or for good.
 - **Phase skill = phase config:** rules in prose plus a parameter block that code reads too. The prose refers to parameters by name and never repeats the numbers.
 - **Lift data** has per-set load and reps with stable exercise IDs. Baseline resets are marked by a Telegram command or button, and the agent asks after a sudden big load drop.
-- **The model never calculates;** it gets the weekly facts and returns a structured verdict (scenario, rules applied, proposal, confidence), stored with those facts.
+- **Code calculates what it can;** targets, guardrails and weekly facts are always code. The model gets the weekly facts and returns a structured verdict (scenario, rules applied, proposal, confidence), stored with those facts. Where code has no way to compute a convenience number (e.g. kcal of an unusual reported session), the model may estimate it; the estimate is marked as such and I can correct it.
 - **Photos:** each body-fat estimate sees the previous photo set and estimate, so it judges relative change.
 - **Context per call:** stable cached prefix, a short state snapshot from code, tools that return aggregated data, short chat history.
 - **Memory:** numbers and decisions in the database; context log with tags; a small coach profile I can see and edit.

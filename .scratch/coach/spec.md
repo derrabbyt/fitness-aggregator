@@ -31,7 +31,7 @@ A second Telegram bot, the **coach**, running as its own service. It syncs my fo
 10. As the user, I want the coach to sync several times a day and on demand, so that facts are current when a job runs.
 11. As the user, I want the coach to reach MyFitnessPal only through the api, so that the MFP session keeps a single owner and doesn't break.
 12. As the user, I want to be told when data is stale (no successful sync within the stale limit), so that I know a week may not count and why.
-13. As the user, I want weigh-in outliers marked silently, so that one salty day doesn't move my trend or trigger a message.
+13. As the user, I want clear weigh-in typos (more than 3 kg off the neighbouring weigh-ins) left out silently while normal spikes stay in the average, so that a typo doesn't move my trend or trigger a message.
 
 ### Training plan and counted activity
 
@@ -50,7 +50,7 @@ A second Telegram bot, the **coach**, running as its own service. It syncs my fo
 23. As the user, I want to start the reverse with a command like "start reverse", so that the phase begins exactly when I decide.
 24. As the user, I want the coach to prefill setup values it can read from my history (last diet intake, starting trend weight, maintenance estimate, main lifts) and ask me to confirm them, so that setup is quick and grounded in data.
 25. As the user, I want it to ask only for what's missing, a few items per message, so that setup isn't an interrogation.
-26. As the user, I want to choose which lifts count for progression, so that accessories don't decide my calories.
+26. As the user, I want the coach to classify every exercise I log in Hevy as counting (compounds, machines, most bigger isolation work) or excluded (prehab/rehab and slow movers like lateral raises), and let me flip any, so that exercises that aren't meant to progress don't decide my calories.
 27. As the user, I want to give run discount, wrestling kcal, lifting kcal, fat start, week-1 increase, optional time goal, photos on/off and waist at start, so that targets reflect my situation.
 28. As the user, I want to set logistics once (weekly check-in day and time, evening reminder time, message limit, what "a while" means for the step floor), so that the coach messages me when it suits me.
 29. As the user, I want a week-1 preview computed by code (average daily target, the MFP goal it will set, targets on rest / lifting / run / wrestling days, macros), so that I see exactly what I'm agreeing to.
@@ -66,7 +66,7 @@ A second Telegram bot, the **coach**, running as its own service. It syncs my fo
 36. As the user, I want my weight trend, weekly rate and target band in the report, so that I see where I stand.
 37. As the user, I want weekly intake vs target and whether adherence passed, so that I know if the week counts.
 38. As the user, I want macro, fiber and produce flags in one line each, so that quality issues are visible without nagging.
-39. As the user, I want a training summary (how many tracked lifts improved, PRs, stalls, deload signals), so that strength progress is part of the decision.
+39. As the user, I want a training summary (how many counting lifts improved, PRs, stalls, deload signals), so that strength progress is part of the decision.
 40. As the user, I want unusable weeks (too few weigh-ins, incomplete logs, sick or travel notes, stale data) explained in one sentence with what would make next week usable, so that I know the streak isn't lost.
 41. As the user, I want glycogen-window weeks treated as "expected jump, not judged", so that no cut is proposed because of water.
 42. As the user, I want a calorie change proposed only after the required confirmation (two usable weeks pointing the same way; one for gaining too fast), so that I don't react to noise.
@@ -121,7 +121,7 @@ A second Telegram bot, the **coach**, running as its own service. It syncs my fo
 
 ### Measurements
 
-82. As the user, I want a reminder every two weeks to send my waist measurement and photos (when photos are on), so that body changes are tracked.
+82. As the user, I want a reminder the evening before my waist measurement and photos (when photos are on) are due every two weeks, plus a baseline photo set on the phase start day, so that body changes are tracked.
 83. As the user, I want photo sets and waist values stored with their date, so that they're available when photo review is built.
 84. As the user, I want the photo protocol reminder (same spot and light, hip height, morning, fasted, unpumped) with the photo prompt, so that sets are comparable.
 85. As the user, I want to switch photos off at any time without anything else breaking, so that photos stay optional.
@@ -168,7 +168,7 @@ The Telegram layer is a thin adapter: it turns updates into `on_message` / `on_b
 
 ### Facts, rules and guardrails (code)
 
-- Code computes daily facts and weekly facts per the schemas: 7-day averages, weekly rate, weigh-in count, logging completeness, weekly intake vs target, per-lift progression vs best of the last 3 sessions (bodyweight added for dips and pull-ups), stalls, deload signal, maintenance estimate (back-calculated, 7,500 kcal ≈ 1 kg, windows of 3+ weeks, glycogen weeks excluded), phase week, glycogen window, gain band, carb remainder, predicted weight and prediction miss.
+- Code computes daily facts and weekly facts per the schemas: 7-day averages, weekly rate, weigh-in count, logging completeness, weekly intake vs target, per-lift progression vs best of the last 3 sessions (heaviest working set with 4–20 reps; estimated 1RM when load differs; bodyweight added for dips and pull-ups; only exercises classified as counting; see ticket 08's Decisions), stalls, deload signal, maintenance estimate (back-calculated, 7,500 kcal ≈ 1 kg, windows of 3+ weeks, glycogen weeks excluded), phase week, glycogen window, gain band, carb remainder, predicted weight and prediction miss.
 - Params: coach-core params merged with the active phase's params (phase wins), passed inside the facts.
 - Macros: protein and fat in g/kg of the current 7-day trend weight, recalculated weekly; carbs take the remainder.
 - Code-only rules (no model call): weigh-in outlier marking, missing-log reminder (one per day), data-freshness check, waist and photo due dates, applying approved proposals, setting the MFP goal.
@@ -188,7 +188,7 @@ The Telegram layer is a thin adapter: it turns updates into `on_message` / `on_b
 ### Training plan
 
 - Seeded once, at first start (or on an explicit setup step), from a CSV file in the repo's data folder, holding the current export of the user's sheet. The current sheet has a week grid (day → sessions with times, optional runs) above per-session exercise lists. After seeding, the saved plan lives in the database and changes only through chat.
-- The exercise lists are used only to offer tracked lifts by name at phase start.
+- The exercise lists are used only to help the coach classify exercises at phase start.
 
 ### Telegram
 
@@ -220,4 +220,4 @@ The Telegram layer is a thin adapter: it turns updates into `on_message` / `on_b
 - Lifts come from Hevy, everything else from MFP (ADR 0002).
 - The coach never writes to the MFP food diary; odd log entries are pointed out for me to fix in MFP.
 - Assumptions accepted as written: "far off" = 0.1 kg/week beyond the band, stale after 36 h, deload at 2 declining lifts, reset question at a 15% drop, best of last 3 sessions, macros from the 7-day trend weight, and adherence-gate weeks skipped for confirmation. The two cut and maintenance assumptions wait for those phases.
-- Setup values still to collect at phase start: tracked lifts, starting calories, starting trend weight, maintenance estimate, run discount, wrestling kcal, lifting kcal, fat start, week-1 increase, time goal, photos on/off, waist, and logistics.
+- Setup values still to collect at phase start: which lifts count (classified by the coach), starting calories, starting trend weight, maintenance estimate, run discount, wrestling kcal, lifting kcal, fat start, week-1 increase, time goal, photos on/off, waist, and logistics.
