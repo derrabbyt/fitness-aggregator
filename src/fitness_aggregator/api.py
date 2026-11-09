@@ -1,6 +1,7 @@
 """FastAPI backend: a day's MFP nutrition, steps and workouts plus Hevy workouts.
 
-    uv run fa-api    # http://127.0.0.1:8000 (UI, /api/day?date=YYYY-MM-DD, /api/today)
+    uv run fa-api    # http://127.0.0.1:8000 (UI, /api/day?date=YYYY-MM-DD, /api/today,
+                     #   /api/sync/{mfp,hevy}?start=&end= for the coach)
                      # http://127.0.0.1:8001/{mfp,hevy}/mcp (tools for the bot)
 
 This process owns the MFP session (state/mfp): the REST endpoints call
@@ -210,6 +211,191 @@ def _hevy_day(day: datetime.date) -> list[dict[str, Any]]:
                 }
             )
     return workouts
+
+
+# --- sync reads for the coach -----------------------------------------------
+# Compact per-day records for a date range. Reads only, through the one MFP
+# session (with_session) and Hevy in pages of 5. README, "Coach", documents
+# the shapes.
+
+SYNC_MFP_MAX_DAYS = 31  # MFP is read day by day: two requests per day
+SYNC_HEVY_MAX_DAYS = 400
+HEVY_SYNC_SCAN_LIMIT = 1000  # workouts scanned back from the newest
+RUN_NAME = re.compile(r"\b(run|running|jog|jogging)\b", re.IGNORECASE)
+
+
+def _sync_range(start: datetime.date, end: datetime.date | None, max_days: int) -> datetime.date:
+    end = end or datetime.date.today()
+    if start > end:
+        raise HTTPException(400, "start is after end")
+    if end > datetime.date.today():
+        raise HTTPException(400, "end is in the future")
+    if (end - start).days >= max_days:
+        raise HTTPException(400, f"at most {max_days} days per request")
+    return end
+
+
+def _num(totals: dict, key: str) -> float | None:
+    value = totals.get(key)
+    return round(float(value), 1) if isinstance(value, (int, float)) else None
+
+
+def _sync_food(mfp_day) -> dict[str, Any]:
+    """Food totals from the diary page. Fiber is there only if the diary shows
+    a Fiber column (else null); produce grams aren't derivable (null)."""
+    entries = sum(len(meal.entries) for meal in mfp_day.meals)
+    totals = mfp_day.totals if entries else {}
+    return {
+        "kcal": _num(totals, "calories"),
+        "protein_g": _num(totals, "protein"),
+        "carbs_g": _num(totals, "carbohydrates"),
+        "fat_g": _num(totals, "fat"),
+        "fiber_g": _num(totals, "fiber"),
+        "produce_g": None,
+        "complete": bool(mfp_day.complete),
+        "entries": entries,
+    }
+
+
+def _sync_exercises(items: list[dict]) -> list[dict[str, Any]]:
+    _, workouts = _activity(items)
+    return [
+        {
+            "name": w["name"],
+            "source": w["source"],
+            "run": bool(RUN_NAME.search(w["name"] or "")),
+            "kcal": w["kcal"],
+            "distance_km": w["distance_km"],
+            "minutes": w["minutes"],
+            "start": w["start"],
+        }
+        for w in workouts
+    ]
+
+
+def _mfp_sync_day(day: datetime.date):
+    def op(store, client):
+        mfp_day = client.get_date(day)
+        resp = client.session.get(
+            f"{client.BASE_API_URL.rstrip('/')}/v2/diary",
+            params={"entry_date": day.isoformat()},
+            headers=api_headers(client, {"Accept": "application/json"}),
+            timeout=30,
+        )
+        resp.raise_for_status()
+        return mfp_day, resp.json().get("items") or []
+
+    return mfp_server.with_session(_LogContext(), op)
+
+
+@app.get("/api/sync/mfp")
+async def sync_mfp(start: datetime.date, end: datetime.date | None = None) -> dict[str, Any]:
+    """MFP history for the coach, one record per day (oldest first): food
+    totals, weight (kg, null if no weigh-in that day), steps, exercise entries.
+    A day that fails has `error` set; a dead session fails the whole request."""
+    from myfitnesspal_mcp import mfp_client
+
+    end = _sync_range(start, end, SYNC_MFP_MAX_DAYS)
+    try:
+        weights = await mfp_server.with_session(
+            _LogContext(), lambda store, client: client.get_measurements("Weight", start, end)
+        )
+    except Exception as exc:
+        logger.exception("MFP weights failed")
+        raise HTTPException(502, f"MFP weights: {exc}") from exc
+    days = []
+    day = start
+    while day <= end:
+        record: dict[str, Any] = {"date": day.isoformat(), "food": None, "weight_kg": None, "steps": None, "exercises": [], "error": None}
+        weight = weights.get(day)
+        record["weight_kg"] = round(float(weight), 2) if weight is not None else None
+        try:
+            mfp_day, items = await _mfp_sync_day(day)
+        except Exception as exc:
+            if mfp_client.is_auth_error(exc):
+                raise HTTPException(502, f"MFP: {exc}") from exc
+            logger.exception("MFP %s failed", day)
+            record["error"] = str(exc)[:200]
+        else:
+            record["food"] = _sync_food(mfp_day)
+            record["steps"], _ = _activity(items)
+            record["exercises"] = _sync_exercises(items)
+        days.append(record)
+        day += datetime.timedelta(days=1)
+    return {"start": start.isoformat(), "end": end.isoformat(), "days": days}
+
+
+def _hevy_time(value: Any) -> datetime.datetime | None:
+    """Hevy sends unix seconds; ISO strings are accepted too. Local time."""
+    if isinstance(value, (int, float)):
+        return datetime.datetime.fromtimestamp(value).astimezone()
+    if isinstance(value, str):
+        try:
+            return datetime.datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone()
+        except ValueError:
+            return None
+    return None
+
+
+def _hevy_sync_session(w: dict, start: datetime.datetime) -> dict[str, Any]:
+    end = _hevy_time(w.get("end_time"))
+    return {
+        "id": str(w.get("id")),
+        "name": w.get("name"),
+        "date": start.date().isoformat(),
+        "start": start.isoformat(timespec="minutes"),
+        "end": end.isoformat(timespec="minutes") if end else None,
+        "minutes": round((end - start).total_seconds() / 60) if end else None,
+        "exercises": [
+            {
+                # Unverified field names: null when Hevy doesn't send them.
+                "exercise_id": e.get("exercise_template_id"),
+                "title": e.get("title"),
+                "exercise_type": e.get("exercise_type"),
+                "sets": [
+                    {
+                        "type": s.get("indicator"),
+                        "weight_kg": s.get("weight_kg"),
+                        "reps": s.get("reps"),
+                        "distance_m": s.get("distance_meters"),
+                        "duration_s": s.get("duration_seconds"),
+                        "rpe": s.get("rpe"),
+                    }
+                    for s in e.get("sets") or []
+                ],
+            }
+            for e in w.get("exercises") or []
+        ],
+    }
+
+
+def _hevy_sync(start: datetime.date, end: datetime.date) -> list[dict[str, Any]]:
+    sessions = []
+    with hevy.client() as c:
+        username = c.users.get_account()["username"]
+        for n, w in enumerate(c.workouts.iter_paged(username, page_size=hevy.PAGE_SIZE)):
+            if n >= HEVY_SYNC_SCAN_LIMIT:
+                break
+            begin = _hevy_time(w.get("start_time"))
+            if begin is None or begin.date() > end:
+                continue
+            if begin.date() < start:
+                break  # newest first
+            sessions.append(_hevy_sync_session(w, begin))
+    return sessions
+
+
+@app.get("/api/sync/hevy")
+async def sync_hevy(start: datetime.date, end: datetime.date | None = None) -> dict[str, Any]:
+    """Hevy lifting sessions for the coach, newest first, with exercise id,
+    title, type and per-set load and reps. Read in pages of 5."""
+    end = _sync_range(start, end, SYNC_HEVY_MAX_DAYS)
+    try:
+        sessions = await asyncio.to_thread(_hevy_sync, start, end)
+    except Exception as exc:
+        logger.exception("Hevy failed")
+        raise HTTPException(502, f"Hevy: {str(exc)[:200]}") from exc
+    return {"start": start.isoformat(), "end": end.isoformat(), "sessions": sessions}
 
 
 @app.get("/api/health")

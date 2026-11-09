@@ -21,6 +21,14 @@ class ApiClient(Protocol):
     `fitness_set_goal` (MCP, :8001). Methods are added by the tickets that
     need them; the core only ever calls what is declared here."""
 
+    async def mfp_days(self, start: datetime.date, end: datetime.date) -> list[dict[str, Any]]:
+        """`GET /api/sync/mfp`: one record per day, oldest first (README, Coach)."""
+        ...
+
+    async def hevy_sessions(self, start: datetime.date, end: datetime.date) -> list[dict[str, Any]]:
+        """`GET /api/sync/hevy`: lifting sessions in the range, newest first (README, Coach)."""
+        ...
+
 
 @dataclass(frozen=True)
 class ToolCall:
