@@ -18,7 +18,7 @@
 
 - Changed during implementation at the user's request: the model may estimate kcal when code can't (source `model_estimate`); the generic moderate MET fallback and "no trend weight → ask for kcal" were dropped.
 - Code's estimate wins over a `kcal_estimate` the model passes when code can estimate.
-- "Current" trend weight = mean of the non-outlier weigh-ins in the 7 days ending today (`history.trend_weight_kg`), rounded to 0.1 kg; the estimate is rounded to whole kcal and stored, so later weigh-ins don't change it.
+- "Current" trend weight = ticket 05's `phases.trend_weight(coach, today)` (mean of the non-outlier weigh-ins in the 7 days ending today, at least 3 of them); the estimate is rounded to whole kcal and stored, so later weigh-ins don't change it. MET table and setup values come from `phases.params(coach)`.
 - MET table (assumption, conservative Compendium-style "general" values): running 8.0, cycling 7.5, swimming 6.0, football 7.0, basketball 6.5, tennis 7.0, hiking 6.0, walking 3.5, rowing 6.0, martial_arts 6.0. `martial_arts` is for other combat sports (BJJ, boxing, …) reported as type `other`; wrestling sessions use the wrestling setup value.
 - A planned run marked done with no kcal and no duration is still accepted (it counts only if Strava syncs it), as before.
 - The tool result carries `reported` {kcal, kcal_source, kcal_counted, say}; `kcal_counted` is null while a needed setup value (run discount, wrestling/lifting kcal) isn't set yet.

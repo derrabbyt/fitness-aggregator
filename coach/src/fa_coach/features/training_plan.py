@@ -26,7 +26,7 @@ import secrets
 from pathlib import Path
 from typing import Any
 
-from .. import history
+from .. import history, phases
 from ..ask import ToolError
 from ..registry import registry
 from . import session_kcal
@@ -495,7 +495,7 @@ def _insert(db, id_: str, day: Date, session_id: str | None, status: str, type_:
 def _reported(coach, type_: str, kcal: dict[str, Any]) -> dict[str, Any]:
     """What the confirmation line needs: the kcal, where they came from and
     what they count (null while a needed setup value isn't set yet)."""
-    setup = coach.skills.params()["activity"]
+    setup = phases.params(coach)["activity"]
     if kcal.get("kcal") is None:
         counted = setup.get(SETUP_KCAL[type_]) if type_ in SETUP_KCAL else None
     elif type_ == "run":

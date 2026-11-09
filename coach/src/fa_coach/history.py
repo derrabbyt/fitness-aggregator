@@ -68,14 +68,6 @@ def weigh_ins(db: Database, start: str, end: str, *, include_outliers: bool = Fa
     return {r["date"]: r["weight_kg"] for r in db.all(sql + " ORDER BY date", (start, end))}
 
 
-def trend_weight_kg(db: Database, end: str, days: int = 7) -> float | None:
-    """The trend weight on `end`: the mean of the weigh-ins (outliers left
-    out) in the `days` days ending on `end`, to 0.1 kg. None without any."""
-    start = (datetime.date.fromisoformat(end) - datetime.timedelta(days=days - 1)).isoformat()
-    weights = list(weigh_ins(db, start, end).values())
-    return round(sum(weights) / len(weights), 1) if weights else None
-
-
 def outlier_days(db: Database, start: str, end: str) -> list[str]:
     return [r[0] for r in db.all("SELECT date FROM weigh_ins WHERE outlier = 1 AND date BETWEEN ? AND ? ORDER BY date", (start, end))]
 
