@@ -9,11 +9,15 @@
   `waist_every_weeks` after the start.
 - `measurements_due(coach, start, end)`: what is due in a date range (the
   weekly report's "due next week").
-- Reminder job: from `REMINDER_TIME` on a due date, one message asks for
-  what is due (photos with the protocol); sent once per due date, or late
-  (still once) if the coach was down, unless the value already came in.
-  Reminders count toward the daily message limit (`messaging.send`); one held
-  back by the limit goes out on the next day from `REMINDER_TIME`.
+- Reminder job: the evening before a due date, from the user's evening
+  reminder time (`messaging.evening_reminder_time`), one message asks for
+  what is due tomorrow morning (photos with the protocol: morning, fasted,
+  unpumped); sent once per due date, unless the value already came in. A
+  missed evening (coach down, no evening time set, held back by the daily
+  message limit) is reminded once from `REMINDER_TIME` on the due day, or
+  later in the same period. The baseline photo set is due on the start date
+  and reminded that day. Reminders count toward the daily message limit
+  (`messaging.send`).
 - Photos sent to the chat are stored under the coach's state directory as
   `photos/<date>/<n>.jpg`, one set per day, and acknowledged. Waist values
   ("waist 84.5", or a bare "84.5" while a waist reminder is open) are stored
@@ -33,7 +37,7 @@ if TYPE_CHECKING:
 
 Date = datetime.date
 KINDS = ("waist", "photos")
-REMINDER_TIME = datetime.time(7, 0)  # assumption: morning of the due date, before breakfast
+REMINDER_TIME = datetime.time(7, 0)  # assumption: a missed evening reminder goes out the due morning, before breakfast
 
 PHOTOS_DIR = "photos"
 WAIST_CM = (40, 200)  # as the phase-setup schema's waist_cm_start
@@ -78,25 +82,35 @@ async def remind(coach: "Coach", now: datetime.datetime) -> None:
     phase = phases.active(coach)
     if phase is None:
         return
-    # Only from REMINDER_TIME: a reminder held back by the daily message
-    # limit goes out the next morning, not right after midnight.
-    if now.time() < REMINDER_TIME:
-        return
     today = now.date()
-    m = phases.params(coach)["measurements"]
+    p = phases.params(coach)
+    # Tomorrow's check-in is announced from the evening reminder time. What is
+    # due today or earlier (the baseline set, a missed evening, one held back
+    # by the daily message limit) goes out from REMINDER_TIME, not right
+    # after midnight.
+    evening = p["messaging"].get("evening_reminder_time")
+    if evening and now.time() >= datetime.time.fromisoformat(evening):
+        horizon = today + datetime.timedelta(days=1)
+    elif now.time() >= REMINDER_TIME:
+        horizon = today
+    else:
+        return
+    m = p["measurements"]
     longest = max(m["waist_every_weeks"], m["photos_every_weeks"]) * 7
     latest: dict[str, str] = {}
-    for item in measurements_due(coach, today - datetime.timedelta(days=longest - 1), today):
+    for item in measurements_due(coach, today - datetime.timedelta(days=longest - 1), horizon):
         latest[item["kind"]] = item["date"]  # in date order: the last one wins
     open_ = [(kind, due) for kind, due in sorted(latest.items(), key=lambda kv: KINDS.index(kv[0]))
-             if not _received_since(coach, kind, due)]
+             if not _received_since(coach, kind, due)
+             and (due > today.isoformat() or now.time() >= REMINDER_TIME)]
     # Counts toward the daily message limit; at the limit nothing is claimed,
-    # so the reminder goes out on a later day (still once).
+    # so the reminder goes out later (on the due day; still once).
     if not open_ or not messaging.can_send(coach, now):
         return
-    asked = [kind for kind, due in open_ if coach.db.once(f"measurement-reminder:{phase['id']}:{kind}:{due}", now)]
+    asked = [(kind, due) for kind, due in open_
+             if coach.db.once(f"measurement-reminder:{phase['id']}:{kind}:{due}", now)]
     if asked:
-        messaging.send(coach, _reminder_text(asked), now, kind="measurement-reminder")
+        messaging.send(coach, _reminder_text(asked, today), now, kind="measurement-reminder")
 
 
 def _received_since(coach: "Coach", kind: str, day: str) -> bool:
@@ -104,12 +118,17 @@ def _received_since(coach: "Coach", kind: str, day: str) -> bool:
     return coach.db.value(f"SELECT COUNT(*) FROM {table} WHERE {column} >= ?", (day,)) > 0
 
 
-def _reminder_text(kinds: list[str]) -> str:
-    lines = ["📏 Check-in day."]
+def _reminder_text(asked: list[tuple[str, str]], today: Date) -> str:
+    tomorrow = {kind for kind, due in asked if due > today.isoformat()}
+    kinds = [kind for kind, _ in asked]
+    lines = ["📏 Check-in tomorrow morning." if len(tomorrow) == len(kinds) else "📏 Check-in day."]
     if "waist" in kinds:
-        lines.append("Send your waist measurement in cm, e.g. \"waist 84.5\".")
+        when = "Tomorrow morning, send" if "waist" in tomorrow else "Send"
+        lines.append(f"{when} your waist measurement in cm, e.g. \"waist 84.5\".")
     if "photos" in kinds:
-        lines.append(f"Send your progress photo set here. Photo protocol: {PHOTO_PROTOCOL}")
+        when = "Tomorrow morning, take" if "photos" in tomorrow else "Send"
+        lines.append(f"{when} your progress photo set{' and send it' if 'photos' in tomorrow else ''} here. "
+                     f"Photo protocol: {PHOTO_PROTOCOL}")
     return "\n".join(lines)
 
 
