@@ -8,7 +8,7 @@
 
 - [x] The api has REST read endpoints returning compact per-day records for a date range: food totals (kcal, protein, carbs, fat, fiber; produce grams if derivable, else null) and whether the day is logged, weight, steps, runs (kcal, distance, duration); and Hevy sessions with exercise id, title and per-set load and reps
 - [x] The api reads Hevy in pages of 5 and reaches MFP only through its existing session; nothing new talks to MFP directly
-- [ ] The api endpoints are checked once by hand against live MFP and Hevy (noted in the ticket's comments)
+- [x] The api endpoints are checked once by hand against live MFP and Hevy (noted in the ticket's comments)
 - [x] The first `sync` loads 16 weeks; later syncs fetch only what's new or changed (recent days are re-read so late edits land)
 - [x] A scheduler loop calls `sync` several times a day; `/sync` triggers it and replies with days and sessions synced and the last sync time
 - [x] Weigh-in outliers are marked in code and excluded from trend inputs, without a message
@@ -25,4 +25,5 @@
 - **Freshness:** last successful sync = the older of the MFP and Hevy successes (`features.sync.freshness`, `history.freshness`). Stale notice: once per stale stretch (keyed by that time), never before the first sync attempt.
 - **Scheduler:** unchanged from ticket 01 (sync on start, then every 4 h).
 - **Unverified field names (hand check pending):** MFP `fiber` total (only with a Fiber diary column), the Strava `source` string and run names; Hevy `exercise_template_id`, `exercise_type`, set `indicator` values. All pass through as null when absent.
-- **Hand check against live MFP and Hevy:** not done by the implementer (left to the orchestrator).
+- **Hand check against live MFP and Hevy (2026-11-09, orchestrator):** api rebuilt from `coach-v1` and called inside the container for 2026-11-03..09 (MFP) and since 2026-10-20 (Hevy). MFP: kcal/protein/carbs/fat, entry counts, weight in kg and steps all plausible and matching the diary; `complete` false on all days; `fiber_g` null (no Fiber column in this diary); exercise `source` values seen: `strava`, `healthkit`. Hevy: `exercise_id` (template id, e.g. `7EB3F7C3`), `exercise_type` (`weight_reps`) and set `type` (`normal`) are filled; the account holds one workout so far (2026-11-09 Push), same as the existing `hevy_list_workouts` tool.
+- **Found by the hand check, for counted activity (ticket 04):** MFP lists the same activity from several sources. One run arrives from Strava *and* HealthKit (2026-11-06: Strava 519 kcal 11.5 km, HealthKit 574 kcal, start 48 s apart), and lifting sessions arrive as HealthKit "Strength training" entries. Only Strava runs may count (the spec says "Strava runs"; lifting counts from Hevy); HealthKit entries must not be added on top.
