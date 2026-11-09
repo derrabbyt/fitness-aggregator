@@ -6,11 +6,24 @@
 
 **Status:** ready-for-agent
 
-- [ ] The model client wraps the Anthropic SDK, reads `COACH_ANTHROPIC_BASE_URL` / `COACH_ANTHROPIC_API_KEY` with fallback to `ANTHROPIC_BASE_URL` / `ANTHROPIC_API_KEY`, and uses `COACH_MODEL` (default `claude-sonnet-5-5`)
-- [ ] Prompts use a cached prefix (coach-core, active phase skill if any, tool definitions), then the task skill, a short state snapshot and the input; chat keeps only a short history
-- [ ] `add_context_note` stores the user's text unchanged with `applies_from` / `applies_to`, tags (including `sport_load` for a heavy week), optional exercise id and `suggest_unusable`; the reply confirms in one line
-- [ ] `update_coach_profile` and `get_coach_profile` work; `/profile` shows the stored profile
-- [ ] Medical, PED, supplement, technique and meal-tip questions get a one-line decline
-- [ ] The coach writes in English
-- [ ] The skills package reflects that sport load is a context-note tag: `set_week_sport_load` is removed from the tools doc and the coach-chat and context-log skills; the validator stays green
-- [ ] Tests with a scripted fake model cover storing a note, a profile change, and that tool calls are executed by code
+- [x] The model client wraps the Anthropic SDK, reads `COACH_ANTHROPIC_BASE_URL` / `COACH_ANTHROPIC_API_KEY` with fallback to `ANTHROPIC_BASE_URL` / `ANTHROPIC_API_KEY`, and uses `COACH_MODEL` (default `claude-sonnet-5-5`)
+- [x] Prompts use a cached prefix (coach-core, active phase skill if any, tool definitions), then the task skill, a short state snapshot and the input; chat keeps only a short history
+- [x] `add_context_note` stores the user's text unchanged with `applies_from` / `applies_to`, tags (including `sport_load` for a heavy week), optional exercise id and `suggest_unusable`; the reply confirms in one line
+- [x] `update_coach_profile` and `get_coach_profile` work; `/profile` shows the stored profile
+- [x] Medical, PED, supplement, technique and meal-tip questions get a one-line decline
+- [x] The coach writes in English
+- [x] The skills package reflects that sport load is a context-note tag: `set_week_sport_load` is removed from the tools doc and the coach-chat and context-log skills; the validator stays green
+- [x] Tests with a scripted fake model cover storing a note, a profile change, and that tool calls are executed by code
+
+## Comments
+
+- **Model interface for later tickets.** `coach.ask(task_skills, input, tools=..., output_schema=..., decision=..., history=...)` (`fa_coach/ask.py`) runs one task to its end and returns an `Answer` (`text`, `data`, `errors`, `calls`). It builds the `ModelRequest` (prefix = coach-core + the skill of `coach.active_phase_id()`, which returns None until ticket 05 fills it in; tools sorted by name). While the model calls tools, code validates the args against each tool's input schema, runs each call once, and sends back results or errors. Nothing is retried, and a task gets at most 8 model turns. With `output_schema`, code parses the final text as JSON and validates it with `coach.skills.errors`; if it's invalid, `data` is None, `errors` is set and nothing is acted on. `tools=None` offers every registered tool, `()` offers none, or pass a list of names. Tools refuse with `ask.ToolError`. `registry.state(name)` adds entries to the state snapshot that every task gets (the core supplies date and weekday; `features/profile.py` adds the profile).
+- **Ports reshaped:** `ModelRequest` (prefix_skills, task_skills, input, state, tools, history, steps, output_schema, decision), `ModelReply` (text, tool_calls, stop_reason, raw), `ToolCall`, `ToolResult`, `ChatTurn`, `ModelError`. Fakes: `FakeModel.script(...)` with the `reply`, `reply_json`, `tool_call`, `tool_calls` helpers; `model.results(n)` returns the tool results code sent back for model turn n.
+- **JSON output uses prompt plus code validation, not `output_config.format`.** The schema, plus every schema it `$ref`s, goes into the cached task block with "answer with one JSON object only", and code validates the answer. Why: the package schemas use cross-file `$ref`s, numeric and length constraints, and open objects, which structured outputs don't accept, and the endpoint may be a proxy. A refusal (`stop_reason: refusal`) never counts as an answer.
+- **Caching:** breakpoints after the prefix (tools + coach-core + phase skill), after the task skills (+ schema), and on the last tool result inside a tool loop. State and input JSON use sorted keys. Inside a loop the real client sends the model's own content back unchanged, thinking blocks included. The server-side refusal `fallbacks` beta isn't sent, because `COACH_ANTHROPIC_BASE_URL` may point at a proxy that rejects it.
+- **Code sets the note text to the user's message.** `add_context_note` has no `text` input. Code stores `coach.current_message` unchanged, so a note needs a user message and jobs can't add one. Notes validate against `context_note.schema.json`.
+- **`applies_to` semantics changed:** it now equals `applies_from` for a single day, and null means ongoing. The schema used to say null meant "single day or open-ended", which can't be queried by date. Updated together: schema, context-log skill, and the note in the weekly-facts example. `context_notes.between(coach, start, end)` is the read API for facts.
+- **Sport load:** in the context-note schema, tag `sport_load` replaces `sport_load_high`/`sport_load_low`. For "it wasn't actually heavy" there is no untag tool; instead I added `get_context_notes` and `delete_context_note`, a small, low-risk write. Left for ticket 07: `weekly_facts.activity.sport_load_high`/`sport_load_source` (which still has the plan/user_tag values), weekly-decision WD-SPORT, and the README assumption row.
+- **Out-of-scope declines and English** come from the model following coach-core and coach-chat. The tests only check that those rules go with every chat call. coach-core now says "always English" (it used to say "unless the coach profile says otherwise").
+- **Chat:** the chat is the last text handler (order 1000). History is the last 6 turns (user + coach) from the last 12 h, without tool traffic. If the model can't be reached, the user gets a one-line reply. The core's command-list fallback for unhandled free text is kept only for registries without a chat; its test now uses such a registry.
+- **Profile:** `update_coach_profile` takes `patch: {key: value|null}` (keys up to 40 chars, values up to 200, at most 30 entries). The model's reply says what changed, and `/profile` shows the result.

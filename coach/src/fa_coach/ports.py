@@ -22,33 +22,71 @@ class ApiClient(Protocol):
     need them; the core only ever calls what is declared here."""
 
 
-@dataclass
-class ModelRequest:
-    """One model call. The prompt layout is fixed by the spec: a cached prefix
-    (coach-core + active phase skill + tool definitions), then the task skill,
-    then a short state snapshot and the input JSON."""
-
-    task_skill: str
-    input: Any = None
-    phase_skill: str | None = None
-    tools: list[dict[str, Any]] = field(default_factory=list)
-    history: list[dict[str, Any]] = field(default_factory=list)
-    output_schema: str | None = None  # schema file name; the reply's `data` is validated against it
-    decision: bool = False  # True: COACH_DECISION_MODEL, else COACH_MODEL
-
-
-@dataclass
+@dataclass(frozen=True)
 class ToolCall:
+    """The model asks code to run a registered tool."""
+
     id: str
     name: str
     args: dict[str, Any]
 
 
-@dataclass
+@dataclass(frozen=True)
+class ToolResult:
+    """What code sends back for one `ToolCall` (`content` is JSON-able)."""
+
+    call_id: str
+    content: Any
+    is_error: bool = False
+
+
+@dataclass(frozen=True)
 class ModelReply:
-    text: str | None = None
-    tool_calls: list[ToolCall] = field(default_factory=list)
-    data: dict[str, Any] | None = None  # schema-validated JSON output
+    """One model turn: final text, or tool calls for code to run first.
+
+    `raw` is the provider's own content (e.g. Anthropic blocks, including
+    thinking); the model client sends it back unchanged when the tool loop
+    continues. Fakes leave it None."""
+
+    text: str = ""
+    tool_calls: tuple[ToolCall, ...] = ()
+    stop_reason: str = "end_turn"
+    raw: Any = None
+
+
+# An assistant turn and the tool results code produced for it.
+Step = tuple[ModelReply, tuple[ToolResult, ...]]
+
+
+@dataclass(frozen=True)
+class ChatTurn:
+    role: str  # "user" | "assistant"
+    text: str
+
+
+@dataclass(frozen=True)
+class ModelRequest:
+    """One model call. Layout (spec, "Claude"): a cached prefix
+    (`prefix_skills` = coach-core + the active phase skill, plus `tools`),
+    then the task skills, then a short `history`, then one user turn with the
+    `state` snapshot and the `input` JSON, then the tool loop so far
+    (`steps`). With `output_schema` set, the final text must be one JSON
+    object valid against that schema (`Coach.ask` validates it)."""
+
+    prefix_skills: tuple[str, ...]
+    task_skills: tuple[str, ...]
+    input: Any = None
+    state: dict[str, Any] = field(default_factory=dict)
+    tools: tuple[dict[str, Any], ...] = ()  # Anthropic tool definitions
+    history: tuple[ChatTurn, ...] = ()
+    steps: tuple[Step, ...] = ()
+    output_schema: str | None = None  # schema name, e.g. "weekly_verdict"
+    decision: bool = False  # True: COACH_DECISION_MODEL, else COACH_MODEL
+
+
+class ModelError(Exception):
+    """The model could not be reached or gave no usable answer. The message
+    is short and safe to show to the user."""
 
 
 class ModelClient(Protocol):

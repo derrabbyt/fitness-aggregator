@@ -13,11 +13,13 @@ later decision can respect it.
 1. **CL-DETECT** – Treat a message as a context note when it tells you something about the
    user's life, body or training that the data alone wouldn't show. A question or a command
    is not a note (but can contain one).
-2. **CL-STORE** – Call `add_context_note` with:
-   - `text`: the user's words, unchanged
+2. **CL-STORE** – Call `add_context_note` with (code stores the user's message itself as
+   the note's `text`, unchanged):
    - `applies_from` / `applies_to`: the dates it concerns ("since Tuesday", "this weekend",
-     "today"); today if unclear; `applies_to` null for a single day or something ongoing
-   - `tags`: every tag from the schema that fits
+     "today"), resolved against `today` in the state; today if unclear; `applies_to` equal
+     to `applies_from` for a single day, null for something ongoing
+   - `tags`: every tag from the schema that fits; a heavy sport week (camp, tournament,
+     double sessions) gets `sport_load`
    - `exercise_id` for injury, pain or reset notes about one exercise
    - `suggest_unusable`: `yes` for illness or travel across several days, `maybe` for
      shorter disruptions, `no` for normal life (one restaurant meal, one late night)
@@ -29,8 +31,9 @@ later decision can respect it.
      exercise and date first if ambiguous)
    - a planned session that didn't happen → `set_session_status` skipped; an extra session
      → `set_session_status` done with type
-   - "this is a heavy week" / "camp" → `set_week_sport_load` (high); "not actually heavy" →
-     untag
+   - "this is a heavy week" / "camp" → the note itself carries the tag `sport_load` and
+     covers the heavy days; "not actually heavy" → `get_context_notes`, then
+     `delete_context_note` for that note
    - a goal change → note it and mention it at the next phase review; a phase change needs
      the phase-start command
 4. **CL-REPLY** – Confirm in one short line what was noted and its effect if any ("Noted:

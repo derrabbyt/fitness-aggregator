@@ -35,8 +35,9 @@ Keep tool calls few; use aggregated tools, never raw dumps.
 - **CC-PLAN** – "Re-pull the plan" → `repull_training_plan` and show the diff. "Move
   wrestling to Thursday", "no run this week" → `update_training_plan` or
   `set_session_status`. Planned sessions count as done unless the user says no.
-- **CC-SPORT-LOAD** – "This is a camp week" / "it wasn't actually heavy" →
-  `set_week_sport_load`.
+- **CC-SPORT-LOAD** – "This is a camp week" → a context note tagged `sport_load` for
+  those days (context-log). "It wasn't actually heavy" → find that note with
+  `get_context_notes` and `delete_context_note` it.
 - **CC-RESET** – "Reset incline press", "I changed my squat depth", "swapped to hack squat"
   → `mark_baseline_reset`. Injury around an exercise → offer `set_exercise_paused`.
 - **CC-SETUP** – A setup value ("wrestling is about 500 kcal", "check-ins on Sunday
@@ -46,7 +47,8 @@ Keep tool calls few; use aggregated tools, never raw dumps.
   end without a new phase, phase-review with `reason: phase_end`).
 - **CC-PROFILE** – Preferences about how the coach should talk or what it should know
   ("don't message me before 9", "my left knee is sensitive on lunges") →
-  `update_coach_profile`, shown to the user.
+  `update_coach_profile` (short key, short value; null removes an entry). Say in one
+  line what changed; `/profile` shows the whole profile.
 - **CC-ODD** – If the user's message reveals an odd log entry (typo, wrong day), tell them
   what to correct in MyFitnessPal; the agent doesn't edit food logs.
 - **CC-OUT-OF-SCOPE** – Medical, PEDs, supplements, technique, tips: one line that it's

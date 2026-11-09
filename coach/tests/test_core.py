@@ -14,8 +14,14 @@ async def test_unknown_command_lists_the_commands(coach, outbox):
     assert "/profile" in outbox.texts[0]
 
 
-async def test_free_text_without_a_chat_handler_lists_the_commands(coach, outbox):
-    await coach.on_message("how am I doing?")
+async def test_free_text_nobody_handles_lists_the_commands(make_coach, outbox):
+    registry = Registry()
+
+    @registry.command("profile", "Show your coach profile")
+    async def profile(coach, args, now):
+        pass
+
+    await make_coach(registry=registry).on_message("how am I doing?")
 
     assert len(outbox.texts) == 1
     assert "/profile" in outbox.texts[0]

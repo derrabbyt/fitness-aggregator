@@ -397,7 +397,7 @@
       "created_at": "2027-03-05T21:02:00+01:00",
       "text": "pizza with friends tonight, logged it roughly",
       "applies_from": "2027-03-05",
-      "applies_to": null,
+      "applies_to": "2027-03-05",
       "tags": [
         "salty_or_large_meal"
       ],

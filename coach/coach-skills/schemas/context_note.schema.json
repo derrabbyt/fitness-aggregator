@@ -11,13 +11,13 @@
     "created_at": { "type": "string", "format": "date-time" },
     "text": { "type": "string", "description": "User's words, unchanged." },
     "applies_from": { "type": "string", "format": "date" },
-    "applies_to": { "type": ["string", "null"], "format": "date", "description": "null = single day or open-ended (ongoing until a later note)." },
+    "applies_to": { "type": ["string", "null"], "format": "date", "description": "Last day the note concerns; equal to applies_from for a single day; null = ongoing from applies_from." },
     "tags": {
       "type": "array",
       "items": {
         "enum": [
           "illness", "travel", "alcohol", "salty_or_large_meal", "supplement_change", "medication_change",
-          "sport_load_high", "sport_load_low", "extra_session", "session_skipped",
+          "sport_load", "extra_session", "session_skipped",
           "injury", "pain", "baseline_reset",
           "hunger_high", "hunger_low", "energy_low", "sleep_poor", "stress", "digestion",
           "logging_issue", "plan_change", "goal_change", "other"

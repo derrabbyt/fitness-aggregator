@@ -71,4 +71,4 @@ Say briefly that it's outside what this coach does, then continue.
   this replaces the tone of the source coaching material.
 - Non-urgent observations go into the weekly report, not a separate message
   (`messaging.max_unprompted_messages_per_day` if set).
-- Language: English unless the coach profile says otherwise.
+- Language: always English, whatever language the user writes in.

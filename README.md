@@ -126,10 +126,16 @@ from `.env` (and `cookie.txt`) afterwards.
   for the weekly decision; `COACH_ANTHROPIC_API_KEY` / `COACH_ANTHROPIC_BASE_URL`
   fall back to `ANTHROPIC_*`.
 - **Commands:** `/profile` shows the coach profile.
+- **Chat:** free text goes to the model with the coach-chat and context-log
+  skills. Context (sick, travel, camp week, creatine) is stored as a dated,
+  tagged context note in your words; preferences go into the profile. Memory:
+  the last 3 exchanges from the last 12 hours.
 - **Code:** `coach/src/fa_coach/core.py` is the `Coach` core: no Telegram or
-  network code, driven by tests with fakes. Features are modules in
+  network code, driven by tests with fakes. Model tasks run through
+  `coach.ask(...)` (`ask.py`: prompt layout, tool loop, schema-checked JSON);
+  `model.py` maps them onto the Anthropic SDK. Features are modules in
   `coach/src/fa_coach/features/` that register commands, buttons, jobs,
-  syncers and model tools (`registry.py`); tables come from
+  syncers, state-snapshot entries and model tools (`registry.py`); tables come from
   `coach/src/fa_coach/migrations/NN_<name>.sql`. The skills package
   (`coach/coach-skills`: skills, params, schemas, validator) ships in the image.
 

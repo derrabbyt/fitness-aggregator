@@ -17,7 +17,7 @@ Rule for every write tool: **code validates, code applies.** The model only asks
 | `get_targets` | – | current `targets` block + per-day targets for the current week |
 | `get_training_plan` | – | saved default week + this week's changes |
 | `get_proposals` | `status` (optional) | list of `proposal.schema.json` |
-| `get_coach_profile` | – | small free-text profile (preferences, known issues) |
+| `get_coach_profile` | – | `{profile: {key: value}}`: short entries (preferences, known issues); also in every call's state snapshot |
 | `load_skill` | `name` | SKILL.md of another skill from the index |
 
 ## Write
@@ -26,16 +26,16 @@ Rule for every write tool: **code validates, code applies.** The model only asks
 | --- | --- | --- |
 | `propose_change` | `type`, `delta_kcal` or `new_values`, `reason`, `source`, `based_on_week`, `is_phase_first_change`, `counter_of`, `returning_rejected_proposal_id`, `agent_disagrees` | Runs guardrails (below). Stores a `proposal` with status `open` or `blocked_by_guardrail` and returns it with `guardrail.violations`. Never applies anything. |
 | `add_rejection_reason` | `proposal_id`, `reason` | Stores `user_reason` on a rejected proposal. |
-| `add_context_note` | `context_note` without `id` / `created_at` | Stores note; returns id. |
+| `add_context_note` | `context_note` without `id` / `created_at` / `text` | Stores the note with the user's message as `text` (unchanged); returns the stored note. A heavy sport week is a note tagged `sport_load` covering those days. |
+| `delete_context_note` | `id` | Removes a wrong note (e.g. a `sport_load` week that wasn't heavy after all). |
 | `mark_baseline_reset` | `exercise_id`, `date`, `reason` | Starts a new baseline for that exercise from `date`. |
 | `set_exercise_paused` | `exercise_id`, `paused`, `reason` | Injury pause on/off. |
-| `set_week_sport_load` | `iso_week`, `high` (bool) | User tag/untag; overrides the plan-derived value. |
 | `set_session_status` | `date`, `type`, `status` (`done`/`skipped`), optional `kcal` | Planned session confirmed, skipped, or an extra session added. |
 | `update_training_plan` | `changes` (day → sessions) | Edits the saved default week. |
 | `repull_training_plan` | – | Re-reads the Google Sheet into the saved plan; returns the diff. |
 | `record_setup_value` | `key`, `value` | Stores a setup value (run discount, wrestling kcal, logistics, …). Validates against `phase_setup.schema.json` / `core_params.schema.json`. |
 | `start_phase` | `phase_setup` | Validates, stores as pending, returns a **week-1 preview** computed by code (daily targets by day type, macros, MFP goal). The phase starts only when the user taps `confirm_phase_start`. |
-| `update_coach_profile` | `patch` | Stores and shows the change to the user. |
+| `update_coach_profile` | `patch`: `{key: value or null}` | Sets or (null) removes short entries; returns the whole profile. The reply tells the user what changed; `/profile` shows it. |
 
 Buttons (`approve_proposal`, `reject_proposal`, `counter_proposal`, `confirm_phase_start`, …)
 are handled by code directly; the model is only called afterwards if a reply needs writing.

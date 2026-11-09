@@ -14,7 +14,11 @@ registers its handlers on the shared `registry`:
     @registry.job("evening")          # every scheduler tick: (coach, now); decides itself if due
     @registry.syncer("mfp")           # Coach.sync: (coach, now)
     @registry.tool("add_context_note", "description", {input JSON schema})
-                                      # model tools: (coach, args, now) -> JSON-able result
+                                      # model tools: (coach, args, now) -> JSON-able result;
+                                      # args are validated against the schema first;
+                                      # raise ask.ToolError to refuse with a message
+    @registry.state("profile")        # adds a key to the state snapshot of every model
+                                      # task: (coach, now) -> small JSON-able value
 
 Database tables come from `fa_coach/migrations/NN_<name>.sql` (NN = ticket
 number), so adding a feature means adding files, not editing shared ones.
@@ -38,6 +42,7 @@ ButtonFn = Callable[["Coach", str, Now], Awaitable[None]]
 PhotoFn = Callable[["Coach", bytes, str | None, Now], Awaitable[bool]]
 JobFn = Callable[["Coach", Now], Awaitable[None]]
 ToolFn = Callable[["Coach", dict[str, Any], Now], Awaitable[Any]]
+StateFn = Callable[["Coach", Now], Any]
 
 
 @dataclass(frozen=True)
@@ -49,11 +54,12 @@ class Command:
 
 @dataclass(frozen=True)
 class Ordered:
-    """A text/photo handler, job or syncer; run in (order, name) order."""
+    """A text/photo handler, job, syncer or state provider; run in (order,
+    name) order."""
 
     name: str
     order: int
-    fn: Callable[..., Awaitable[Any]]
+    fn: Callable[..., Any]
 
 
 @dataclass(frozen=True)
@@ -77,6 +83,7 @@ class Registry:
         self._photo: dict[str, Ordered] = {}
         self._jobs: dict[str, Ordered] = {}
         self._syncers: dict[str, Ordered] = {}
+        self._state: dict[str, Ordered] = {}
 
     # --- registration ------------------------------------------------------
 
@@ -116,6 +123,9 @@ class Registry:
     def syncer(self, name: str, order: int = 100) -> Callable[[JobFn], JobFn]:
         return self._ordered(self._syncers, "syncer", order, name)
 
+    def state(self, name: str, order: int = 100) -> Callable[[StateFn], StateFn]:
+        return self._ordered(self._state, "state provider", order, name)
+
     def _ordered(self, table: dict[str, Ordered], kind: str, order: int, name: str | None = None):
         def add(fn):
             key = name or f"{fn.__module__}.{fn.__qualname__}"
@@ -142,6 +152,10 @@ class Registry:
     @property
     def syncers(self) -> list[Ordered]:
         return _sorted(self._syncers)
+
+    @property
+    def state_providers(self) -> list[Ordered]:
+        return _sorted(self._state)
 
 
 def _unique(table: dict, name: str, kind: str) -> None:

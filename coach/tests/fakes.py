@@ -5,9 +5,11 @@ records and record writes, the fake model returns scripted replies.
 """
 
 import datetime
+import itertools
+import json
 from typing import Any
 
-from fa_coach.ports import Edit, ModelReply, ModelRequest, Outgoing, Send
+from fa_coach.ports import Edit, ModelReply, ModelRequest, Outgoing, Send, ToolCall, ToolResult
 
 TZ = datetime.timezone(datetime.timedelta(hours=1))  # Europe/Vienna in winter
 
@@ -32,17 +34,54 @@ class FakeApi:
 
 
 class FakeModel:
-    """Returns scripted replies in order and records every request it was given."""
+    """Returns scripted replies in order and records every request it was
+    given (one request per model turn, so a tool loop records several)."""
 
-    def __init__(self, *replies: ModelReply) -> None:
-        self.replies = list(replies)
+    def __init__(self, *replies: ModelReply | Exception) -> None:
+        self.replies: list[ModelReply | Exception] = list(replies)
         self.requests: list[ModelRequest] = []
+
+    def script(self, *replies: ModelReply | Exception) -> None:
+        self.replies.extend(replies)
 
     async def run(self, request: ModelRequest) -> ModelReply:
         self.requests.append(request)
         if not self.replies:
-            raise AssertionError(f"unexpected model call: {request.task_skill}")
-        return self.replies.pop(0)
+            raise AssertionError(f"unexpected model call: {request.task_skills}")
+        item = self.replies.pop(0)
+        if isinstance(item, Exception):
+            raise item
+        return item
+
+    def results(self, n: int) -> list[ToolResult]:
+        """The tool results code sent back for the tool calls of the n-th
+        recorded model turn (0-based, counted over all requests)."""
+        reply, results = self.requests[n + 1].steps[-1]
+        assert reply.tool_calls, f"model turn {n} called no tools"
+        return list(results)
+
+
+def reply(text: str) -> ModelReply:
+    return ModelReply(text=text)
+
+
+def reply_json(data: Any) -> ModelReply:
+    return ModelReply(text=json.dumps(data))
+
+
+_ids = itertools.count(1)
+
+
+def tool_call(name: str, **args: Any) -> ModelReply:
+    """A model turn that calls one tool."""
+    return tool_calls((name, args))
+
+
+def tool_calls(*calls: tuple[str, dict[str, Any]]) -> ModelReply:
+    """A model turn that calls several tools at once."""
+    return ModelReply(
+        tool_calls=tuple(ToolCall(f"call_{next(_ids)}", name, args) for name, args in calls), stop_reason="tool_use"
+    )
 
 
 class FakeOutbox:
