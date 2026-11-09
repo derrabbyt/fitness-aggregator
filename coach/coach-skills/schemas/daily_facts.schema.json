@@ -19,11 +19,30 @@
     "day": {
       "type": "object",
       "description": "Required for kind=evening.",
-      "required": ["intake", "weight", "steps", "sessions", "week_to_date"],
+      "required": ["intake", "vs_target", "checks", "weight", "steps", "sessions", "week_to_date"],
       "additionalProperties": false,
       "properties": {
         "intake": { "$ref": "weekly_facts.schema.json#/$defs/intake_day" },
         "macro_targets": { "$ref": "weekly_facts.schema.json#/properties/intake/properties/macro_targets" },
+        "vs_target": {
+          "type": "object",
+          "description": "Today's totals as a percentage of today's targets (actual / target x 100), computed by code.",
+          "required": ["kcal_pct", "protein_pct", "fat_pct"],
+          "additionalProperties": false,
+          "properties": {
+            "kcal_pct": { "type": ["number", "null"] },
+            "protein_pct": { "type": ["number", "null"] },
+            "fat_pct": { "type": ["number", "null"] }
+          }
+        },
+        "checks": {
+          "type": "object",
+          "required": ["implausible_intake"],
+          "additionalProperties": false,
+          "properties": {
+            "implausible_intake": { "type": "boolean", "description": "Today's kcal exceed data.implausible_intake_factor x today's target: likely a typo in MFP; ask (odd_log)." }
+          }
+        },
         "weight": {
           "type": "object",
           "required": ["kg", "avg_7d_kg", "outlier"],
@@ -31,17 +50,20 @@
           "properties": {
             "kg": { "type": ["number", "null"] },
             "avg_7d_kg": { "type": ["number", "null"] },
-            "outlier": { "type": "boolean" }
+            "outlier": { "type": "boolean" },
+            "withheld": { "type": "boolean", "description": "True in the glycogen window: code leaves the weight out so it isn't commented on." }
           }
         },
         "steps": { "type": ["integer", "null"] },
         "sessions": { "type": "array", "items": { "$ref": "weekly_facts.schema.json#/$defs/session" } },
         "week_to_date": {
           "type": "object",
-          "required": ["days_elapsed", "target_kcal_so_far", "actual_kcal_so_far", "deviation_pct"],
+          "description": "The phase week from its first day to today. Target, actual and deviation cover only the days with food logged.",
+          "required": ["days_elapsed", "days_logged", "target_kcal_so_far", "actual_kcal_so_far", "deviation_pct"],
           "additionalProperties": false,
           "properties": {
             "days_elapsed": { "type": "integer", "minimum": 1, "maximum": 7 },
+            "days_logged": { "type": "integer", "minimum": 0, "maximum": 7 },
             "target_kcal_so_far": { "type": "number" },
             "actual_kcal_so_far": { "type": ["number", "null"] },
             "deviation_pct": { "type": ["number", "null"] }

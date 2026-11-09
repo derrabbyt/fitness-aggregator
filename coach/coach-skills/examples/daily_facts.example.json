@@ -56,7 +56,8 @@
       "min_weighins_per_week": 5,
       "sync_max_age_hours": 36,
       "weight_outlier_kg": 1.5,
-      "weight_outlier_window_days": 3
+      "weight_outlier_window_days": 3,
+      "implausible_intake_factor": 2
     },
     "adherence": {
       "require_all_eating_logged": true,
