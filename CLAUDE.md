@@ -46,3 +46,25 @@ Development). Python is 3.13 with pinned deps (`uv.lock`, `bot/uv.lock`).
 - `Dockerfile`, `docker-compose.yml`: one pinned image; `api`, `bot`, and
   `test` (profile `dev`).
 - All persistent data is in `state/` (bind-mounted).
+
+## Agent skills
+
+### Issue tracker
+
+Local markdown: one directory per feature under `.scratch/<feature>/` (spec + one file per ticket). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default roles (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`), recorded as a `Status:` line in each ticket. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Coach references
+
+`SPEC.md` is the coach's scope; the work is planned in `.scratch/coach/` (spec + tickets).
+`docs/reference/training-principles/` holds the training-principle documents `SPEC.md` was
+distilled from. They are already reflected in the spec and the skills: open them only when
+a rule is genuinely unclear, and then ask the user rather than adopting something from them.
+Much of their content was deliberately left out (see `SPEC.md`, "Dropped" and "Left out").
