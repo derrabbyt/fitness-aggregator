@@ -29,6 +29,20 @@ class ApiClient(Protocol):
         """`GET /api/sync/hevy`: lifting sessions in the range, newest first (README, Coach)."""
         ...
 
+    async def set_mfp_goal(self, goal: dict[str, Any]) -> dict[str, Any]:
+        """`fitness_set_goal`: send the MFP goal {kcal, protein_g, carbs_g,
+        fat_g} in exactly one request, never retried. Returns {"write":
+        "sent" | "rejected" | "uncertain" | "not_sent", "stored": the goal the api read
+        back after the write or None, "error": str | None}. Raises when the
+        reply didn't arrive (the write may or may not have happened). Only
+        `mfp_goal.set_once` calls this."""
+        ...
+
+    async def mfp_goal(self) -> dict[str, Any] | None:
+        """`fitness_get_goal`: the MFP goal in force today as {kcal,
+        protein_g, carbs_g, fat_g}, None if MFP has none."""
+        ...
+
 
 @dataclass(frozen=True)
 class ToolCall:
