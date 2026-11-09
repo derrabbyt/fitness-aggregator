@@ -55,6 +55,20 @@ activity:
   run_kcal_discount: null           # setup value, e.g. 0.75
   wrestling_kcal_per_session: null  # setup value
   lifting_kcal_per_session: null    # setup value: kcal counted per lifting session (Hevy)
+  # assumption: MET per activity for sessions reported without kcal
+  # (kcal = MET x 7-day trend weight kg x hours); conservative "general"
+  # values in the style of the Compendium of Physical Activities
+  met_by_activity:
+    running: 8.0
+    cycling: 7.5
+    swimming: 6.0
+    football: 7.0
+    basketball: 6.5
+    tennis: 7.0
+    hiking: 6.0
+    walking: 3.5
+    rowing: 6.0
+    martial_arts: 6.0
 
 measurements:
   waist_every_weeks: 2

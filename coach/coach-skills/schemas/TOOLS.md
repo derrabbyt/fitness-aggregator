@@ -30,7 +30,7 @@ Rule for every write tool: **code validates, code applies.** The model only asks
 | `delete_context_note` | `id` | Removes a wrong note (e.g. a `sport_load` week that wasn't heavy after all). |
 | `mark_baseline_reset` | `exercise_id`, `date`, `reason` | Starts a new baseline for that exercise from `date`. |
 | `set_exercise_paused` | `exercise_id`, `paused`, `reason` | Injury pause on/off. |
-| `set_session_status` | `date` (this or last week), `status` (`skipped`/`done`/`extra`/`clear`), `session_id` (planned session) or `type` + `name` + `kcal` (extra), `extra_id` (clear an extra) | One day only: a planned session skipped or done, an extra session with its kcal, or a report undone. Returns that day. |
+| `set_session_status` | `date` (this or last week), `status` (`skipped`/`done`/`extra`/`clear`), `session_id` (planned session) or `type` + `name` (extra), `extra_id` (clear an extra); for done/extra kcal: `kcal` (the user's number only) or `activity` + `duration_min`, and `kcal_estimate` only when code can't estimate | One day only: a planned session skipped or done, an extra session, or a report undone. kcal order: the user's `kcal` (always wins, `reported`); code's estimate = `activity.met_by_activity` MET × current 7-day trend weight × hours (`estimated`); the model's own `kcal_estimate` when code can't (unknown activity, no trend weight; `model_estimate`). Wrestling and lifting without the user's kcal count their setup values. Missing duration → the tool says to ask once (or pass it if the description makes it obvious). Returns that day and `reported` {kcal, kcal_source, kcal_counted, say}. |
 | `update_training_plan` | `days` (weekday → full session list), `exercise_lists` (name → items or null), optional `from` | Lasting change: a new plan version from `from` (default today, this week at the earliest); earlier days keep their plan. Returns the new plan. |
 | `record_setup_value` | `key` (a `phase_setup` property, `logistics.<key>` for logistics), `value` | During a phase setup: stores the value as soon as it's given, validated against `phase_setup.schema.json` and the phase's params (fat within `macros.fat_g_per_kg_min..max`, week-1 increase within `start.week1_increase_kcal`); returns what's still needed. Tracked lifts are matched to the Hevy history (`exercise_id` null until a lift syncs). During an active phase: changes logistics, photos, time goal, waist at start, tracked lifts; calibration values are refused (proposal), start values are fixed. |
 | `start_phase` | – | Builds the setup from the recorded values, validates it, stores it as pending and returns a **week-1 preview** computed by code (average daily target, MFP goal, daily targets by day type, macros). Code sends the preview card with `confirm_phase_start` / `edit_phase_start`; the phase starts only on confirm (atomic claim, once); code then sets the MFP goal once and adds to the card whether MFP shows it (no model tool can set the MFP goal). |
@@ -44,7 +44,9 @@ changes only through `update_training_plan` and `set_session_status`; the CSV is
 counts with its reported kcal (discounted) only when Strava has no run that day. Each Hevy
 session counts `lifting_kcal_per_session` (a planned lift marked done without a Hevy session
 counts the same). Planned wrestling counts `wrestling_kcal_per_session` unless reported
-skipped. Extras count with their reported kcal (runs discounted). Optional sessions that
+skipped. Extras count with their stored kcal, whatever the source (runs discounted, so a run
+without Strava estimated from its duration is discounted like a synced one); wrestling and
+lifting extras without kcal count their setup values. Optional sessions that
 didn't happen count nothing and need no report.
 
 Buttons (`approve_proposal`, `reject_proposal`, `counter_proposal`, `confirm_phase_start`, …)

@@ -43,6 +43,8 @@ class Coach:
         registry: Registry | None = None,
     ):
         self.db = Database(db_path)
+        # The coach's state directory (state/coach): the database and stored files such as photos.
+        self.state_dir = Path(db_path).parent
         self.api = api
         self.model = model
         self.clock = clock

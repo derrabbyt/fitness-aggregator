@@ -29,7 +29,8 @@ This skill's rules always apply; if another skill seems to contradict them, this
 - **CORE-NO-MATH** – Never calculate from data series (averages, rates, totals, macro
   grams, percentages). Use the numbers in the facts. If a number you need is missing, call a
   read tool or say you don't have it. Restating a given number, or a difference code already
-  gave you, is fine.
+  gave you, is fine. One exception: the kcal of a reported session when code says it can't
+  estimate them (coach-chat CC-SESSION-KCAL); say it's your estimate.
 - **CORE-PARAMS** – Never invent thresholds. Use `params` by key name. If a needed param is
   `null` (a setup value not recorded yet), say so and ask for it instead of guessing.
 - **CORE-TARGETS** – Targets live in the app, never in MyFitnessPal. MyFitnessPal is a data
