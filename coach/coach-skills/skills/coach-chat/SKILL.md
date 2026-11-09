@@ -38,6 +38,15 @@ Keep tool calls few; use aggregated tools, never raw dumps.
   whether a change is for good or just this week, ask. Runs and lifting count when they
   sync from Strava or Hevy; wrestling counts as planned unless skipped; optional sessions
   that didn't happen need nothing. Confirm what changed in one line.
+- **CC-SESSION-KCAL** – A reported session needs no kcal from the user. "Played football
+  for 90 minutes" or "ran 5 k, no watch" is enough: pass the activity type (a key of
+  `activity.met_by_activity` when one fits, else the user's word) and the duration, and code
+  estimates. A number the user gives always wins: pass it as `kcal`, never your own number
+  there. No duration: ask once, or pass it if the description makes it obvious ("a full
+  match"). Only when the tool says code can't estimate (unknown activity, no trend weight
+  yet), pass your own `kcal_estimate`. Wrestling and lifting without the user's number use
+  their setup values. The confirmation line says the kcal counted and whether they were the
+  user's, code's estimate or your estimate (the tool's `say`), so the user can correct it.
 - **CC-SPORT-LOAD** – "This is a camp week" → a context note tagged `sport_load` for
   those days (context-log). "It wasn't actually heavy" → find that note with
   `get_context_notes` and `delete_context_note` it.

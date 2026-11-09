@@ -6,7 +6,8 @@
   only through the chat; the CSV is never read again.
 - Lasting changes (`update_training_plan`) add a plan version valid from a
   date, so past days keep the plan they had. Single days (`set_session_status`)
-  get a planned session skipped or done, or an extra session with its kcal.
+  get a planned session skipped or done, or an extra session; its kcal are
+  the user's, or estimated (`session_kcal.resolve`).
 - `counted_activity(...)` turns one day's plan, synced data and reports into
   the kcal that day's sessions add to its daily target;
   `counted_activity_on(coach, day, params)` loads those inputs from the database.
@@ -28,6 +29,7 @@ from typing import Any
 from .. import history
 from ..ask import ToolError
 from ..registry import registry
+from . import session_kcal
 
 logger = logging.getLogger("fa-coach")
 
@@ -38,6 +40,7 @@ TYPES = ("lift", "run", "wrestling", "other")
 TIME_PATTERN = r"^(([01][0-9]|2[0-3]):[0-5][0-9]|morning|midday|afternoon|evening)$"
 GRID_GAP_ROWS = 3  # this many blank rows end the week grid; the exercise lists follow
 MAX_KCAL = 3000
+SETUP_KCAL = {"wrestling": "wrestling_kcal_per_session", "lift": "lifting_kcal_per_session"}
 
 Date = datetime.date
 
@@ -174,7 +177,8 @@ def exercise_lists(coach, day: Date | None = None) -> dict[str, list[dict[str, A
 def statuses(coach, day: Date) -> list[dict[str, Any]]:
     """The user's reports for `day`: planned sessions skipped or done, extras."""
     rows = coach.db.all(
-        "SELECT id, session_id, status, type, name, kcal FROM session_statuses WHERE date = ? ORDER BY created_at, id",
+        "SELECT id, session_id, status, type, name, kcal, kcal_source, activity, duration_min, met, trend_weight_kg"
+        " FROM session_statuses WHERE date = ? ORDER BY created_at, id",
         (day.isoformat(),),
     )
     return [dict(row) for row in rows]
@@ -192,11 +196,11 @@ def _day_view(coach, day: Date) -> dict[str, Any]:
     sessions = []
     for session in plan["days"][WEEKDAYS[day.weekday()]] if plan else []:
         status = by_session.get(session["id"])
-        sessions.append(
-            {**session, "status": status["status"] if status else None, "kcal": status["kcal"] if status else None}
-        )
+        sessions.append({**session, "status": status["status"] if status else None,
+                         "kcal": status["kcal"] if status else None,
+                         "kcal_source": status["kcal_source"] if status else None})
     extras = [
-        {"extra_id": s["id"], "type": s["type"], "name": s["name"], "kcal": s["kcal"]}
+        {"extra_id": s["id"], "type": s["type"], "name": s["name"], "kcal": s["kcal"], "kcal_source": s["kcal_source"]}
         for s in reported
         if s["status"] == "extra"
     ]
@@ -233,7 +237,10 @@ def counted_activity(
     Each Hevy session counts lifting_kcal_per_session; a planned lift marked
     done with no Hevy session that day counts the same. Planned wrestling counts
     unless reported skipped. Extras count with their reported kcal (runs
-    discounted). Optional sessions that didn't happen count nothing.
+    discounted); a wrestling or lifting extra without kcal counts its setup
+    value. Reported kcal may be the user's, code's estimate or the model's
+    (`kcal_source`); all count alike. Optional sessions that didn't happen
+    count nothing.
 
     Returns {date, kcal, sessions, types}: `sessions` in the weekly-facts
     session shape (type, source, status done/planned/skipped, kcal_counted,
@@ -276,7 +283,10 @@ def counted_activity(
         elif kind == "other" and report["kcal"] is not None:
             add(kind, "manual", "done", report["kcal"], name)
     for extra in (s for s in statuses if s["status"] == "extra"):
-        kcal = extra["kcal"] * (param("run_kcal_discount") if extra["type"] == "run" else 1)
+        if extra["kcal"] is None and extra["type"] in SETUP_KCAL:
+            kcal = param(SETUP_KCAL[extra["type"]])
+        else:
+            kcal = (extra["kcal"] or 0) * (param("run_kcal_discount") if extra["type"] == "run" else 1)
         add(extra["type"], "manual", "done", kcal, extra.get("name"))
     counted = [s for s in sessions if s["status"] != "skipped"]
     total = round(sum(s["kcal_counted"] for s in counted), 2)
@@ -398,11 +408,18 @@ async def update_training_plan(coach, args: dict[str, Any], now: datetime.dateti
 @registry.tool(
     "set_session_status",
     "Report one day of this week (or last week, for late reports): a planned session `skipped` or `done` "
-    "(`session_id` from get_training_plan, e.g. \"fri-1\"), an `extra` session (`type`, short `name`, its `kcal` "
-    "as the user gives it), or `clear` to undo a report (`session_id`, or `extra_id` of an extra). "
+    "(`session_id` from get_training_plan, e.g. \"fri-1\"), an `extra` session (`type`, short `name`), or `clear` "
+    "to undo a report (`session_id`, or `extra_id` of an extra). "
+    "kcal for done and extra sessions: `kcal` only as the user gives it (always wins); otherwise `activity` (a key "
+    "of the core param `activity.met_by_activity`, e.g. running, cycling, football, martial_arts, or the user's "
+    "word) + `duration_min`, and code estimates. Only when code says it can't (unknown activity, no trend weight) "
+    "pass your own `kcal_estimate`. A missing duration: ask once, or pass it if the description makes it obvious. "
+    "Wrestling and lifting without the user's kcal count their setup values per session. "
     "Counting: runs and lifting count on their own when they sync (Strava, Hevy), so don't add those as extras; "
-    "a planned run marked done counts with `kcal` only if it won't sync. Wrestling counts as planned unless "
-    "skipped. Optional sessions that didn't happen need no report. Returns that day; confirm in one line.",
+    "a planned run marked done counts its kcal only if it won't sync. Wrestling counts as planned unless "
+    "skipped. Optional sessions that didn't happen need no report. Returns that day and `reported` (kcal, "
+    "kcal_source reported/estimated/model_estimate, kcal_counted, `say`); confirm in one line with the kcal "
+    "counted and whether they were estimated.",
     {
         "type": "object",
         "properties": {
@@ -413,6 +430,9 @@ async def update_training_plan(coach, args: dict[str, Any], now: datetime.dateti
             "type": {"enum": list(TYPES)},
             "name": {"type": "string", "minLength": 1, "maxLength": 40},
             "kcal": {"type": "number", "minimum": 0, "maximum": MAX_KCAL},
+            "activity": {"type": "string", "minLength": 1, "maxLength": 40},
+            "duration_min": {"type": "number", "exclusiveMinimum": 0, "maximum": 600},
+            "kcal_estimate": {"type": "number", "minimum": 0, "maximum": MAX_KCAL},
         },
         "required": ["date", "status"],
         "additionalProperties": False,
@@ -426,14 +446,11 @@ async def set_session_status(coach, args: dict[str, Any], now: datetime.datetime
         raise ToolError("sessions can be reported for this week and last week only")
     status, db, at = args["status"], coach.db, now.isoformat(timespec="seconds")
     if status == "extra":
-        if "type" not in args or "kcal" not in args:
-            raise ToolError("an extra session needs its type and kcal; ask the user for the kcal")
-        db.execute(
-            "INSERT INTO session_statuses (id, date, session_id, status, type, name, kcal, created_at)"
-            " VALUES (?, ?, NULL, 'extra', ?, ?, ?, ?)",
-            (f"x_{secrets.token_hex(4)}", day.isoformat(), args["type"], args.get("name"), args["kcal"], at),
-        )
-        return _day_view(coach, day)
+        if "type" not in args:
+            raise ToolError("an extra session needs its type")
+        kcal = session_kcal.resolve(coach, args, args["type"], now, required=True)
+        _insert(db, f"x_{secrets.token_hex(4)}", day, None, "extra", args["type"], args.get("name"), kcal, at)
+        return {**_day_view(coach, day), "reported": _reported(coach, args["type"], kcal)}
     if status == "clear" and "extra_id" in args:
         deleted = db.execute(
             "DELETE FROM session_statuses WHERE id = ? AND date = ? AND status = 'extra'",
@@ -450,14 +467,45 @@ async def set_session_status(coach, args: dict[str, Any], now: datetime.datetime
     if status == "clear":
         db.execute("DELETE FROM session_statuses WHERE date = ? AND session_id = ?", (day.isoformat(), session["id"]))
         return _day_view(coach, day)
-    if status == "done" and session["type"] == "other" and "kcal" not in args:
-        raise ToolError(f"{session['name']} counts only with its kcal; ask the user")
+    if status == "skipped":
+        _insert(db, f"s_{secrets.token_hex(4)}", day, session["id"], status, session["type"], session["name"], {}, at)
+        return _day_view(coach, day)
+    kcal = session_kcal.resolve(coach, args, session["type"], now, required=session["type"] != "run")
+    _insert(db, f"s_{secrets.token_hex(4)}", day, session["id"], status, session["type"], session["name"], kcal, at)
+    return {**_day_view(coach, day), "reported": _reported(coach, session["type"], kcal)}
+
+
+_KCAL_COLUMNS = ("kcal", "kcal_source", "activity", "duration_min", "met", "trend_weight_kg")
+
+
+def _insert(db, id_: str, day: Date, session_id: str | None, status: str, type_: str, name: str | None,
+            kcal: dict[str, Any], at: str) -> None:
+    """One report; a planned session's report replaces its earlier one."""
+    columns = ", ".join(_KCAL_COLUMNS)
     db.execute(
-        "INSERT INTO session_statuses (id, date, session_id, status, type, name, kcal, created_at)"
-        " VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        f"INSERT INTO session_statuses (id, date, session_id, status, type, name, created_at, {columns})"
+        f" VALUES (?, ?, ?, ?, ?, ?, ?, {', '.join('?' * len(_KCAL_COLUMNS))})"
         " ON CONFLICT (date, session_id) WHERE session_id IS NOT NULL DO UPDATE SET"
-        " status = excluded.status, kcal = excluded.kcal, created_at = excluded.created_at",
-        (f"s_{secrets.token_hex(4)}", day.isoformat(), session["id"], status, session["type"], session["name"],
-         args.get("kcal"), at),
+        " status = excluded.status, created_at = excluded.created_at, "
+        + ", ".join(f"{c} = excluded.{c}" for c in _KCAL_COLUMNS),
+        (id_, day.isoformat(), session_id, status, type_, name, at, *(kcal.get(c) for c in _KCAL_COLUMNS)),
     )
-    return _day_view(coach, day)
+
+
+def _reported(coach, type_: str, kcal: dict[str, Any]) -> dict[str, Any]:
+    """What the confirmation line needs: the kcal, where they came from and
+    what they count (null while a needed setup value isn't set yet)."""
+    setup = coach.skills.params()["activity"]
+    if kcal.get("kcal") is None:
+        counted = setup.get(SETUP_KCAL[type_]) if type_ in SETUP_KCAL else None
+    elif type_ == "run":
+        discount = setup.get("run_kcal_discount")
+        counted = None if discount is None else round(kcal["kcal"] * discount, 2)
+    else:
+        counted = kcal["kcal"]
+    out = {"kcal": kcal.get("kcal"), "kcal_source": kcal.get("kcal_source"), "kcal_counted": counted,
+           "say": kcal.get("say")}
+    if "estimate" in kcal:
+        out["estimate"] = kcal["estimate"]
+    return out
+
