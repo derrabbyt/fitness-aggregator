@@ -56,7 +56,7 @@
       "required": ["rep_range", "e1rm_same_band_pct", "compare_best_of_last_sessions", "min_sessions_for_compare", "lift_recency_days", "progression_min_share", "stall_sessions", "decline_sessions_for_deload", "deload_min_lifts_declining", "big_drop_pct_ask_reset", "volume_note_max_sets_per_session", "volume_note_max_sets_per_muscle_per_session"],
       "properties": {
         "rep_range": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "integer", "minimum": 1 }, "description": "Working sets with reps in this range (inclusive) count for progression." },
-        "e1rm_same_band_pct": { "type": "number", "minimum": 0, "description": "At a different load, an estimated 1RM within ±this % of the reference is 'same'." },
+        "e1rm_same_band_pct": { "type": "number", "minimum": 0, "description": "When load and reps move in opposite directions, an estimated 1RM within ±this % of the reference is 'same'. More load or reps with neither less is always improved." },
         "compare_best_of_last_sessions": { "type": "integer", "minimum": 1 },
         "min_sessions_for_compare": { "type": "integer", "minimum": 1 },
         "lift_recency_days": { "type": "integer", "minimum": 1 },

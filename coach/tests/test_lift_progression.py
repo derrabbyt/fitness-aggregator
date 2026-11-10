@@ -3,7 +3,8 @@ working set with 4-20 reps against the best of its previous 3 sessions;
 only exercises classified as counting decide `progression_met`, stalls and
 the deload signal.
 
-Worked numbers: Epley e1RM = load x (1 + reps / 30). 100 x 8 = 126.67;
+Worked numbers: Epley e1RM = load x (1 + reps / 30), used only when load and reps move in
+opposite directions. 100 x 8 = 126.67;
 102.5 x 7 = 126.42 (-0.2 %: same); 105 x 8 = 133.0 (+5 %: improved);
 85 x 8 = 107.67 (-15 %: a possible reset).
 """
@@ -85,6 +86,35 @@ async def test_same_load_compares_reps_and_a_different_load_compares_e1rm_within
     result = {e["name"]: e["status"] for e in progression.session(coach, "s2")["exercises"]}
     assert result == {"A": "same", "B": "declined", "C": "improved", "E": "same"}
     assert judged(coach, "s2", "B")["no_progress_streak"] == 1 and judged(coach, "s2", "B")["decline_streak"] == 1
+
+
+async def compared(coach, api, clock, before: tuple[float, int], *after: tuple[float, int]) -> list[str]:
+    """Status of each `after` set (its own exercise) against `before`."""
+    titles = [f"L{k}" for k in range(len(after))]
+    await synced(coach, api, clock, [
+        session("s1", "2026-11-16", *[bench(before, title=t) for t in titles]),
+        session("s2", "2026-11-19", *[bench(a, title=t) for a, t in zip(after, titles)]),
+    ])
+    return [judged(coach, "s2", t)["status"] for t in titles]
+
+
+async def test_a_micro_progression_counts_even_inside_the_e1rm_band(coach, api, clock):
+    # 100 x 8 -> 100.5 x 8 is e1RM +0.5 %, inside the 1 % band, but more load at the same reps
+    assert await compared(coach, api, clock, (100, 8), (100.5, 8), (99.5, 8), (100.5, 9)) == [
+        "improved", "declined", "improved"]
+    assert judged(coach, "s2", "L0")["is_pr"] is True
+
+
+async def test_one_more_rep_at_the_same_load_improves_and_one_fewer_declines(coach, api, clock):
+    assert await compared(coach, api, clock, (100, 8), (100, 9), (100, 7), (100, 8), (99.5, 7)) == [
+        "improved", "declined", "same", "declined"]
+
+
+async def test_load_and_reps_moving_in_opposite_directions_compare_e1rm_within_one_percent(coach, api, clock):
+    # 100 x 8 = 126.67; 105 x 6 = 126.0 (-0.5 %); 110 x 6 = 132.0 (+4 %); 95 x 9 = 123.5 (-2.5 %);
+    # 99 x 9 = 128.7 (+1.6 %)
+    assert await compared(coach, api, clock, (100, 8), (105, 6), (110, 6), (95, 9), (99, 9)) == [
+        "same", "improved", "declined", "improved"]
 
 
 async def test_the_first_session_starts_the_history_without_a_pr(coach, api, clock):
@@ -338,7 +368,8 @@ async def test_d_gaining_but_not_progressing_flags_training_and_the_fallback_rep
     t = facts["training"]
     assert (t["counted_lifts"], t["improved_lifts"], t["progression_met"]) == (2, 0, False)
     assert {lift["name"]: lift["status"] for lift in t["tracked_lifts"]} == {"Bench Press": "declined",
-                                                                              "Pull Up": "same"}
+                                                                              "Pull Up": "declined"}
+    # pull-ups: same reps at a slightly lower bodyweight trend, so less effective load
     stored = weekly_checkin.stored(phase, "2026-W48")
     assert stored["verdict"]["scenario"] == "D" and stored["verdict"]["direction"] == "hold"
     assert [f["code"] for f in stored["verdict"]["flags"]] == ["training_needs_look"]

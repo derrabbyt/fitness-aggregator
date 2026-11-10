@@ -16,9 +16,11 @@ Per session of an exercise:
   plus added load, minus assistance.
 - Compared with the best of the previous `compare_best_of_last_sessions`
   sessions of its history (needing `min_sessions_for_compare` sessions
-  including this one). Same effective load: more reps improved, same reps
-  same, fewer declined. Different load: estimated 1RM (Epley, w x (1 + r/30))
-  within ±`e1rm_same_band_pct` % is same, above improved, below declined.
+  including this one). Effective load and reps both at least as high, one
+  higher: improved (micro-progressions count, e.g. +0.5 kg at the same reps);
+  both at most as high, one lower: declined; both equal: same. Only when they
+  move in opposite directions: estimated 1RM (Epley, w x (1 + r/30)) within
+  ±`e1rm_same_band_pct` % is same, above improved, below declined.
 - Not judged: the first session of an exercise or after a baseline reset
   (`new_baseline`, starts the history, no PR); the first session after a
   break longer than `lift_recency_days` (`not_judged`, `after_break`; it joins
@@ -152,9 +154,17 @@ def e1rm(load: float, reps: int) -> float:
 
 
 def compare(cur: dict[str, Any], ref: dict[str, Any], band_pct: float) -> str:
-    """improved / same / declined for two set summaries."""
-    if abs(cur["effective_load_kg"] - ref["effective_load_kg"]) < SAME_LOAD_KG:
-        return "improved" if cur["reps"] > ref["reps"] else "declined" if cur["reps"] < ref["reps"] else "same"
+    """improved / same / declined for two set summaries. Load and reps both
+    at least as high (one higher) improved, both at most as high (one lower)
+    declined, both equal same; only when they move in opposite directions,
+    the e1RM within ±`band_pct` % is same."""
+    diff = cur["effective_load_kg"] - ref["effective_load_kg"]
+    load = 0 if abs(diff) < SAME_LOAD_KG else 1 if diff > 0 else -1
+    reps = (cur["reps"] > ref["reps"]) - (cur["reps"] < ref["reps"])
+    if load >= 0 and reps >= 0:
+        return "same" if load == reps == 0 else "improved"
+    if load <= 0 and reps <= 0:
+        return "declined"
     change = (cur["e1rm_kg"] / ref["e1rm_kg"] - 1) * 100 if ref["e1rm_kg"] else 0.0
     return "improved" if change > band_pct else "declined" if change < -band_pct else "same"
 

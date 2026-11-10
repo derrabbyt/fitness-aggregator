@@ -96,7 +96,7 @@ One continuous phase: the reverse is the first stage of the bulk.
 ## Training data rules
 
 - Progress = more load or reps at the same execution. Micro-progressions count.
-- A session is judged by its heaviest working set with 4–20 reps (warm-ups never count). Same load: more reps = improved. Different load: estimated 1RM (Epley), within ±1% = same.
+- A session is judged by its heaviest working set with 4–20 reps (warm-ups never count). More load or reps and neither less = improved (even +0.5 kg); less of either and neither more = declined; both equal = same. Only when load goes up and reps down (or the reverse): estimated 1RM (Epley), within ±1% = same.
 - Every exercise logged in Hevy is recorded and classified as counting or excluded (excluded: still logged and PRs named, no stall flags, no effect on calories). Alternatives (e.g. pull-ups vs lat pulldown) are separate exercises with their own history.
 - A new exercise's first session starts its history: no PR, not judged.
 - After more than ~2 weeks off an exercise, the first session back isn't judged; the next one is compared with the pre-break best.

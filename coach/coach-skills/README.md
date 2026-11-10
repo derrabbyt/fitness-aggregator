@@ -106,7 +106,7 @@ changes the schema, the skills that reference it, the examples, and reruns
 | `training.deload_min_lifts_declining`, `training.decline_sessions_for_deload` | 2 counting lifts, 2 sessions in a row | SPEC says "several lifts declining" |
 | `training.big_drop_pct_ask_reset` | 15 (% estimated-1RM drop vs the best recent session) | when the agent asks "was this a reset?" |
 | `training.rep_range` | 4–20 | a session's performance = its heaviest working set with this many reps (warm-ups never count) |
-| `training.e1rm_same_band_pct` | 1 | at a different load, estimated 1RMs (Epley) within ±1 % are "same" |
+| `training.e1rm_same_band_pct` | 1 | only when load and reps move in opposite directions: estimated 1RMs (Epley) within ±1 % are "same" (more load or reps and neither less is always improved) |
 | `training.stall_sessions` | 3 | a stall = this many sessions in a row without progress |
 | `training.min_sessions_for_compare` | 2 (the judged session included) | the first session only starts a lift's history |
 | `training.compare_best_of_last_sessions` | 3 | SPEC says "best of last 2–3" |
