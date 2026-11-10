@@ -375,6 +375,16 @@ async def test_a_request_based_on_a_failed_adherence_week_is_blocked(phase, api,
     assert "adherence_gate" in result["guardrail"]["violations"]
 
 
+async def test_a_phase_review_proposal_is_not_accepted(phase, api, clock, model, outbox):
+    clock.current = at("2026-12-08", 12)
+    model.script(tool_call("propose_change", type="calibration_change", new_values={"run_kcal_discount": 0.8},
+                           reason="Drifted.", source="phase_review"), reply("OK."))
+    await phase.on_message("review my phase")
+
+    assert model.results(len(model.requests) - 2)[0].is_error
+    assert proposals.listing(phase) == []
+
+
 async def test_calibration_values_out_of_range_are_blocked(phase, api, clock, model, outbox):
     result = await request(phase, clock, model, type="calibration_change",
                            new_values={"run_kcal_discount": 1.5, "wrestling_kcal_per_session": 500})

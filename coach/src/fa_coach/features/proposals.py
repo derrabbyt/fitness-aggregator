@@ -263,7 +263,7 @@ PROPOSE_SCHEMA = {
             "description": "calibration_change: run_kcal_discount, wrestling_kcal_per_session, lifting_kcal_per_session.",
         },
         "reason": {"type": "string"},
-        "source": {"enum": ["user_request", "user_counter", "phase_review"]},
+        "source": {"enum": ["user_request", "user_counter"]},
         "based_on_week": {"type": ["string", "null"], "pattern": "^[0-9]{4}-W[0-9]{2}$"},
         "is_phase_first_change": {"type": "boolean"},
         "counter_of": {"type": ["string", "null"]},

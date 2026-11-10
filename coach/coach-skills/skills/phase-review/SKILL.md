@@ -21,8 +21,8 @@ Input: `phase_summary` (code), the latest photo review if any, the coach profile
 5. **PR-GOAL** – Ask whether the goal and any time goal still stand
    (`time_goal_weeks`); mention the phase time rule if near.
 6. **PR-CALIBRATION** – For each item in `calibration_check` with `drifted: true`, propose
-   the `suggested` value with `propose_change` (`type: calibration_change`,
-   `source: phase_review`) and explain the evidence in one sentence. The user confirms.
+   the `suggested` value with `propose_change` (`type: calibration_change`; the phase
+   review isn't in coach v1, so `propose_change` has no `phase_review` source yet) and explain the evidence in one sentence. The user confirms.
 7. **PR-PHOTOS** – On `is_first_review_of_phase` (and photos on): ask whether photos are
    worth keeping, given `comparable_check_ins` vs `check_ins`.
 8. **PR-END** – If `reason` is `phase_end`: summarise, then ask what comes next (phase

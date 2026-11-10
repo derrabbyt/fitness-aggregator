@@ -10,7 +10,7 @@
     "id": { "type": "string" },
     "type": { "enum": ["calorie_change", "calibration_change"] },
     "source": {
-      "enum": ["weekly_decision", "user_counter", "user_request", "phase_start", "phase_review"],
+      "enum": ["weekly_decision", "user_counter", "user_request", "phase_start"],
       "description": "user_counter: user replied to a proposal with their own number. user_request: user asked for a change unprompted."
     },
     "status": { "enum": ["open", "approved", "rejected", "superseded", "blocked_by_guardrail"] },
