@@ -9,8 +9,9 @@ Code has judged every exercise of the session (`session.exercises`). Progress = 
 or reps at the same execution; micro-progressions count (+0.5 kg at the same reps is
 improved). Only when load and reps move in opposite directions does code compare
 estimated 1RMs (±`training.e1rm_same_band_pct` % = same). For bodyweight exercises (dips,
-pull-ups) bodyweight gained counts as load: code already includes it in
-`top_set.effective_load_kg`, `status` and `is_pr`. Take `status`, `is_pr`, `new_stall` and
+pull-ups) bodyweight gained counts as load once the trend moved at least
+`training.bodyweight_same_load_kg` (smaller changes are the same load): code already
+includes it in `top_set.effective_load_kg`, `status` and `is_pr`. Take `status`, `is_pr`, `new_stall` and
 `possible_reset` as given; don't re-judge from the sets.
 
 ## What to say

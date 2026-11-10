@@ -38,6 +38,7 @@ training:
   # machines, most bigger isolation work) or excluded (prehab/rehab, slow movers); the user can flip any.
   rep_range: [4, 20]                # performance = heaviest working set with this many reps; warm-ups never count
   e1rm_same_band_pct: 1             # load and reps in opposite directions: estimated 1RM (Epley) within ±1 % = same
+  bodyweight_same_load_kg: 1.0      # bodyweight lifts: a bodyweight change under 1 kg since the compared session is the same load (user)
   compare_best_of_last_sessions: 3  # "best of last 2-3": best of up to 3 previous sessions
   min_sessions_for_compare: 2       # sessions in a lift's history, the judged one included (the first only starts it)
   lift_recency_days: 14             # counted only if trained within this window; after a longer break the first session back isn't judged

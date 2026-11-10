@@ -13,7 +13,8 @@ Per session of an exercise:
 - Performance = the heaviest working set with `training.rep_range` reps
   (warm-ups and sets outside the range never count). Bodyweight exercises
   use the effective load: bodyweight (7-day trend, else the latest weigh-in)
-  plus added load, minus assistance.
+  plus added load, minus assistance. A bodyweight change smaller than
+  `bodyweight_same_load_kg` since the compared session is no change in load.
 - Compared with the best of the previous `compare_best_of_last_sessions`
   sessions of its history (needing `min_sessions_for_compare` sessions
   including this one). Effective load and reps both at least as high, one
@@ -65,7 +66,7 @@ OTHER_LOCATION_TAG = "other_location"
 RESET_NOTE_TAGS = ("baseline_reset", "injury", "pain")
 JUDGED = ("improved", "same", "declined")
 CLASSES = ("counts", "excluded")
-SAME_LOAD_KG = 0.01
+SAME_LOAD_KG = 0.01  # rounding noise
 
 
 # --- settings ----------------------------------------------------------------------
@@ -153,11 +154,17 @@ def e1rm(load: float, reps: int) -> float:
     return round(load * (1 + reps / 30), 2)
 
 
-def compare(cur: dict[str, Any], ref: dict[str, Any], band_pct: float) -> str:
+def compare(cur: dict[str, Any], ref: dict[str, Any], band_pct: float, bodyweight_same_kg: float = 0.0) -> str:
     """improved / same / declined for two set summaries. Load and reps both
     at least as high (one higher) improved, both at most as high (one lower)
     declined, both equal same; only when they move in opposite directions,
-    the e1RM within ±`band_pct` % is same."""
+    the e1RM within ±`band_pct` % is same. For bodyweight lifts, a
+    bodyweight change under `bodyweight_same_kg` is no change in load: `cur`
+    is compared at the reference's bodyweight."""
+    bw_cur, bw_ref = cur.get("bodyweight_kg"), ref.get("bodyweight_kg")
+    if bw_cur is not None and bw_ref is not None and abs(bw_cur - bw_ref) < bodyweight_same_kg:
+        effective = round(cur["effective_load_kg"] - bw_cur + bw_ref, 2)
+        cur = {**cur, "effective_load_kg": effective, "e1rm_kg": e1rm(effective, cur["reps"])}
     diff = cur["effective_load_kg"] - ref["effective_load_kg"]
     load = 0 if abs(diff) < SAME_LOAD_KG else 1 if diff > 0 else -1
     reps = (cur["reps"] > ref["reps"]) - (cur["reps"] < ref["reps"])
@@ -208,9 +215,10 @@ class _Judge:
             if s["type"] == "warmup" or s["reps"] is None or not low <= s["reps"] <= high:
                 continue
             load = s["weight_kg"] or 0.0
-            effective = round(self.bodyweight(day) + sign * load, 2) if sign else load
+            bodyweight = self.bodyweight(day) if sign else None
+            effective = round(bodyweight + sign * load, 2) if sign else load
             summary = {"load_kg": load, "reps": s["reps"], "effective_load_kg": effective,
-                       "e1rm_kg": e1rm(effective, s["reps"])}
+                       "e1rm_kg": e1rm(effective, s["reps"]), "bodyweight_kg": bodyweight}
             if best is None or (effective, s["reps"]) > (best["effective_load_kg"], best["reps"]):
                 best = summary
         return best
@@ -282,14 +290,15 @@ class _Judge:
             else:
                 recent = pool[-p["compare_best_of_last_sessions"]:]
                 best = max(recent, key=lambda t: (t["e1rm_kg"], t["reps"]))
-                status = compare(top, best, p["e1rm_same_band_pct"])
+                band, same_bw = p["e1rm_same_band_pct"], p["bodyweight_same_load_kg"]
+                status = compare(top, best, band, same_bw)
                 drop = round(max(0.0, (best["e1rm_kg"] - top["e1rm_kg"]) / best["e1rm_kg"] * 100), 1) \
                     if best["e1rm_kg"] else 0.0
                 no_progress = 0 if status == "improved" else no_progress + 1
                 decline = decline + 1 if status == "declined" else 0
                 entry.update(
                     status=status, best_recent=best, sessions_considered=len(recent),
-                    is_pr=compare(top, best_ever, p["e1rm_same_band_pct"]) == "improved",
+                    is_pr=compare(top, best_ever, band, same_bw) == "improved",
                     drop_pct_vs_best_recent=drop,
                     possible_reset=drop >= p["big_drop_pct_ask_reset"]
                     and not self._notes_on(occ["date"], exercise_id, RESET_NOTE_TAGS),

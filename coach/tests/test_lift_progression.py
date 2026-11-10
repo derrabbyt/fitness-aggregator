@@ -137,6 +137,28 @@ async def test_bodyweight_gained_counts_as_added_load(coach, api, clock):
     assert judged(coach, "s2", "Dip")["top_set"]["effective_load_kg"] == 92.0
 
 
+async def test_a_bodyweight_change_under_one_kg_is_the_same_load(coach, api, clock):
+    # trend 80.0 -> 81.2 (+1.2 kg) at 8 reps: improved; then 80.9 (-0.3 kg vs 81.2) at 8 reps: same
+    pull = lambda: exercise("Pull Up", (None, 8), exercise_type="bodyweight_reps")  # noqa: E731
+    await synced(coach, api, clock, [session("s1", "2026-11-05", pull()), session("s2", "2026-11-16", pull()),
+                                     session("s3", "2026-11-26", pull())],
+                 weigh_ins={**days("2026-10-30", 7, 80.0), **days("2026-11-10", 7, 81.2),
+                            **days("2026-11-20", 7, 80.9)})
+
+    assert statuses(coach, ["s2", "s3"], "Pull Up") == ["improved", "same"]
+    assert [judged(coach, s, "Pull Up")["is_pr"] for s in ("s2", "s3")] == [True, False]
+
+
+async def test_bodyweight_drift_is_no_pr(coach, api, clock):
+    # trend 80.0 -> 80.5 at the same 8 reps and the same 10 kg added
+    dips = lambda: exercise("Dip", (10, 8), exercise_type="bodyweight_reps")  # noqa: E731
+    await synced(coach, api, clock, [session("s1", "2026-11-05", dips()), session("s2", "2026-11-16", dips())],
+                 weigh_ins={**days("2026-10-30", 7, 80.0), **days("2026-11-10", 7, 80.5)})
+
+    s2 = judged(coach, "s2", "Dip")
+    assert (s2["status"], s2["is_pr"]) == ("same", False)
+
+
 async def test_three_sessions_without_progress_are_a_stall_flagged_once_and_never_for_excluded(
         coach, api, clock, model):
     abs_ = lambda: exercise("Crunch", (20, 12))  # noqa: E731
@@ -368,8 +390,8 @@ async def test_d_gaining_but_not_progressing_flags_training_and_the_fallback_rep
     t = facts["training"]
     assert (t["counted_lifts"], t["improved_lifts"], t["progression_met"]) == (2, 0, False)
     assert {lift["name"]: lift["status"] for lift in t["tracked_lifts"]} == {"Bench Press": "declined",
-                                                                              "Pull Up": "declined"}
-    # pull-ups: same reps at a slightly lower bodyweight trend, so less effective load
+                                                                              "Pull Up": "same"}
+    # pull-ups: same reps at a trend 82.0 -> 81.91, under bodyweight_same_load_kg: the same load
     stored = weekly_checkin.stored(phase, "2026-W48")
     assert stored["verdict"]["scenario"] == "D" and stored["verdict"]["direction"] == "hold"
     assert [f["code"] for f in stored["verdict"]["flags"]] == ["training_needs_look"]
