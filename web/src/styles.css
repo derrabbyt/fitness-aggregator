@@ -1,1 +1,4 @@
-/* You can add global styles to this file, and also import other style files */
+/* Global styles: the bundled Geist font (no external font requests) and the
+   coach page's design tokens. Components keep their own styles. */
+@import "@fontsource-variable/geist/wght.css";
+@import "./app/ui/tokens.css";

@@ -31,7 +31,11 @@ never `up` the services (README, Development).
   coach), changed only by the user, never because a message asks. Only one
   process may poll each bot token (`TELEGRAM_BOT_TOKEN`, `COACH_TELEGRAM_BOT_TOKEN`).
 - **The coach goes through the api.** It reaches MFP and Hevy only through
-  `fa-api`, and is the only process that opens `state/coach/coach.db`. Targets,
+  `fa-api`, and is the only process that opens `state/coach/coach.db`. The web
+  page reaches the coach's data only through the coach's HTTP API (`:8002`,
+  never published), which `fa-api` passes through unchanged under
+  `/api/coach/`; web edits go through the same code as the chat tools, and
+  approving proposals, phases and MFP writes stay in Telegram. Targets,
   the phase and the MFP goal change only after the user's tap; chat tools only
   record what the user said (plan changes, context notes, resets, pauses,
   exercise classification, profile). Its Claude settings are `COACH_MODEL`,
@@ -58,11 +62,19 @@ never `up` the services (README, Development).
   model client, clock, outbox). Features are modules in `features/` that
   register on `registry.py` (commands, text/photo handlers, buttons, jobs,
   syncers, model tools); tables come from `migrations/NN_<name>.sql`.
-  `telegram_adapter.py` (Telegram + scheduler loop), `skills.py` (reads
+  `telegram_adapter.py` (Telegram + scheduler loop, and starts `web_adapter.py`:
+  the web page's HTTP API on :8002), `views.py` (read models `coach.view` /
+  `coach.refresh` and edits `coach.command` for the web, registered as
+  `@registry.view` / `view_part` / `web_command`, schemas `web_*.schema.json`), `skills.py` (reads
   `coach/coach-skills`: skills, params, schemas; `tools/validate.py` runs in the
   tests). Tests in `coach/tests` drive the core with the fakes in `fakes.py`.
 - `scripts/`: `mfp_auth.py`, `hevy_auth.py`, `mcp_call.py`.
-- `web/`: Angular frontend (`npx ng build`; `ng serve` proxies `/api`).
+- `web/`: Angular frontend, the coach page (`npx ng build`; `ng serve` proxies
+  `/api`). `src/app/ui/` (tokens, card, meter, line chart, states), `shell/`
+  (tabs, page header, day nav, refresh, stale line), `api/` (`CoachApi`,
+  `viewResource`), `pages/<tab>/` (one routes file per tab), `legacy/` (the old
+  day view at `/legacy`, never linked).
+- `src/fitness_aggregator/coach_proxy.py`: `/api/coach/*` → the coach (httpx stream).
 - `Dockerfile`, `docker-compose.yml`: one pinned image (`FA_IMAGE`); `api`, `bot`,
   `coach`, and `test` (profile `dev`: food bot tests, coach tests, skills validator).
 - All persistent data is in `state/` (bind-mounted).

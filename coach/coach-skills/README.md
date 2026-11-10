@@ -80,6 +80,7 @@ short history.
 | `phase_summary` | code → phase-review |
 | `phase_setup` | phase-start → `start_phase` tool |
 | `core_params`, `phase_params` | validate the params.yaml files |
+| `web_*` | code (read models, `fa_coach/views.py`) → the web page via `/api/coach/` (no model involved) |
 
 Tools and the exact guardrail checks: `schemas/TOOLS.md`.
 

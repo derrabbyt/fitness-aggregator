@@ -17,13 +17,14 @@ Both use unofficial APIs, which can break or get an account flagged.
 
 | Service | What |
 |---|---|
-| `api` (`fa-api`) | FastAPI + web UI on `:8000` (`/api/day?date=YYYY-MM-DD`, `/api/today`, `/api/sync/{mfp,hevy}` for the coach), and the MFP/Hevy MCP tools on `:8001` (`/mfp/mcp`, `/hevy/mcp`). The only user of the MFP session. |
+| `api` (`fa-api`) | FastAPI + web UI on `:8000` (`/api/day?date=YYYY-MM-DD`, `/api/today`, `/api/sync/{mfp,hevy}` for the coach, `/api/coach/*` passed through to the coach), and the MFP/Hevy MCP tools on `:8001` (`/mfp/mcp`, `/hevy/mcp`). The only user of the MFP session. |
 | `bot` (`fa-bot`) | Food bot (Telegram). Pydantic AI agent on `BOT_MODEL` with the api's MCP tools; voice notes via whisper.cpp. |
-| `coach` (`fa-coach`) | The coach (its own Telegram bot). Syncs MFP and Hevy data through the api into `state/coach/coach.db`, calls Claude through the Anthropic SDK. |
+| `coach` (`fa-coach`) | The coach (its own Telegram bot). Syncs MFP and Hevy data through the api into `state/coach/coach.db`, calls Claude through the Anthropic SDK. Serves the web page's API on `:8002` inside the compose network only. |
 
 `:8000` is published on `FA_BIND`. `:8001` is published on the host's
 `127.0.0.1` only, for Claude Code: anything that reaches it can write to the
-diary.
+diary. The coach's `:8002` isn't published at all: the api passes
+`/api/coach/*` through to it.
 
 ## Development
 
@@ -44,10 +45,25 @@ docker compose run --rm test        # tests on the working tree, no rebuild need
   `docker compose run --rm test`, then `docker compose up -d --build coach`.
 - **Api code** (`src/fitness_aggregator`): `docker compose up -d --build api`
   (this restarts the bot too, since it depends on the api).
-- **Web UI** (`web/`): `docker compose up -d --build api` rebuilds it. No Node
-  on the host; for a live dev server use
+- **Web UI** (`web/`): the coach page (tabs Home · Week · Training · Setup);
+  the old day view is at `/legacy` (by URL only). `docker compose up -d --build api`
+  rebuilds it. No Node on the host; for a live dev server use
   `docker run --rm -it -v ./web:/web -w /web -p 4200:4200 node:22-bookworm-slim sh -c "npm ci && npx ng serve --host 0.0.0.0"`
-  (its `/api` proxy expects the api on the same host's `:8000`).
+  (its `/api` proxy expects the api on the same host's `:8000`). A production
+  build alone: `docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v ./web:/web -w /web node:22-bookworm-slim sh -c "npm ci && npx ng build"`.
+  Shared pieces live in `web/src/app/ui/` (tokens, card, meter, line chart,
+  states), `shell/` (tabs, page header, day navigation, refresh, stale line)
+  and `api/` (the coach API client); each tab has `pages/<tab>/<tab>.routes.ts`.
+- **Coach HTTP API** (`/api/coach/`): the web page reads the coach's data and
+  edits its setup only through it. The coach serves it from its own process
+  (`coach/src/fa_coach/web_adapter.py`, `:8002`, not published) and the api
+  passes `/api/coach/*` through unchanged (`FA_COACH_URL`). `GET
+  /api/coach/<view>?day=…` returns a read model, `POST
+  /api/coach/refresh/<view>` syncs first, `POST /api/coach/<command>` is an
+  edit. Read models are views registered in `coach/src/fa_coach/views.py`'s
+  pattern (`@registry.view`, `@registry.view_part`, `@registry.web_command`),
+  each with a schema `coach/coach-skills/schemas/web_*.schema.json`, tested
+  through the Coach core like everything else.
 - **Dependencies:** `uv.lock`, `bot/uv.lock` and `coach/uv.lock` are pinned.
   To change one, e.g.
   `docker run --rm -u "$(id -u):$(id -g)" -e HOME=/tmp -v ./coach:/w -w /w ghcr.io/astral-sh/uv:0.11.29-debian-slim uv lock --upgrade-package <pkg>`
