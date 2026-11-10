@@ -451,6 +451,10 @@ async def day_summary(date: datetime.date | None = None) -> dict[str, Any]:
     }
 
 
+from .health_inbox import router as health_inbox_router  # noqa: E402
+
+app.include_router(health_inbox_router)  # PoC: Apple Health exports into state/health_inbox
+
 if WEB_DIST.is_dir():
     # Built Angular app; html=True serves index.html for "/".
     app.mount("/", StaticFiles(directory=WEB_DIST, html=True), name="web")

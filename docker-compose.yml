@@ -38,6 +38,8 @@ services:
       TZ: ${TZ:-Europe/Vienna}
       FA_HOST: 0.0.0.0
       FA_TOOLS_HOST: 0.0.0.0
+      # PoC Apple Health inbox (POST /api/health-data): set to require a token.
+      HEALTH_INGEST_TOKEN: ${HEALTH_INGEST_TOKEN:-}
     # Localhost by default. On the server set FA_BIND to its Tailscale IP
     # (100.x.y.z) so the UI is reachable only inside the tailnet.
     ports:
