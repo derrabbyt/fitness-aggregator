@@ -36,8 +36,8 @@ SETUP = {
     "logistics.max_unprompted_messages_per_day": 2,
     "logistics.soft_floor_min_days": 5,
 }
-LIFTS = [{"exercise_id": "bench-press", "bodyweight_exercise": False},
-         {"exercise_id": "pull-up", "bodyweight_exercise": True}]
+CLASSES = [{"exercise_id": "bench-press", "classification": "counts", "reason": "main compound"},
+           {"exercise_id": "pull-up", "classification": "counts", "reason": "main compound"}]
 
 
 @pytest.fixture
@@ -66,7 +66,7 @@ async def start_and_collect(coach, model) -> None:
     model.script(reply("Here is what I read from your history. Confirm?"))
     await coach.on_message("start reverse")
     start = len(model.requests)
-    calls = [("record_setup_value", {"key": "tracked_lifts", "value": LIFTS})]
+    calls = [("classify_exercises", {"exercises": CLASSES})]
     calls += [("record_setup_value", {"key": k, "value": v}) for k, v in SETUP.items()]
     model.script(tool_calls(*calls), tool_call("start_phase"), reply("Preview below."))
     await coach.on_message("yes, all as you said; bench and pull-ups; 0.75, 600, 300, 0.9, +300, no time goal")
@@ -108,8 +108,8 @@ async def test_start_reverse_loads_phase_start_with_the_reverse_skill_and_prefil
     assert prefill["starting_calories_kcal"]["value"] == 2000
     assert prefill["starting_trend_weight_kg"]["value"] == 80.5
     assert prefill["maintenance_estimate_kcal"]["value"] == 2536
-    assert {o["exercise_id"] for o in setup["lift_options"]} >= {"bench-press", "pull-up"}
-    assert "tracked_lifts" in setup["still_needed"] and "lifting_kcal_per_session" in setup["still_needed"]
+    assert {(o["exercise_id"], o["classification"]) for o in setup["exercises"]} == {("bench-press", None), ("pull-up", None)}
+    assert "exercise_classification" in setup["still_needed"] and "lifting_kcal_per_session" in setup["still_needed"]
     assert setup["limits"]["fat_g_per_kg_start"] == [0.8, 1.0]
     assert setup["limits"]["week1_increase_kcal"] == [300, 400]
     assert outbox.texts == ["I read these from your history: ..."]
@@ -165,7 +165,7 @@ async def test_start_phase_refuses_while_values_are_missing(diet_history, model)
 
     result = model.results(start)[0]
     assert result.is_error
-    assert "tracked_lifts" in result.content["error"]
+    assert "exercise_classification" in result.content["error"]
     assert phases.pending_setup(diet_history) is None
 
 
@@ -204,7 +204,7 @@ async def test_full_start_previews_then_confirms_once(diet_history, model, outbo
     assert phase["start_date"] == "2026-11-09"
     assert phase["first_change_applied"] is True
     assert phase["setup"]["logistics"]["weekly_checkin"] == "sun 18:00"
-    assert [lift["name"] for lift in phase["setup"]["tracked_lifts"]] == ["Bench Press", "Pull Up"]
+    assert "Lifts that count for progression: Bench Press, Pull Up." in preview_card.text
     assert coach.active_phase_id() == "reverse_bulk"
     targets = phases.targets(coach)
     assert targets["avg_daily_target_kcal"] == 2300 and targets["mfp_goal_kcal"] == 2300

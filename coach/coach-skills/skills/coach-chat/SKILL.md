@@ -52,6 +52,11 @@ Keep tool calls few; use aggregated tools, never raw dumps.
   `get_context_notes` and `delete_context_note` it.
 - **CC-RESET** – "Reset incline press", "I changed my squat depth", "swapped to hack squat"
   → `mark_baseline_reset`. Injury around an exercise → offer `set_exercise_paused`.
+- **CC-LIFTS** – Every exercise logged in Hevy is recorded and classified as counting or
+  excluded. "Count lateral raises", "don't count abs" → `get_tracked_exercises` for the id,
+  then `classify_exercises`. "Trained at another gym / on other machines on Tuesday" → a
+  context note tagged `other_location` for that day (context-log); those sessions aren't
+  judged.
 - **CC-SETUP** – A setup value ("wrestling is about 500 kcal", "check-ins on Sunday
   evening", "photos off") → `record_setup_value`. Run discount, wrestling and lifting kcal
   outside phase start go through `propose_change` (`calibration_change`, `source: user_request`).

@@ -184,18 +184,9 @@ def _sport_load(notes: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def _training(sessions: list[dict[str, Any]]) -> dict[str, Any]:
-    """Lift progression isn't computed yet (ticket 08): nothing is judged."""
-    return {
-        "tracked_lifts": [],
-        "counted_lifts": 0,
-        "share_improved": None,
-        "progression_met": None,
-        "deload_signal": False,
-        "missed_sessions": [{"planned_date": s["date"], "type": s["type"]}
-                            for s in sessions if s["status"] == "skipped"],
-        "max_sets_in_a_session": None,
-        "max_sets_per_muscle_in_a_session": None,
-    }
+    """Missed sessions; lift progression is added by features/lifts.py (a facts hook)."""
+    return {"missed_sessions": [{"planned_date": s["date"], "type": s["type"]}
+                                for s in sessions if s["status"] == "skipped"]}
 
 
 def _measurements(coach, phase, end: Date, p) -> dict[str, Any]:

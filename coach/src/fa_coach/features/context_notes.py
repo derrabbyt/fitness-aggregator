@@ -55,7 +55,8 @@ def _note(row) -> dict[str, Any]:
     "Store context the user gave (illness, travel, a heavy sport week, a supplement, pain, a skipped session …) "
     "as a dated, tagged note. Code stores the user's message itself as the note's text. applies_to: the last day "
     "it concerns; the same as applies_from for a single day; omit or null for something ongoing. Tag a heavy "
-    "week (camp, tournament, double sessions) with sport_load. Returns the stored note.",
+    "week (camp, tournament, double sessions) with sport_load, and lifting at another gym or on other machines "
+    "with other_location (that day's sessions aren't judged for progression). Returns the stored note.",
     _input_schema(),
 )
 async def add_context_note(coach, args: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:

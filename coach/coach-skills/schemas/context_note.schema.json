@@ -20,11 +20,11 @@
           "sport_load", "extra_session", "session_skipped",
           "injury", "pain", "baseline_reset",
           "hunger_high", "hunger_low", "energy_low", "sleep_poor", "stress", "digestion",
-          "logging_issue", "plan_change", "goal_change", "other"
+          "other_location", "logging_issue", "plan_change", "goal_change", "other"
         ]
       }
     },
-    "exercise_id": { "type": ["string", "null"], "description": "Set for injury, pain or baseline_reset notes that concern one exercise." },
+    "exercise_id": { "type": ["string", "null"], "description": "Set for injury, pain, baseline_reset or other_location notes that concern one exercise (an other_location note without it covers every exercise that day)." },
     "suggest_unusable": { "enum": ["yes", "maybe", "no"], "description": "Hint for the weekly decision whether this note makes the week's weight trend unreliable." },
     "follow_up_question": { "type": ["string", "null"], "description": "One short question if the note needs clarifying (e.g. which exercise, how many days)." }
   }

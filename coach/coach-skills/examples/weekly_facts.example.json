@@ -258,93 +258,111 @@
   "training": {
     "tracked_lifts": [
       {
-        "exercise_id": "ex_smith_squat",
-        "name": "Smith squat",
-        "bodyweight_exercise": false,
-        "status": "same",
-        "last_session_date": "2027-03-07",
-        "sessions_considered": 3,
-        "best_recent": {
-          "load_kg": 110,
-          "reps": 8,
-          "effective_load_kg": 110
-        },
-        "latest": {
-          "load_kg": 110,
-          "reps": 8,
-          "effective_load_kg": 110
-        },
-        "no_progress_streak": 3,
-        "decline_streak": 0
-      },
-      {
         "exercise_id": "ex_incline_db",
         "name": "Incline DB press",
         "bodyweight_exercise": false,
+        "counts": true,
+        "classification": "counts",
         "status": "same",
+        "not_judged_reason": null,
+        "counted": true,
         "last_session_date": "2027-03-04",
         "sessions_considered": 3,
-        "best_recent": {
-          "load_kg": 34,
-          "reps": 9,
-          "effective_load_kg": 34
-        },
-        "latest": {
-          "load_kg": 34,
-          "reps": 9,
-          "effective_load_kg": 34
-        },
+        "best_recent": { "load_kg": 34, "reps": 9, "effective_load_kg": 34, "e1rm_kg": 44.2 },
+        "latest": { "load_kg": 34, "reps": 9, "effective_load_kg": 34, "e1rm_kg": 44.2 },
         "no_progress_streak": 2,
-        "decline_streak": 0
+        "decline_streak": 0,
+        "stalled": false
       },
       {
         "exercise_id": "ex_pullup",
         "name": "Pull-up",
         "bodyweight_exercise": true,
+        "counts": true,
+        "classification": "counts",
         "status": "improved",
+        "not_judged_reason": null,
+        "counted": true,
         "last_session_date": "2027-03-04",
         "sessions_considered": 3,
-        "best_recent": {
-          "load_kg": 10,
-          "reps": 8,
-          "effective_load_kg": 90.6
-        },
-        "latest": {
-          "load_kg": 10,
-          "reps": 8,
-          "effective_load_kg": 90.7
-        },
+        "best_recent": { "load_kg": 10, "reps": 8, "effective_load_kg": 90.6, "e1rm_kg": 114.76 },
+        "latest": { "load_kg": 10, "reps": 9, "effective_load_kg": 90.7, "e1rm_kg": 117.91 },
         "no_progress_streak": 0,
-        "decline_streak": 0
+        "decline_streak": 0,
+        "stalled": false
+      },
+      {
+        "exercise_id": "ex_smith_squat",
+        "name": "Smith squat",
+        "bodyweight_exercise": false,
+        "counts": true,
+        "classification": "counts",
+        "status": "same",
+        "not_judged_reason": null,
+        "counted": true,
+        "last_session_date": "2027-03-07",
+        "sessions_considered": 3,
+        "best_recent": { "load_kg": 110, "reps": 8, "effective_load_kg": 110, "e1rm_kg": 139.33 },
+        "latest": { "load_kg": 110, "reps": 8, "effective_load_kg": 110, "e1rm_kg": 139.33 },
+        "no_progress_streak": 3,
+        "decline_streak": 0,
+        "stalled": true
       },
       {
         "exercise_id": "ex_sldl",
         "name": "Stiff-legged deadlift",
         "bodyweight_exercise": false,
+        "counts": true,
+        "classification": "counts",
         "status": "declined",
+        "not_judged_reason": null,
+        "counted": true,
         "last_session_date": "2027-03-07",
         "sessions_considered": 3,
-        "best_recent": {
-          "load_kg": 120,
-          "reps": 8,
-          "effective_load_kg": 120
-        },
-        "latest": {
-          "load_kg": 120,
-          "reps": 6,
-          "effective_load_kg": 120
-        },
+        "best_recent": { "load_kg": 120, "reps": 8, "effective_load_kg": 120, "e1rm_kg": 152 },
+        "latest": { "load_kg": 120, "reps": 6, "effective_load_kg": 120, "e1rm_kg": 144 },
         "no_progress_streak": 2,
-        "decline_streak": 1
+        "decline_streak": 1,
+        "stalled": false
+      },
+      {
+        "exercise_id": "ex_lateral_raise",
+        "name": "Lateral raise",
+        "bodyweight_exercise": false,
+        "counts": false,
+        "classification": "excluded",
+        "status": "improved",
+        "not_judged_reason": null,
+        "counted": false,
+        "last_session_date": "2027-03-04",
+        "sessions_considered": 3,
+        "best_recent": { "load_kg": 10, "reps": 12, "effective_load_kg": 10, "e1rm_kg": 14 },
+        "latest": { "load_kg": 10, "reps": 14, "effective_load_kg": 10, "e1rm_kg": 14.67 },
+        "no_progress_streak": 0,
+        "decline_streak": 0,
+        "stalled": false
       }
     ],
     "counted_lifts": 4,
+    "improved_lifts": 1,
     "share_improved": 0.25,
     "progression_met": false,
+    "stalls": ["ex_smith_squat"],
+    "declining_lifts": [],
     "deload_signal": false,
+    "prs": [
+      {
+        "exercise_id": "ex_lateral_raise",
+        "name": "Lateral raise",
+        "date": "2027-03-04",
+        "top_set": { "load_kg": 10, "reps": 14, "effective_load_kg": 10, "e1rm_kg": 14.67 }
+      }
+    ],
+    "excluded_lifts": ["ex_lateral_raise"],
+    "lifting_sessions": 4,
     "missed_sessions": [],
     "max_sets_in_a_session": 16,
-    "max_sets_per_muscle_in_a_session": 4
+    "max_sets_per_muscle_in_a_session": null
   },
   "targets": {
     "surplus_kcal": 150,
@@ -456,6 +474,8 @@
       "exclude_glycogen_window": true
     },
     "training": {
+      "rep_range": [4, 20],
+      "e1rm_same_band_pct": 1,
       "compare_best_of_last_sessions": 3,
       "min_sessions_for_compare": 2,
       "lift_recency_days": 14,

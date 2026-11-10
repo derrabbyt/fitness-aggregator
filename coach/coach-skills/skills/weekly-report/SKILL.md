@@ -31,8 +31,9 @@ Output: one JSON object matching `coach_message.schema.json` (`send: true`).
    glycogen window say the jump is expected and not judged.
 4. **Food** – weekly average vs target and whether the adherence gate passed. Macro, fiber
    or produce flags in one line each.
-5. **Training** – how many counted lifts improved; PRs from the week; stalls and deload
-   signals as flags only; sport-load note if applied. If `training.progression_met` is null,
+5. **Training** – how many counting lifts improved (`training.improved_lifts` of
+   `training.counted_lifts`); PRs from the week (`training.prs`, excluded lifts included);
+   stalls (`training.stalls`) and deload signals as flags only; sport-load note if applied. If `training.progression_met` is null,
    say in a few words that lift progression wasn't evaluated, and list the sessions only. For scenario D: "training needs a look",
    nothing more specific.
 6. **Activity** – average steps only if relevant (step floor flag, unusual week).

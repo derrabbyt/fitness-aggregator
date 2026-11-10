@@ -46,7 +46,8 @@ Code gives `weight.vs_band` against the band for the current phase week
 ## A–E decision table
 
 Gym progression = `training.progression_met` (at least `training.progression_min_share` of
-counted lifts improved vs the best of their recent sessions). Single-lift stalls are flags
+the counting lifts improved vs the best of their recent sessions; excluded lifts never decide
+it). Single-lift stalls are flags
 only and never decide the scenario.
 
 | Rule | Weight | Progression | Scenario | Direction | Action |

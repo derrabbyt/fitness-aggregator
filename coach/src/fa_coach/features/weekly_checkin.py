@@ -232,6 +232,23 @@ def _buttons(coach, items: list[dict[str, Any]]) -> tuple:
     return tuple(rows)
 
 
+def training_summary(t: dict[str, Any]) -> str:
+    """The report's training section in one line: counting lifts improved,
+    PRs, stalls, deload signal (or that progression wasn't evaluated)."""
+    names = {lift["exercise_id"]: lift["name"] for lift in t["tracked_lifts"]}
+    if t["progression_met"] is None:
+        parts = [f"Training: lift progression not evaluated ({t['lifting_sessions']} sessions this week)"]
+    else:
+        parts = [f"Training: {t['improved_lifts']} of {t['counted_lifts']} counting lifts improved"]
+    if t["prs"]:
+        parts.append("PRs: " + ", ".join(pr["name"] for pr in t["prs"]))
+    if t["stalls"]:
+        parts.append("stalled: " + ", ".join(names[i] for i in t["stalls"]))
+    if t["deload_signal"]:
+        parts.append("deload signal: " + ", ".join(names[i] for i in t["declining_lifts"]) + " declining")
+    return "; ".join(parts)
+
+
 def _fallback(facts, verdict, held, due) -> str:
     """The report written by code when the report model fails: the verdict's
     own words and the main numbers."""
@@ -243,6 +260,7 @@ def _fallback(facts, verdict, held, due) -> str:
                      + (f", {w['weekly_rate_kg']:+} kg/week" if w["weekly_rate_kg"] is not None else ""))
     if i["weekly_actual_kcal"] is not None:
         lines.append(f"Food: {i['weekly_actual_kcal']} of {i['weekly_target_kcal']} kcal this week")
+    lines.append(training_summary(facts["training"]))
     lines += [f"- {d['text']}" for d in held]
     if due:
         lines.append("Due next week: " + ", ".join(f"{d['kind']} ({d['date']})" for d in due))

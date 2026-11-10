@@ -25,6 +25,7 @@ coach-skills/
 │   ├── weekly-report/        verdict → Telegram report
 │   ├── evening-recap/        daily, usually silent
 │   ├── training-feedback/    after a logged session
+│   ├── new-exercise/         classifies an exercise that first shows up in Hevy
 │   ├── block-review/         end of each training block
 │   ├── phase-review/         every few weeks and at phase end
 │   ├── photo-review/         photo check-ins (optional)
@@ -49,11 +50,12 @@ the active phase's `params.yaml` (phase wins on equal keys) and passes the resul
 | Weekly check-in, step 2 | weekly-report | facts, verdict, proposal result, changes applied, deferred items, due | `coach_message` |
 | Evening (after reminder time) | evening-recap | `daily_facts` (evening) | `coach_message` |
 | Lifting session synced | training-feedback | `daily_facts` (training) | `coach_message` |
+| Unclassified exercise in a synced session (during a phase) | new-exercise | new exercises + those already classified, tool `classify_exercises` | text (counts toward the daily limit, else deferred to the weekly report) |
 | End of training block | block-review | block's `weekly_facts` list | `coach_message` |
 | Every few weeks / phase end | phase-review | `phase_summary` | `coach_message` (+ calibration proposals via tool) |
 | Photo set received | photo-review | photos + previous set + previous estimate | `photo_review` (code sends `notes`) |
 | Coach chat message | coach-chat + context-log (others via `load_skill`) | message + tools | text reply |
-| "start …" command, and every message while that setup is open | phase-start (target phase skill in the prefix) | message + `setup` (recorded, still needed, prefill from history, lift options, limits) + tools | text; after `start_phase` code sends the preview card with confirm / edit buttons |
+| "start …" command, and every message while that setup is open | phase-start (target phase skill in the prefix) | message + `setup` (recorded, still needed, prefill from history, Hevy exercises with their classification, limits) + tools | text; after `start_phase` code sends the preview card with confirm / edit buttons |
 
 Code-only rules (no model call): refusing a draft phase with TO DECIDE values, the phase-start
 preview card and its buttons, weigh-in outlier marking, missing-log reminder (one per
@@ -101,8 +103,12 @@ changes the schema, the skills that reference it, the examples, and reruns
 | `data.sync_max_age_hours` | 36 | stale-data check needs a threshold |
 | `data.weight_outlier_kg`, `data.weight_outlier_window_days` | 1.5 kg vs the median of the weigh-ins within 3 days either side | SPEC says outliers are flagged, not how |
 | `data.implausible_intake_factor` | 2 × the day's target | SPEC asks about implausible entries (e.g. 12,000 kcal) without a threshold |
-| `training.deload_min_lifts_declining` | 2 | SPEC says "several lifts declining" |
-| `training.big_drop_pct_ask_reset` | 15 | when the agent asks "was this a reset?" |
+| `training.deload_min_lifts_declining`, `training.decline_sessions_for_deload` | 2 counting lifts, 2 sessions in a row | SPEC says "several lifts declining" |
+| `training.big_drop_pct_ask_reset` | 15 (% estimated-1RM drop vs the best recent session) | when the agent asks "was this a reset?" |
+| `training.rep_range` | 4–20 | a session's performance = its heaviest working set with this many reps (warm-ups never count) |
+| `training.e1rm_same_band_pct` | 1 | at a different load, estimated 1RMs (Epley) within ±1 % are "same" |
+| `training.stall_sessions` | 3 | a stall = this many sessions in a row without progress |
+| `training.min_sessions_for_compare` | 2 (the judged session included) | the first session only starts a lift's history |
 | `training.compare_best_of_last_sessions` | 3 | SPEC says "best of last 2–3" |
 | `activity.met_by_activity` | running 8.0, cycling 7.5, swimming 6.0, football 7.0, basketball 6.5, tennis 7.0, hiking 6.0, walking 3.5, rowing 6.0, martial_arts 6.0 (grappling, BJJ, boxing …; wrestling and lifting use their setup values instead) | estimating kcal for sessions reported without kcal (MET × 7-day trend weight × hours); conservative "general" values in the style of the Compendium of Physical Activities. Other activities, or no trend weight yet: the model's own estimate, stored as `model_estimate` |
 | `nutrition.macro_reference_weight` | trend_7d | which weight g/kg uses; recalculated weekly |

@@ -21,7 +21,6 @@ SETUP = {
     "start_date": START,
     "training_plan_source": "saved_plan",
     "maintenance_includes_activity": True,
-    "tracked_lifts": [{"exercise_id": "bench-press", "name": "Bench Press", "bodyweight_exercise": False}],
     "starting_calories_kcal": 2000,
     "starting_trend_weight_kg": 80.5,
     "maintenance_estimate_kcal": 2536,

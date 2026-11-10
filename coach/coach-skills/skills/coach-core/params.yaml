@@ -34,14 +34,18 @@ maintenance_estimate:
   exclude_glycogen_window: true
 
 training:
+  # Every exercise logged in Hevy is recorded; the model classifies each as counts (compounds,
+  # machines, most bigger isolation work) or excluded (prehab/rehab, slow movers); the user can flip any.
+  rep_range: [4, 20]                # performance = heaviest working set with this many reps; warm-ups never count
+  e1rm_same_band_pct: 1             # at a different load: estimated 1RM (Epley) within ±1 % = same
   compare_best_of_last_sessions: 3  # "best of last 2-3": best of up to 3 previous sessions
-  min_sessions_for_compare: 2
-  lift_recency_days: 14
-  progression_min_share: 0.5        # at least half of counted lifts improved
-  stall_sessions: 3
-  decline_sessions_for_deload: 2
-  deload_min_lifts_declining: 2     # assumption: "several lifts"
-  big_drop_pct_ask_reset: 15        # assumption: drop that makes the agent ask "was this a reset?"
+  min_sessions_for_compare: 2       # sessions in a lift's history, the judged one included (the first only starts it)
+  lift_recency_days: 14             # counted only if trained within this window; after a longer break the first session back isn't judged
+  progression_min_share: 0.5        # at least this share of the counted (counting, judged) lifts improved
+  stall_sessions: 3                 # sessions in a row without progress
+  decline_sessions_for_deload: 2    # sessions in a row declining ...
+  deload_min_lifts_declining: 2     # ... on at least this many lifts (assumption: "several lifts")
+  big_drop_pct_ask_reset: 15        # assumption: estimated-1RM drop vs the best recent session that asks "was this a reset?"
   volume_note_max_sets_per_session: 20
   volume_note_max_sets_per_muscle_per_session: 4
 

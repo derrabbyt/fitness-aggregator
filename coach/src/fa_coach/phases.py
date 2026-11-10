@@ -47,7 +47,6 @@ TREND_DAYS = 7  # 7-day trend weight ...
 MIN_TREND_WEIGH_INS = 3  # ... from at least this many weigh-ins
 MAX_ESTIMATE_WEEKS = 6  # the maintenance estimate uses at most the last 6 usable weeks
 ACTIVITY_DAYS = 28  # expected counted activity when no estimate window exists
-LIFT_OPTIONS = 30
 HISTORY_WEEKS = 16  # as far back as the first sync reads
 
 # Setup values that are calibration (changed later only through a proposal)
@@ -382,21 +381,6 @@ def prefill(coach: "Coach", phase_id: str, now: datetime.datetime) -> dict[str, 
     else:
         out["maintenance_estimate_kcal"] = {"value": None, "missing": estimate["missing"]}
     return out
-
-
-def lift_options(coach: "Coach", today: Date) -> list[dict[str, Any]]:
-    """Exercises in the synced Hevy history (16 weeks), most often done first."""
-    seen: dict[str, dict[str, Any]] = {}
-    first = today - HISTORY_WEEKS * 7 * DAY
-    for session in history.sessions(coach.db, first.isoformat(), today.isoformat()):
-        for ex in session["exercises"]:
-            if not ex["exercise_id"]:
-                continue
-            item = seen.setdefault(ex["exercise_id"], {"exercise_id": ex["exercise_id"], "title": ex["title"],
-                                                       "exercise_type": ex["exercise_type"], "sessions": 0})
-            item["sessions"] += 1
-            item["last_date"] = session["date"]
-    return sorted(seen.values(), key=lambda o: (-o["sessions"], o["title"] or ""))[:LIFT_OPTIONS]
 
 
 # --- preview -----------------------------------------------------------------------

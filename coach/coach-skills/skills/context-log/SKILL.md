@@ -19,8 +19,12 @@ later decision can respect it.
      "today"), resolved against `today` in the state; today if unclear; `applies_to` equal
      to `applies_from` for a single day, null for something ongoing
    - `tags`: every tag from the schema that fits; a heavy sport week (camp, tournament,
-     double sessions) gets `sport_load`
-   - `exercise_id` for injury, pain or reset notes about one exercise
+     double sessions) gets `sport_load`; training at another gym or on other machines that
+     day gets `other_location` (that day's lifting sessions are then not judged, not used as
+     a baseline, and give no PR or reset question); `injury`, `pain` and `baseline_reset`
+     for those notes (they also stop the "was this a reset?" question for that day)
+   - `exercise_id` for injury, pain, reset or other-location notes about one exercise
+     (an `other_location` note without it covers every exercise that day)
    - `suggest_unusable`: `yes` for illness or travel across several days, `maybe` for
      shorter disruptions, `no` for normal life (one restaurant meal, one late night)
    - `follow_up_question`: one short question only if something essential is unclear
@@ -29,6 +33,8 @@ later decision can respect it.
      `set_exercise_paused`
    - technique change, ROM change or exercise swap → `mark_baseline_reset` (confirm the
      exercise and date first if ambiguous)
+   - "lateral raises should count" / "don't count abs" → `classify_exercises` (find the id
+     with `get_tracked_exercises`)
    - a planned session that didn't happen → `set_session_status` skipped; an extra session
      → `set_session_status` extra with its type and either the user's kcal or the activity
      and duration (code estimates; see coach-chat CC-PLAN)

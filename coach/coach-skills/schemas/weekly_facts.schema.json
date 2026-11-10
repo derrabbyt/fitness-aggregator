@@ -146,14 +146,34 @@
 
     "training": {
       "type": "object",
-      "required": ["tracked_lifts", "counted_lifts", "share_improved", "progression_met", "deload_signal", "missed_sessions", "max_sets_in_a_session", "max_sets_per_muscle_in_a_session"],
+      "required": ["tracked_lifts", "counted_lifts", "improved_lifts", "share_improved", "progression_met", "stalls", "declining_lifts", "deload_signal", "prs", "excluded_lifts", "lifting_sessions", "missed_sessions", "max_sets_in_a_session", "max_sets_per_muscle_in_a_session"],
       "additionalProperties": false,
       "properties": {
-        "tracked_lifts": { "type": "array", "items": { "$ref": "#/$defs/lift" } },
-        "counted_lifts": { "type": "integer", "minimum": 0, "description": "Tracked lifts trained within lift_recency_days and not paused / new baseline without history." },
-        "share_improved": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
-        "progression_met": { "type": ["boolean", "null"], "description": "share_improved >= progression_min_share. null if no lift could be counted." },
+        "tracked_lifts": { "type": "array", "items": { "$ref": "#/$defs/lift" }, "description": "Every exercise logged in Hevy trained since the phase start or within lift_recency_days, counting ones first." },
+        "counted_lifts": { "type": "integer", "minimum": 0, "description": "Counting lifts (not excluded) whose status is improved, same or declined." },
+        "improved_lifts": { "type": "integer", "minimum": 0, "description": "Counted lifts that improved." },
+        "share_improved": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "improved_lifts / counted_lifts; null if no lift could be counted." },
+        "progression_met": { "type": ["boolean", "null"], "description": "improved_lifts >= progression_min_share x counted_lifts (one exercise, one vote). null if no lift could be counted." },
+        "stalls": { "type": "array", "items": { "type": "string" }, "description": "Counting exercise_ids whose no_progress_streak reached stall_sessions (excluded exercises get no stall flags)." },
+        "declining_lifts": { "type": "array", "items": { "type": "string" }, "description": "Counting exercise_ids that declined decline_sessions_for_deload sessions in a row." },
+        "excluded_lifts": { "type": "array", "items": { "type": "string" }, "description": "Listed exercises classified as excluded (prehab/rehab, slow movers): no effect on A–E, PRs still named." },
         "deload_signal": { "type": "boolean", "description": "At least deload_min_lifts_declining lifts declined for decline_sessions_for_deload sessions in a row." },
+        "prs": {
+          "type": "array",
+          "description": "PRs set this week (best session since the lift's baseline).",
+          "items": {
+            "type": "object",
+            "required": ["exercise_id", "name", "date", "top_set"],
+            "additionalProperties": false,
+            "properties": {
+              "exercise_id": { "type": "string" },
+              "name": { "type": "string" },
+              "date": { "type": "string", "format": "date" },
+              "top_set": { "$ref": "#/$defs/set_summary" }
+            }
+          }
+        },
+        "lifting_sessions": { "type": "integer", "minimum": 0, "description": "Hevy sessions this week." },
         "missed_sessions": {
           "type": "array",
           "items": {
@@ -318,32 +338,43 @@
     },
     "lift": {
       "type": "object",
-      "required": ["exercise_id", "name", "bodyweight_exercise", "status", "last_session_date", "sessions_considered", "best_recent", "latest", "no_progress_streak", "decline_streak"],
+      "required": ["exercise_id", "name", "bodyweight_exercise", "counts", "classification", "status", "not_judged_reason", "counted", "last_session_date", "sessions_considered", "best_recent", "latest", "no_progress_streak", "decline_streak", "stalled"],
       "additionalProperties": false,
       "properties": {
         "exercise_id": { "type": "string" },
         "name": { "type": "string" },
         "bodyweight_exercise": { "type": "boolean", "description": "Dips, pull-ups etc.: effective load includes bodyweight." },
-        "status": {
-          "enum": ["improved", "same", "declined", "new_baseline", "paused", "stale"],
-          "description": "improved/same/declined: latest vs best of the previous compare_best_of_last_sessions sessions. new_baseline: reset and not enough sessions since. paused: injury pause. stale: not trained within lift_recency_days."
-        },
-        "last_session_date": { "type": ["string", "null"], "format": "date" },
+        "counts": { "type": "boolean", "description": "Counts for progression (not classified as excluded)." },
+        "classification": { "enum": ["counts", "excluded", null], "description": "The model's classification, flippable by the user in chat: counts (compounds, machines, most bigger isolation work) or excluded (prehab/rehab, slow movers such as lateral raises, abs, plyometrics). null = not classified yet, counts." },
+        "status": { "$ref": "#/$defs/lift_status" },
+        "not_judged_reason": { "$ref": "#/$defs/not_judged_reason" },
+        "counted": { "type": "boolean", "description": "Counts for progression_met this week: a counting lift judged improved / same / declined." },
+        "last_session_date": { "type": ["string", "null"], "format": "date", "description": "Its latest session that wasn't ignored (other_location, no working set)." },
         "sessions_considered": { "type": "integer", "minimum": 0 },
         "best_recent": { "$ref": "#/$defs/set_summary" },
         "latest": { "$ref": "#/$defs/set_summary" },
-        "no_progress_streak": { "type": "integer", "minimum": 0, "description": "Consecutive sessions without improvement." },
-        "decline_streak": { "type": "integer", "minimum": 0 }
+        "no_progress_streak": { "type": "integer", "minimum": 0, "description": "Consecutive judged sessions without improvement." },
+        "decline_streak": { "type": "integer", "minimum": 0 },
+        "stalled": { "type": "boolean", "description": "no_progress_streak reached stall_sessions." }
       }
+    },
+    "lift_status": {
+      "enum": ["improved", "same", "declined", "new_baseline", "not_judged", "paused", "stale"],
+      "description": "improved/same/declined: the session's heaviest working set (rep_range) vs the best of the previous compare_best_of_last_sessions sessions. new_baseline: the first session of the exercise or after a baseline reset (starts its history, no PR). not_judged: see not_judged_reason. paused: injury pause. stale: not trained within lift_recency_days."
+    },
+    "not_judged_reason": {
+      "enum": [null, "first_session", "baseline_reset", "after_break", "building_baseline", "other_location", "no_working_sets"],
+      "description": "Why a session wasn't judged: first_session / baseline_reset (new_baseline), after_break (first session after more than lift_recency_days), building_baseline (fewer than min_sessions_for_compare sessions), other_location (a context note says another gym or machine that day: no baseline, PR or reset question), no_working_sets (no non-warm-up set in rep_range)."
     },
     "set_summary": {
       "type": ["object", "null"],
-      "required": ["load_kg", "reps", "effective_load_kg"],
+      "required": ["load_kg", "reps", "effective_load_kg", "e1rm_kg"],
       "additionalProperties": false,
       "properties": {
-        "load_kg": { "type": "number" },
+        "load_kg": { "type": "number", "description": "As logged in Hevy (added or assisting load for bodyweight exercises)." },
         "reps": { "type": "integer" },
-        "effective_load_kg": { "type": "number", "description": "load_kg, plus bodyweight for bodyweight exercises." }
+        "effective_load_kg": { "type": "number", "description": "load_kg; for bodyweight exercises the bodyweight plus added load (minus assistance)." },
+        "e1rm_kg": { "type": "number", "description": "Estimated 1RM (Epley) from the effective load." }
       }
     }
   }

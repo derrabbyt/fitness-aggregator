@@ -95,9 +95,10 @@ Add a flag only when it's true and worth the user's attention. Severity `info` =
   fiber is outside `intake.fiber_target_g` on most days; `produce_low` when `produce_g` is
   below `intake.produce_min_g` on most days (skip if `produce_g` is null); `odd_log` for an
   implausible entry, with a question.
-- **WD-F-TRAINING** – `lift_stall` per lift whose `no_progress_streak` reached
-  `training.stall_sessions`, judged with that exercise's normal behaviour in mind (isolation
-  lifts stall more often), with `exercise_id`; `deload_signal` if `training.deload_signal`;
+- **WD-F-TRAINING** – `lift_stall` per lift in `training.stalls` (counting lifts whose
+  `no_progress_streak` reached `training.stall_sessions`; excluded lifts never get one),
+  judged with that exercise's normal behaviour in mind (isolation lifts stall more often),
+  with `exercise_id`; `deload_signal` if `training.deload_signal`;
   `training_needs_look` for scenario D (flag only); `missed_session_pattern` if planned
   sessions were missed repeatedly, with a suggestion to change the schedule.
 - **WD-F-STEPS** – `step_floor` only if `activity.days_below_floor` reached

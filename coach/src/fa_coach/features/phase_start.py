@@ -13,9 +13,12 @@
   does nothing. Confirm stores the phase and its targets, marks the phase's
   first change applied and runs `phases.on_confirmed` hooks (the MFP goal
   write, features/phase_goal.py); lines they return are added to the card.
-- After the start, `record_setup_value` changes logistics, photos, time goal,
-  waist and tracked lifts of the active phase; calibration values need a
-  proposal and start values are fixed.
+- Every exercise in the Hevy history must be classified (counts / excluded,
+  `classify_exercises`, features/lifts.py) before the preview; the card
+  lists the classification.
+- After the start, `record_setup_value` changes logistics, photos, time goal
+  and waist of the active phase; calibration values need a proposal and
+  start values are fixed.
 """
 
 import datetime
@@ -27,17 +30,17 @@ from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-from .. import phases
+from .. import phases, progression
 from ..ask import ToolError
 from ..ports import Button, ChatTurn, ModelError
 from ..registry import registry
-from . import training_plan
+from . import lifts, training_plan
 
 logger = logging.getLogger("fa-coach")
 
 SKILLS = ("phase-start",)
 TOOLS = ("record_setup_value", "start_phase", "get_training_plan", "update_training_plan", "get_coach_profile",
-         "get_context_notes")
+         "get_context_notes", "classify_exercises", "get_tracked_exercises")
 IDLE = datetime.timedelta(hours=24)  # an idle setup stops taking over the chat ("start reverse" resumes it)
 TURNS = 8
 NO_ANSWER = "I don't have an answer to that."
@@ -47,12 +50,12 @@ CANCEL = re.compile(r"(?i)^\s*(cancel|stop|abort)(\s+(the\s+)?(setup|phase start
 PHASE_WORDS = (("reverse", "reverse_bulk"), ("bulk", "reverse_bulk"), ("cut", "cut"), ("mainten", "maintenance"))
 
 LOGISTICS = ("weekly_checkin", "evening_reminder_time", "max_unprompted_messages_per_day", "soft_floor_min_days")
-KEYS = ("tracked_lifts", "starting_calories_kcal", "starting_trend_weight_kg", "maintenance_estimate_kcal",
+KEYS = ("starting_calories_kcal", "starting_trend_weight_kg", "maintenance_estimate_kcal",
         "maintenance_includes_activity", "run_kcal_discount", "wrestling_kcal_per_session",
         "lifting_kcal_per_session", "fat_g_per_kg_start", "week1_increase_kcal", "time_goal_weeks",
         "photos_enabled", "waist_cm_start") + tuple(f"logistics.{k}" for k in LOGISTICS)
 OPTIONAL = ("maintenance_includes_activity",)  # has a default (true); never needs asking
-BODYWEIGHT_TYPES = ("bodyweight_reps", "bodyweight_assisted_reps", "bodyweight_weighted")
+CLASSIFY = "exercise_classification"  # not a setup value: every Hevy exercise classified (features/lifts.py)
 
 
 # --- chat ------------------------------------------------------------------------
@@ -150,8 +153,8 @@ async def _converse(coach, setup: dict[str, Any], text: str, now: datetime.datet
 
 def setup_state(coach, setup: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
     """What the phase-start skill gets: values recorded, what's still needed,
-    what code read from the history, lift options and the limits values must
-    respect."""
+    what code read from the history, the Hevy exercises with their
+    classification and the limits values must respect."""
     p = coach.skills.params(setup["phase_id"])
     current = phases.active(coach)
     return {
@@ -159,9 +162,9 @@ def setup_state(coach, setup: dict[str, Any], now: datetime.datetime) -> dict[st
         "phase_name": p.get("name"),
         "status": setup["status"],
         "recorded": _flat(setup["values"]),
-        "still_needed": still_needed(coach, setup["phase_id"], setup["values"]),
+        "still_needed": still_needed(coach, setup["phase_id"], setup["values"], now.date()),
         "prefill": phases.prefill(coach, setup["phase_id"], now),
-        "lift_options": phases.lift_options(coach, now.date()),
+        "exercises": progression.exercises(coach, lifts.history_start(now.date()), now.date()),
         "plan_exercise_lists": {name: [i["text"] for i in items]
                                 for name, items in training_plan.exercise_lists(coach, now.date()).items()},
         "limits": _limits(p),
@@ -185,11 +188,14 @@ def _flat(values: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def still_needed(coach, phase_id: str, values: dict[str, Any]) -> list[str]:
+def still_needed(coach, phase_id: str, values: dict[str, Any], today: datetime.date) -> list[str]:
+    """Setup keys not recorded yet, plus `exercise_classification` while an
+    exercise in the Hevy history isn't classified (`classify_exercises`)."""
     recorded = _flat(values)
     uses_increase = "week1_increase_kcal" in coach.skills.params(phase_id)["start"]
-    return [k for k in KEYS if k not in recorded and k not in OPTIONAL
-            and (k != "week1_increase_kcal" or uses_increase)]
+    unclassified = progression.unclassified(coach, lifts.history_start(today), today)
+    return ([CLASSIFY] if unclassified else []) + [
+        k for k in KEYS if k not in recorded and k not in OPTIONAL and (k != "week1_increase_kcal" or uses_increase)]
 
 
 # --- tools -----------------------------------------------------------------------
@@ -198,12 +204,11 @@ def still_needed(coach, phase_id: str, values: dict[str, Any]) -> list[str]:
 @registry.tool(
     "record_setup_value",
     "Store one phase setup value as soon as the user gives or confirms it (validated by code against the "
-    "phase-setup schema and the phase's params). tracked_lifts: a list of {exercise_id (from lift_options) or "
-    "name, bodyweight_exercise}. Logistics keys: logistics.weekly_checkin ('sun 18:00'), "
+    "phase-setup schema and the phase's params). Logistics keys: logistics.weekly_checkin ('sun 18:00'), "
     "logistics.evening_reminder_time ('20:30'), logistics.max_unprompted_messages_per_day, "
     "logistics.soft_floor_min_days. Optional values the user declines are recorded as null. After the phase "
-    "started, changes logistics, photos_enabled, time_goal_weeks, waist_cm_start and tracked_lifts of the "
-    "active phase. Returns what is still needed.",
+    "started, changes logistics, photos_enabled, time_goal_weeks and waist_cm_start of the active phase. "
+    "Returns what is still needed (exercise_classification: classify the exercises with classify_exercises).",
     {
         "type": "object",
         "properties": {"key": {"enum": list(KEYS)}, "value": {}},
@@ -216,7 +221,6 @@ async def record_setup_value(coach, args: dict[str, Any], now: datetime.datetime
     setup = phases.open_setup(coach)
     if setup is None:
         return _change_active_phase(coach, key, value, now)
-    value = _normalise(coach, key, value, now)
     problems = validate_value(coach, setup["phase_id"], key, value)
     if problems:
         raise ToolError(f"{key}: " + "; ".join(problems))
@@ -228,7 +232,7 @@ async def record_setup_value(coach, args: dict[str, Any], now: datetime.datetime
         )
     if setup["status"] == "pending":
         _retire_card(coach, setup, "Out of date: a value changed after this preview. Nothing was started.")
-    return {"recorded": {key: value}, "still_needed": still_needed(coach, setup["phase_id"], values)}
+    return {"recorded": {key: value}, "still_needed": still_needed(coach, setup["phase_id"], values, now.date())}
 
 
 def _change_active_phase(coach, key: str, value: Any, now: datetime.datetime) -> dict[str, Any]:
@@ -239,7 +243,6 @@ def _change_active_phase(coach, key: str, value: Any, now: datetime.datetime) ->
         raise ToolError(f"{key} is a calibration value: during a phase it changes only through a proposal")
     if key in phases.START_KEYS:
         raise ToolError(f"{key} defines the phase start and is fixed for this phase")
-    value = _normalise(coach, key, value, now)
     problems = validate_value(coach, phase["phase_id"], key, value)
     setup = _with(phase["setup"], key, value)
     problems += coach.skills.errors(setup, "phase_setup")
@@ -256,34 +259,6 @@ def _with(values: dict[str, Any], key: str, value: Any) -> dict[str, Any]:
     else:
         out[key] = value
     return out
-
-
-def _normalise(coach, key: str, value: Any, now: datetime.datetime) -> Any:
-    """tracked_lifts: names and ids are matched against the Hevy history; a
-    lift not in it yet keeps exercise_id null (matched by name once it syncs)."""
-    if key != "tracked_lifts" or not isinstance(value, list):
-        return value
-    options = phases.lift_options(coach, now.date())
-    by_id = {o["exercise_id"]: o for o in options}
-    by_title = {(o["title"] or "").lower(): o for o in options}
-    lifts = []
-    for item in value:
-        if not isinstance(item, dict):
-            raise ToolError("tracked_lifts items are objects: {exercise_id or name, bodyweight_exercise}")
-        option = by_id.get(item.get("exercise_id")) or by_title.get((item.get("name") or "").strip().lower())
-        if item.get("exercise_id") and option is None:
-            raise ToolError(f"exercise_id {item['exercise_id']!r} is not in the Hevy history; use lift_options or a name")
-        name = option["title"] if option else (item.get("name") or "").strip()
-        if not name:
-            raise ToolError("each tracked lift needs an exercise_id from lift_options or a name")
-        bodyweight = item.get("bodyweight_exercise")
-        if bodyweight is None and option is not None and option["exercise_type"]:
-            bodyweight = option["exercise_type"] in BODYWEIGHT_TYPES
-        if bodyweight is None:
-            raise ToolError(f"say whether {name} is a bodyweight exercise (bodyweight_exercise)")
-        lifts.append({"exercise_id": option["exercise_id"] if option else None, "name": name,
-                      "bodyweight_exercise": bool(bodyweight)})
-    return lifts
 
 
 def validate_value(coach, phase_id: str, key: str, value: Any) -> list[str]:
@@ -321,7 +296,7 @@ async def start_phase(coach, args: dict[str, Any], now: datetime.datetime) -> di
     setup = phases.open_setup(coach)
     if setup is None:
         raise ToolError("no phase setup is open; the user starts one with 'start reverse'")
-    missing = still_needed(coach, setup["phase_id"], setup["values"])
+    missing = still_needed(coach, setup["phase_id"], setup["values"], now.date())
     if missing:
         raise ToolError("still needed: " + ", ".join(missing))
     full = _full_setup(setup, now.date())
@@ -332,6 +307,8 @@ async def start_phase(coach, args: dict[str, Any], now: datetime.datetime) -> di
         result = phases.preview(coach, full, now)
     except ValueError as exc:
         raise ToolError(str(exc)) from exc
+    result["exercises"] = [{"name": e["title"], "classification": e["classification"]}
+                           for e in progression.exercises(coach, lifts.history_start(now.date()), now.date())]
     with coach.db.transaction():
         coach.db.execute(
             "UPDATE phase_setups SET status = 'pending', preview = ?, preview_no = preview_no + 1, updated_at = ?"
@@ -431,6 +408,11 @@ def render_card(preview: dict[str, Any]) -> str:
         size = f"about {_num(jump[0])}–{_num(jump[1])} kg " if jump else ""
         lines.append(f"{span}: glycogen window. Expect an early jump of {size}from glycogen and water, not fat. "
                      "No weight-based decisions until it's over.")
+    exercises = preview.get("exercises") or []
+    for label, cls in (("Lifts that count for progression", "counts"), ("Excluded (logged, PRs named)", "excluded")):
+        names = [e["name"] for e in exercises if (e["classification"] or "counts") == cls]
+        if names:
+            lines.append(f"{label}: {', '.join(names)}.")
     return "\n".join(lines)
 
 

@@ -4,24 +4,11 @@
   "title": "Phase setup",
   "description": "Setup values collected by the phase-start skill (Telegram 'start <phase>'). Stored by the start_phase tool, which returns a week-1 preview computed by code. The phase starts only after the user taps confirm. Values that already exist from an earlier phase are reused unless the user changes them.",
   "type": "object",
-  "required": ["phase_id", "start_date", "tracked_lifts", "starting_calories_kcal", "starting_trend_weight_kg", "maintenance_estimate_kcal", "training_plan_source", "run_kcal_discount", "wrestling_kcal_per_session", "lifting_kcal_per_session", "fat_g_per_kg_start", "photos_enabled", "logistics"],
+  "required": ["phase_id", "start_date", "starting_calories_kcal", "starting_trend_weight_kg", "maintenance_estimate_kcal", "training_plan_source", "run_kcal_discount", "wrestling_kcal_per_session", "lifting_kcal_per_session", "fat_g_per_kg_start", "photos_enabled", "logistics"],
   "additionalProperties": false,
   "properties": {
     "phase_id": { "type": "string" },
     "start_date": { "type": "string", "format": "date" },
-    "tracked_lifts": {
-      "type": "array", "minItems": 1,
-      "items": {
-        "type": "object",
-        "required": ["exercise_id", "name", "bodyweight_exercise"],
-        "additionalProperties": false,
-        "properties": {
-          "exercise_id": { "type": ["string", "null"], "description": "Hevy exercise template id. Null for a lift not in the synced Hevy history yet; code matches it by name once it syncs." },
-          "name": { "type": "string" },
-          "bodyweight_exercise": { "type": "boolean" }
-        }
-      }
-    },
     "starting_calories_kcal": { "type": "number", "minimum": 800, "maximum": 6000, "description": "Last diet intake (daily average)." },
     "starting_trend_weight_kg": { "type": "number", "minimum": 30, "maximum": 250 },
     "maintenance_estimate_kcal": { "type": "number", "minimum": 1000, "maximum": 7000, "description": "From the last diet weeks; code converts it to base maintenance by subtracting average counted activity." },

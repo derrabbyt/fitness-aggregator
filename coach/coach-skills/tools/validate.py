@@ -6,6 +6,7 @@ Checks:
   3. Example files validate against their schemas (cross-file $refs resolved).
   4. Every skill folder has SKILL.md with name/description frontmatter.
   5. Phase SKILL.md files contain no hard-coded numbers (numbers live in params.yaml).
+  6. Context-note tags code acts on are in the schema and named in the context-log skill.
 
 Usage:  python tools/validate.py            (from the package root)
 Requires: pip install jsonschema pyyaml
@@ -23,6 +24,8 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 SCHEMAS = ROOT / "schemas"
 SKILLS = ROOT / "skills"
 EXAMPLES = ROOT / "examples"
+# Context-note tags the coach's code acts on (sport-load weeks; lift progression).
+CODE_TAGS = ("sport_load", "other_location", "baseline_reset", "injury", "pain")
 
 errors: list[str] = []
 
@@ -65,6 +68,15 @@ def main() -> int:
             errors.append(f"{ex.name}: no schema {schema_name}")
             continue
         validate(json.loads(ex.read_text()), schema_name, schemas, registry, ex.name)
+
+    # context-note tags code acts on: in the schema and explained in the context-log skill
+    tags = schemas["context_note.schema.json"]["properties"]["tags"]["items"]["enum"]
+    context_log = (SKILLS / "context-log/SKILL.md").read_text()
+    for tag in CODE_TAGS:
+        if tag not in tags:
+            errors.append(f"context_note.schema.json: tag {tag!r} (used by code) is missing")
+        if f"`{tag}`" not in context_log:
+            errors.append(f"context-log/SKILL.md: doesn't explain the tag `{tag}` (used by code)")
 
     # skills
     for skill_dir in sorted(p for p in SKILLS.iterdir() if p.is_dir()):

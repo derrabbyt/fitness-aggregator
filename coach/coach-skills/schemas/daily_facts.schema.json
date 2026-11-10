@@ -102,7 +102,7 @@
                   }
                 }
               },
-              "status": { "$ref": "weekly_facts.schema.json#/$defs/lift/properties/status" },
+              "status": { "$ref": "weekly_facts.schema.json#/$defs/lift_status" },
               "is_pr": { "type": "boolean", "description": "Best effective performance since the last baseline." },
               "drop_pct_vs_best_recent": { "type": ["number", "null"] },
               "possible_reset": { "type": "boolean", "description": "drop_pct_vs_best_recent >= big_drop_pct_ask_reset and no reset/injury note exists." },
