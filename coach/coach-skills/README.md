@@ -104,7 +104,7 @@ changes the schema, the skills that reference it, the examples, and reruns
 | `data.weight_outlier_kg`, `data.weight_outlier_window_days` | 3.0 kg vs the median of the weigh-ins within 3 days either side (user: only clear typos are dropped; normal spikes stay in the average, the scale records every weigh-in) | SPEC says outliers are flagged, not how |
 | `data.implausible_intake_factor` | 2 × the day's target | SPEC asks about implausible entries (e.g. 12,000 kcal) without a threshold |
 | `training.deload_min_lifts_declining`, `training.decline_sessions_for_deload` | 2 counting lifts, 2 sessions in a row | SPEC says "several lifts declining" |
-| `training.big_drop_pct_ask_reset` | 15 (% estimated-1RM drop vs the best recent session) | when the agent asks "was this a reset?" |
+| `training.big_drop_pct_ask_reset` | 15 (% estimated-1RM drop vs the best recent session) | when code asks "was this a reset?" (training feedback; buttons, exempt from the daily limit) |
 | `training.rep_range` | 4–20 | a session's performance = its heaviest working set with this many reps (warm-ups never count) |
 | `training.e1rm_same_band_pct` | 1 | only when load and reps move in opposite directions: estimated 1RMs (Epley) within ±1 % are "same" (more load or reps and neither less is always improved) |
 | `training.stall_sessions` | 3 | a stall = this many sessions in a row without progress |

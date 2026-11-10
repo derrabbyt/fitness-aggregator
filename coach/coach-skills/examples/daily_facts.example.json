@@ -14,7 +14,9 @@
       {
         "exercise_id": "ex_smith_squat",
         "name": "Smith squat",
-        "tracked": true,
+        "counts": true,
+        "classification": "counts",
+        "bodyweight_exercise": false,
         "sets": [
           {
             "load_kg": 110,
@@ -25,27 +27,65 @@
             "reps": 7
           }
         ],
+        "top_set": { "load_kg": 110, "reps": 8, "effective_load_kg": 110, "e1rm_kg": 139.33 },
         "status": "same",
+        "not_judged_reason": null,
+        "best_recent": { "load_kg": 110, "reps": 8, "effective_load_kg": 110, "e1rm_kg": 139.33 },
         "is_pr": false,
         "drop_pct_vs_best_recent": 0,
         "possible_reset": false,
-        "no_progress_streak": 3
+        "no_progress_streak": 3,
+        "decline_streak": 0,
+        "stalled": true,
+        "new_stall": true
       },
       {
         "exercise_id": "ex_leg_ext",
         "name": "Leg extension",
-        "tracked": false,
+        "counts": true,
+        "classification": null,
+        "bodyweight_exercise": false,
         "sets": [
           {
             "load_kg": 60,
             "reps": 10
           }
         ],
+        "top_set": { "load_kg": 60, "reps": 10, "effective_load_kg": 60, "e1rm_kg": 80.0 },
         "status": "declined",
+        "not_judged_reason": null,
+        "best_recent": { "load_kg": 80, "reps": 10, "effective_load_kg": 80, "e1rm_kg": 106.67 },
         "is_pr": false,
         "drop_pct_vs_best_recent": 25,
         "possible_reset": true,
-        "no_progress_streak": 1
+        "no_progress_streak": 1,
+        "decline_streak": 1,
+        "stalled": false,
+        "new_stall": false
+      },
+      {
+        "exercise_id": "ex_lateral_raise",
+        "name": "Lateral raise",
+        "counts": false,
+        "classification": "excluded",
+        "bodyweight_exercise": false,
+        "sets": [
+          {
+            "load_kg": 12,
+            "reps": 15
+          }
+        ],
+        "top_set": { "load_kg": 12, "reps": 15, "effective_load_kg": 12, "e1rm_kg": 18.0 },
+        "status": "improved",
+        "not_judged_reason": null,
+        "best_recent": { "load_kg": 12, "reps": 13, "effective_load_kg": 12, "e1rm_kg": 17.2 },
+        "is_pr": true,
+        "drop_pct_vs_best_recent": 0,
+        "possible_reset": false,
+        "no_progress_streak": 0,
+        "decline_streak": 0,
+        "stalled": false,
+        "new_stall": false
       }
     ]
   },

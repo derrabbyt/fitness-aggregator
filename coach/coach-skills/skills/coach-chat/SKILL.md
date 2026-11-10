@@ -51,7 +51,9 @@ Keep tool calls few; use aggregated tools, never raw dumps.
   those days (context-log). "It wasn't actually heavy" → find that note with
   `get_context_notes` and `delete_context_note` it.
 - **CC-RESET** – "Reset incline press", "I changed my squat depth", "swapped to hack squat"
-  → `mark_baseline_reset`. Injury around an exercise → offer `set_exercise_paused`.
+  → `mark_baseline_reset` (find the id with `get_tracked_exercises`). Injury around an
+  exercise → offer to pause it; call `set_exercise_paused` only after the user agrees, and
+  `paused: false` when they say it's fine again.
 - **CC-LIFTS** – Every exercise logged in Hevy is recorded and classified as counting or
   excluded. "Count lateral raises", "don't count abs" → `get_tracked_exercises` for the id,
   then `classify_exercises`. "Trained at another gym / on other machines on Tuesday" → a
