@@ -74,7 +74,7 @@
 
     "session": {
       "type": "object",
-      "description": "Required for kind=training.",
+      "description": "Required for kind=training: one newly synced Hevy session, every exercise judged by code.",
       "required": ["session_id", "date", "exercises"],
       "additionalProperties": false,
       "properties": {
@@ -84,14 +84,23 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["exercise_id", "name", "tracked", "sets", "status", "is_pr", "drop_pct_vs_best_recent", "possible_reset", "no_progress_streak"],
+            "required": ["exercise_id", "name", "counts", "classification", "bodyweight_exercise", "sets", "top_set", "status", "not_judged_reason", "best_recent", "is_pr", "drop_pct_vs_best_recent", "possible_reset", "no_progress_streak", "decline_streak", "stalled", "new_stall"],
             "additionalProperties": false,
             "properties": {
               "exercise_id": { "type": "string" },
               "name": { "type": "string" },
-              "tracked": { "type": "boolean", "description": "Counts for the weekly progression check." },
+              "counts": { "type": "boolean", "description": "Counts for the weekly progression check (classified counts, or not classified yet). Excluded exercises still get PRs named, never stall flags." },
+              "classification": { "enum": ["counts", "excluded", null] },
+              "bodyweight_exercise": { "type": "boolean", "description": "Effective load includes bodyweight (dips, pull-ups)." },
+              "top_set": { "$ref": "weekly_facts.schema.json#/$defs/set_summary", "description": "The heaviest working set in rep_range; null when there is none." },
+              "not_judged_reason": { "$ref": "weekly_facts.schema.json#/$defs/not_judged_reason" },
+              "best_recent": { "$ref": "weekly_facts.schema.json#/$defs/set_summary", "description": "The best previous session it was compared with; null when not judged." },
+              "decline_streak": { "type": "integer", "minimum": 0 },
+              "stalled": { "type": "boolean", "description": "no_progress_streak >= stall_sessions on a counting exercise." },
+              "new_stall": { "type": "boolean", "description": "The stall starts with this session: flag it now, never again." },
               "sets": {
                 "type": "array",
+                "description": "Working sets as logged (warm-ups left out).",
                 "items": {
                   "type": "object",
                   "required": ["load_kg", "reps"],
@@ -103,9 +112,9 @@
                 }
               },
               "status": { "$ref": "weekly_facts.schema.json#/$defs/lift_status" },
-              "is_pr": { "type": "boolean", "description": "Best effective performance since the last baseline." },
+              "is_pr": { "type": "boolean", "description": "Beats the best session since the last baseline (never on a baseline's first session or a session that wasn't judged)." },
               "drop_pct_vs_best_recent": { "type": ["number", "null"] },
-              "possible_reset": { "type": "boolean", "description": "drop_pct_vs_best_recent >= big_drop_pct_ask_reset and no reset/injury note exists." },
+              "possible_reset": { "type": "boolean", "description": "drop_pct_vs_best_recent >= big_drop_pct_ask_reset and no reset/injury/pain note covers the day. Code asks the reset question with buttons." },
               "no_progress_streak": { "type": "integer", "minimum": 0 }
             }
           }
