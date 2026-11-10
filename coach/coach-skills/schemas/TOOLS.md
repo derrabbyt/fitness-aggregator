@@ -10,9 +10,9 @@ Rule for every write tool: **code validates, code applies.** The model only asks
 
 | Tool | Input | Returns |
 | --- | --- | --- |
-| `get_weekly_facts` | `iso_week` | `weekly_facts.schema.json` |
-| `get_daily_facts` | `date`, `kind` | `daily_facts.schema.json` |
-| `get_lift_history` | `exercise_id`, `n_sessions` | sessions since last baseline: date, sets (load, reps), effective load, status, notes |
+| `get_weekly_facts` | `iso_week` (optional, default the latest) | a stored check-in: `facts` (`weekly_facts.schema.json`), `verdict`, `rules_applied`, `counts_for_confirmation`, `skip_reason`, `code_adjustments` |
+| `get_daily_facts` | `date` (optional, default today) | `daily_facts` (`daily_facts.schema.json`, kind evening) + `lift_sessions`: that day's Hevy sessions, each exercise judged |
+| `get_lift_history` | `exercise_id`, `n_sessions` | sessions since last baseline: date, sets (load, reps), top set (effective load, e1RM), status, PR, streaks, notes |
 | `get_tracked_exercises` | – | exercises in the synced Hevy history (16 weeks): id, title, Hevy type, bodyweight or not, sessions, last date, `classification` (`counts`/`excluded`/null = not classified yet, counts), paused |
 | `get_context_notes` | `from`, `to` | list of `context_note.schema.json` |
 | `get_targets` | – | active phase (week, glycogen window), current targets (base maintenance, surplus, expected counted activity, average daily target, MFP goal) + daily targets for the current week |
@@ -91,10 +91,21 @@ On **approve** (one atomic claim, so a double tap applies once): apply delta to
 weight, then set the MyFitnessPal goal to the new average daily target once, read it back,
 never retry (a failed or uncertain write is reported; the coach targets stay as approved).
 Other open calorie proposals become `superseded` (they were based on the old targets).
-A calibration change updates the phase's setup value (counted from today; no MFP goal
-write). The next weekly report lists the change (`changes_applied`).
+A calibration change updates the phase's setup value (counted from today) and recomputes
+the targets from today as the phase start did: the expected counted activity moves by what
+the new values change over the last 28 days; when maintenance includes activity, base
+maintenance moves the other way, so the average stays and only the days' targets shift.
+The surplus never changes, so it doesn't restart the lockout. If the average daily target
+moved, the MFP goal is set once like a calorie change. The next weekly report lists the
+change (`changes_applied`).
 On **reject**: code asks for an optional reason; store it with `add_rejection_reason`.
-On the **counter** button: code asks for the user's number; the proposal stays open. The
-reply → new proposal with `source=user_counter`, `counter_of` set; when it is open, the
-old one becomes `superseded`. Every tap removes that proposal's buttons from its cards
+On the **counter** button: code asks for the user's number; the proposal stays open
+(`counter_awaited` in the state snapshot, for a day). A reply that is just a number
+("+50", "make it 80") is code's: a bare number keeps the proposal's sign; a calibration
+proposal with one value takes the number as that value. Code creates the proposal with
+`source=user_counter`, `counter_of` set, and, if it differs from the coach's own proposal at
+the root of the counter chain, says once on the new card what the coach would have chosen
+(`agent_disagrees`). Any other reply goes to the chat (`propose_change` with
+`counter_of`). When the counter is open, the old one becomes `superseded`; when it is
+blocked, the old one stays open and the user is told which guardrail and when. Every tap removes that proposal's buttons from its cards
 and shows the outcome (the counter tap changes nothing, so its buttons stay).

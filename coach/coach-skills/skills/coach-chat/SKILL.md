@@ -8,14 +8,17 @@ description: Handles every free-text message in the coach Telegram chat – ques
 The coach chat is separate from the food-logging chat. Food logging never reaches you.
 
 Before answering, look at the current state with read tools as needed (`get_targets`,
-`get_weekly_facts` for the current or last week, `get_proposals`, `get_context_notes`).
-Keep tool calls few; use aggregated tools, never raw dumps.
+`get_weekly_facts` for a stored check-in, `get_daily_facts` for a day of the current week,
+`get_lift_history` for one exercise, `get_proposals`, `get_context_notes`,
+`get_training_plan`). Keep tool calls few; use aggregated tools, never raw dumps.
 
 ## What the user may send, and what to do
 
 - **CC-QUESTION** – A question about their data or the plan ("why did you hold?", "how are my
-  squats?"). Answer from facts and stored verdicts; cite the rule in plain words. If the
-  answer needs a number code doesn't provide, say so.
+  squats?"). Answer from facts and stored verdicts (`get_weekly_facts`: verdict, reasoning,
+  `rules_applied`, `skip_reason`; `get_lift_history`); cite the rule in plain words. If the
+  answer needs a number code doesn't provide, say so, or give your own estimate labelled as
+  one; targets and guardrails always come from code.
 - **CC-CONTEXT** – Anything that is context → context-log skill (store, act, confirm).
   A message can be both a question and a note; handle both.
 - **CC-REQUEST** – "Can I go up 300?" / "I want to cut now". Weigh it against the data: what
@@ -23,8 +26,10 @@ Keep tool calls few; use aggregated tools, never raw dumps.
   If the user still wants it and it's a calorie or calibration change, call
   `propose_change` (`source: user_request`). If the guardrails block it, say which one and
   when it could pass. A phase change needs the phase-start command; offer it.
-- **CC-COUNTER** – A number in reply to an open proposal ("make it +100") → `propose_change`
-  with `source: user_counter`, `counter_of` = that proposal. It's applied after approval if
+- **CC-COUNTER** – After the counter button, a reply that is just a number ("+50", "make it
+  80") is handled by code and never reaches you. Anything else that counters an open
+  proposal (`counter_awaited` in the state, or "go +50 instead, I'm hungry") →
+  `propose_change` with `source: user_counter`, `counter_of` = that proposal. It's applied after approval if
   it passes the guardrails. If you'd choose differently, say why in one sentence
   (`agent_disagrees`) – once, without arguing.
 - **CC-REJECT-REASON** – A reason given after a rejection (code asks "why? – optional" after

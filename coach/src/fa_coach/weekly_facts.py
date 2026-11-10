@@ -289,8 +289,9 @@ def _history(coach, phase, start: Date) -> dict[str, Any]:
     last = changes[-1] if changes else None
     last_change = None
     if last is not None:
-        before = changes[-2]["avg_daily_target_kcal"] if len(changes) > 1 else None
-        delta = (last["avg_daily_target_kcal"] - before if before is not None
+        # The surplus moves only with calorie changes (calibration rows can move the average).
+        before = changes[-2]["surplus_kcal"] if len(changes) > 1 else None
+        delta = (last["surplus_kcal"] - before if before is not None
                  else phase["setup"].get("week1_increase_kcal") or 0)
         last_change = {"proposal_id": last["ref"], "source": last["source"], "applied_on": last["valid_from"],
                        "delta_kcal": round(delta)}
