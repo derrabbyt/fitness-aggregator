@@ -313,18 +313,20 @@
   "$defs": {
     "intake_day": {
       "type": "object",
-      "required": ["date", "logged", "target_kcal", "actual_kcal", "protein_g", "fat_g", "carbs_g", "fiber_g", "produce_g"],
+      "required": ["date", "logged", "target_kcal", "actual_kcal", "protein_g", "fat_g", "carbs_g", "fiber_g", "produce_g", "partial_suspected", "confirmed"],
       "additionalProperties": false,
       "properties": {
         "date": { "type": "string", "format": "date" },
-        "logged": { "enum": ["complete", "partial", "missing"] },
+        "logged": { "enum": ["complete", "partial", "missing"], "description": "complete: food logged in MFP and counted. partial: a suspected partial day the user hasn't confirmed; its numbers are shown but left out of the totals, logging completeness, adherence and the maintenance estimate. missing: nothing logged." },
         "target_kcal": { "type": "number" },
         "actual_kcal": { "type": ["number", "null"] },
         "protein_g": { "type": ["number", "null"] },
         "fat_g": { "type": ["number", "null"] },
         "carbs_g": { "type": ["number", "null"] },
         "fiber_g": { "type": ["number", "null"] },
-        "produce_g": { "type": ["number", "null"], "description": "Fruit + vegetables, if derivable from the food log; null otherwise." }
+        "produce_g": { "type": ["number", "null"], "description": "Fruit + vegetables, if derivable from the food log; null otherwise." },
+        "partial_suspected": { "type": "boolean", "description": "The day's kcal are below data.partial_day_share x the median of the other logged days within 3 days either side (its target when fewer than 3): likely logged only partly. Code asks the user (That's all I ate / I'll log the rest)." },
+        "confirmed": { "type": "boolean", "description": "The user confirmed the day's kcal as synced now (complete, or a high day as real). A confirmed day counts normally; the confirmation lapses when the kcal change in MFP." }
       }
     },
     "session": {

@@ -6,7 +6,11 @@ description: Daily evening job. Decides whether today's intake vs target is wort
 # Evening recap
 
 The missing-log reminder is a code rule and is not your job: code only calls you when
-today's food, weight and steps are all logged.
+today's food, weight and steps are all logged. Questions about today's intake are code's
+too: a suspected partial day (**That's all I ate** / **I'll log the rest**) or an
+implausibly high one (**Real** / **Typo, I'll fix it in MFP**) gets a code question with
+buttons instead of you, so when you are called today's kcal are either unremarkable or
+confirmed by the user (`day.intake.confirmed`). Don't ask about them again.
 
 ## Decide whether to send
 
@@ -19,8 +23,8 @@ today's food, weight and steps are all logged.
     `adherence.weekly_intake_tolerance_pct`, so the user can still steer the weekly total
   - protein or fat today is clearly off its target (`day.vs_target`; daily totals, never
     single meals)
-  - `day.checks.implausible_intake` is true (e.g. a day far beyond any normal intake) –
-    ask if it's a typo in MFP or real (`odd_log`)
+  - `day.checks.implausible_intake` is true and the user confirmed it as real
+    (`day.intake.confirmed`): only if the week so far is now off (above); no question
 - Minor things (fiber, a slightly low protein day) go into `deferred_to_weekly`, one short
   sentence each with the numbers from the facts.
 - In the glycogen window, don't comment on weight (code withholds it: `day.weight.withheld`).

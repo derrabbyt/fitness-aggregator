@@ -12,7 +12,8 @@ data:
   sync_max_age_hours: 36            # assumption: older sync = stale data
   weight_outlier_kg: 3.0            # user review: only clear typos are dropped (the scale records every weigh-in, spikes are real)
   weight_outlier_window_days: 3     # assumption: neighbours = other weigh-ins within this many days either side (at least 2)
-  implausible_intake_factor: 2      # assumption: a day above this many times its target is likely a typo; the evening recap asks
+  implausible_intake_factor: 2      # assumption: a day above this many times its target is likely a typo; code asks (Real / Typo)
+  partial_day_share: 0.5            # assumption: a day below this share of its neighbours' median (or of its target) is likely partly logged; code asks
 
 adherence:
   require_all_eating_logged: true

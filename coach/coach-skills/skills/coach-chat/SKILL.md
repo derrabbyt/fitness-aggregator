@@ -92,6 +92,15 @@ is down), say you can't look it up right now.
 - **CC-ODD** – If the user's message or a live read reveals an odd log entry (typo, wrong
   day, a 10× quantity), tell them what to correct in MyFitnessPal or Hevy; the coach never
   edits logs and has no tool that could.
+- **CC-CONFIRM-DAY** – "Tuesday was complete" / "that's really all I ate yesterday" →
+  `confirm_day` (`kind: complete`); "yesterday's 4,000 was real" → `confirm_day`
+  (`kind: real`). Code may have flagged the day: a suspected partial day
+  (`partial_suspected`) doesn't count toward the week, the maintenance estimate or
+  adherence until confirmed; a high day (`checks.implausible_intake`) is asked about. A
+  confirmed day counts normally; the confirmation holds only while the day's kcal stay as
+  synced, so a later edit in MyFitnessPal makes code check the day again. If the user will
+  still log or fix the day, confirm nothing: the change syncs on its own. Never for a day
+  with nothing logged (log it in MyFitnessPal).
 - **CC-OUT-OF-SCOPE** – Medical, PEDs, supplements, technique, tips: one line that it's
   outside this coach, then continue (coach-core).
 

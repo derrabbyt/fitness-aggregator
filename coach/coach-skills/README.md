@@ -102,7 +102,8 @@ changes the schema, the skills that reference it, the examples, and reruns
 | `decisions.far_off_margin_kg_per_week` | 0.1 | SPEC says ~100 kcal "slightly outside", ~200 "far off" but doesn't define "far" |
 | `data.sync_max_age_hours` | 36 | stale-data check needs a threshold |
 | `data.weight_outlier_kg`, `data.weight_outlier_window_days` | 3.0 kg vs the median of the weigh-ins within 3 days either side (user: only clear typos are dropped; normal spikes stay in the average, the scale records every weigh-in) | SPEC says outliers are flagged, not how |
-| `data.implausible_intake_factor` | 2 × the day's target | SPEC asks about implausible entries (e.g. 12,000 kcal) without a threshold |
+| `data.implausible_intake_factor` | 2 × the day's target; code asks **Real** / **Typo, I'll fix it in MFP** | SPEC asks about implausible entries (e.g. 12,000 kcal) without a threshold |
+| `data.partial_day_share` | 0.5 × the median of the other logged days within 3 days either side (the day's target when fewer than 3); code asks **That's all I ate** / **I'll log the rest** | MFP can't tell a partly logged day (e.g. 158 kcal) from a complete one; unconfirmed, such a day is left out of the maintenance estimate, logging completeness and adherence (user decision 2026-11-10: the user confirms days, the coach never writes to MFP) |
 | `training.deload_min_lifts_declining`, `training.decline_sessions_for_deload` | 2 counting lifts, 2 sessions in a row | SPEC says "several lifts declining" |
 | `training.big_drop_pct_ask_reset` | 15 (% estimated-1RM drop vs the best recent session) | when code asks "was this a reset?" (training feedback; buttons, exempt from the daily limit) |
 | `training.rep_range` | 4–20 | a session's performance = its heaviest working set with this many reps (warm-ups never count) |

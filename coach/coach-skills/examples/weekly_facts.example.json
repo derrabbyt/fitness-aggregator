@@ -90,7 +90,9 @@
         "fat_g": 70,
         "carbs_g": 410,
         "fiber_g": 31,
-        "produce_g": 520
+        "produce_g": 520,
+        "partial_suspected": false,
+        "confirmed": false
       },
       {
         "date": "2027-03-02",
@@ -101,7 +103,9 @@
         "fat_g": 70,
         "carbs_g": 510,
         "fiber_g": 31,
-        "produce_g": 520
+        "produce_g": 520,
+        "partial_suspected": false,
+        "confirmed": false
       },
       {
         "date": "2027-03-03",
@@ -112,7 +116,9 @@
         "fat_g": 70,
         "carbs_g": 425,
         "fiber_g": 31,
-        "produce_g": 520
+        "produce_g": 520,
+        "partial_suspected": false,
+        "confirmed": false
       },
       {
         "date": "2027-03-04",
@@ -123,7 +129,9 @@
         "fat_g": 70,
         "carbs_g": 492,
         "fiber_g": 31,
-        "produce_g": 520
+        "produce_g": 520,
+        "partial_suspected": false,
+        "confirmed": false
       },
       {
         "date": "2027-03-05",
@@ -134,7 +142,9 @@
         "fat_g": 70,
         "carbs_g": 522,
         "fiber_g": 31,
-        "produce_g": 520
+        "produce_g": 520,
+        "partial_suspected": false,
+        "confirmed": false
       },
       {
         "date": "2027-03-06",
@@ -145,7 +155,9 @@
         "fat_g": 70,
         "carbs_g": 402,
         "fiber_g": 31,
-        "produce_g": 520
+        "produce_g": 520,
+        "partial_suspected": false,
+        "confirmed": false
       },
       {
         "date": "2027-03-07",
@@ -156,7 +168,9 @@
         "fat_g": 70,
         "carbs_g": 475,
         "fiber_g": 31,
-        "produce_g": 520
+        "produce_g": 520,
+        "partial_suspected": false,
+        "confirmed": false
       }
     ]
   },

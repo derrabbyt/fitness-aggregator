@@ -37,7 +37,11 @@ Output: one JSON object matching `coach_message.schema.json` (`send: true`).
 3. **Weight** – 7-day average, weekly rate and the target band for this phase week; in the
    glycogen window say the jump is expected and not judged.
 4. **Food** – weekly average vs target and whether the adherence gate passed. Macro, fiber
-   or produce flags in one line each.
+   or produce flags in one line each. A day with `logged: partial` (a suspected partial
+   day the user hasn't confirmed) is left out of the totals and keeps the log incomplete:
+   name the day and its kcal, and say that "That's all I ate" on its question, or telling
+   the coach it was complete, makes it count (code asks with buttons; don't add any). A
+   confirmed day (`confirmed`) counts normally; say nothing more about it.
 5. **Training** – how many counting lifts improved (`training.improved_lifts` of
    `training.counted_lifts`); PRs from the week (`training.prs`, excluded lifts included);
    stalls (`training.stalls`) and deload signals as flags only; sport-load note if applied. If `training.progression_met` is null,

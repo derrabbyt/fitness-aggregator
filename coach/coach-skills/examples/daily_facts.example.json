@@ -97,7 +97,8 @@
       "sync_max_age_hours": 36,
       "weight_outlier_kg": 3.0,
       "weight_outlier_window_days": 3,
-      "implausible_intake_factor": 2
+      "implausible_intake_factor": 2,
+      "partial_day_share": 0.5
     },
     "adherence": {
       "require_all_eating_logged": true,

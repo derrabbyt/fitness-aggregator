@@ -74,7 +74,7 @@
         "sessions": { "type": "array", "items": { "$ref": "weekly_facts.schema.json#/$defs/session" } },
         "week_to_date": {
           "type": "object",
-          "description": "The phase week from its first day to today. Target, actual and deviation cover only the days with food logged.",
+          "description": "The phase week from its first day to today. Target, actual and deviation cover only the days with food logged; suspected partial days the user hasn't confirmed are left out.",
           "required": ["days_elapsed", "days_logged", "target_kcal_so_far", "actual_kcal_so_far", "deviation_pct"],
           "additionalProperties": false,
           "properties": {

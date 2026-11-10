@@ -9,7 +9,8 @@ value; no limit while it is unset):
   sends through `coach.say` and counts it, unless today's limit is reached,
   then sends nothing and returns False. `exempt=True` always sends and does
   not count (the "was this a reset?" question, story 81, and the weekly
-  check-in, the one weekly message the user expects).
+  check-in, the one weekly message the user expects). The `after_send`
+  hooks run after each message that went out.
 - `sent_today(coach, now)`: counted messages sent today (local date of `now`).
 - `limit(coach)`, `can_send(coach, now)`.
 
@@ -20,6 +21,7 @@ Deferred items (non-urgent observations held back for the weekly report):
 """
 
 import datetime
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from . import phases
@@ -29,6 +31,11 @@ if TYPE_CHECKING:
     from .core import Coach
 
 Date = datetime.date
+
+
+# Run after each unprompted message that went out: fn(coach, kind, now). Day
+# questions (features/day_questions.py) ride along with the next message here.
+after_send: list[Callable[["Coach", str, datetime.datetime], None]] = []
 
 
 def limit(coach: "Coach") -> int | None:
@@ -68,6 +75,8 @@ def send(
             (now.date().isoformat(), kind, int(exempt), now.isoformat(timespec="seconds")),
         )
     coach.say(text, buttons, ref)
+    for hook in after_send:
+        hook(coach, kind, now)
     return True
 
 

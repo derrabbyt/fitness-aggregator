@@ -15,7 +15,7 @@ import datetime
 import statistics
 from typing import TYPE_CHECKING, Any
 
-from . import history, phases
+from . import daycheck, history, phases
 
 if TYPE_CHECKING:
     from .core import Coach
@@ -32,8 +32,10 @@ def intake(coach: "Coach", start: Date, end: Date) -> dict[str, Any]:
     """{days: [intake_day], sessions: [counted sessions], macros: [daily
     macro targets]} for the days of the active phase from `start` to `end`.
     A day is `complete` when food is logged in MFP (any entry, or the day
-    marked complete), else `missing`; MFP can't tell a partly logged day."""
+    marked complete), `partial` when it is an unconfirmed suspected partial
+    day (daycheck.py: its numbers are shown but don't count), else `missing`."""
     synced = {d["date"]: d for d in history.days(coach.db, start.isoformat(), end.isoformat())}
+    checks = daycheck.statuses(coach, start, end, phases.params(coach))
     out: dict[str, Any] = {"days": [], "sessions": [], "macros": []}
     for day in dates(start, end):
         target = phases.daily_target(coach, day)
@@ -41,12 +43,15 @@ def intake(coach: "Coach", start: Date, end: Date) -> dict[str, Any]:
             continue
         food = synced.get(day.isoformat()) or {}
         logged = bool(food.get("logged")) and food.get("kcal") is not None
+        check = checks.get(day.isoformat()) or {}
         out["days"].append({
             "date": day.isoformat(),
-            "logged": "complete" if logged else "missing",
+            "logged": ("partial" if check.get("incomplete") else "complete") if logged else "missing",
             "target_kcal": target["kcal"],
             "actual_kcal": food.get("kcal") if logged else None,
             **{k: food.get(k) if logged else None for k in ("protein_g", "fat_g", "carbs_g", "fiber_g", "produce_g")},
+            "partial_suspected": bool(check.get("partial_suspected")),
+            "confirmed": bool(check.get("confirmed")),
         })
         out["sessions"].extend(target["activity"]["sessions"])
         out["macros"].append(target["macros"])
@@ -54,8 +59,8 @@ def intake(coach: "Coach", start: Date, end: Date) -> dict[str, Any]:
 
 
 def intake_summary(days: list[dict[str, Any]], p: dict[str, Any]) -> dict[str, Any]:
-    """Totals over `days` (intake_day entries): target, actual (logged days),
-    deviation in % (only when every day is logged) and adherence: every day
+    """Totals over `days` (intake_day entries): target, actual (logged days;
+    partial days don't count), deviation in % (only when every day is logged) and adherence: every day
     logged (if required) and the deviation within the weekly tolerance."""
     target = sum(d["target_kcal"] for d in days)
     logged = [d for d in days if d["logged"] == "complete"]

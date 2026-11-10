@@ -41,7 +41,7 @@ import statistics
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
-from . import history
+from . import daycheck, history
 
 if TYPE_CHECKING:
     from .core import Coach
@@ -322,8 +322,8 @@ def macro_reference_weight(coach: "Coach", day: Date) -> float:
 
 def maintenance_estimate(coach: "Coach", end: Date, p: dict[str, Any]) -> dict[str, Any]:
     """Back-calculated maintenance from the most recent run of usable weeks
-    ending at or before `end` (each week fully logged, enough weigh-ins, no
-    note marking it unusable, outside an earlier phase's glycogen window):
+    ending at or before `end` (each week fully logged with no unconfirmed
+    partial day (daycheck.py), enough weigh-ins, no note marking it unusable, outside an earlier phase's glycogen window):
     average intake - weight change x kcal_per_kg / days between the first and
     last week. Needs `maintenance_estimate.min_window_weeks` weeks; otherwise
     `value` is None and `missing` says why."""
@@ -332,7 +332,7 @@ def maintenance_estimate(coach: "Coach", end: Date, p: dict[str, Any]) -> dict[s
     first = end - HISTORY_WEEKS * 7 * DAY + DAY
     days = {d["date"]: d for d in history.days(coach.db, first.isoformat(), end.isoformat())}
     weights = history.weigh_ins(coach.db, first.isoformat(), end.isoformat())
-    blocked = _unusable_days(coach, first, end, cfg)
+    blocked = _unusable_days(coach, first, end, cfg) | daycheck.incomplete_days(coach, first, end, p)
     run: list[tuple[Date, Date]] = []
     for k in range(HISTORY_WEEKS):
         week_end = end - 7 * k * DAY

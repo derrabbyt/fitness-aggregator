@@ -12,7 +12,7 @@ import datetime
 import pytest
 
 from fa_coach import messaging, phases
-from fakes import TZ, exercise, food, reply_json, session
+from fakes import TZ, exercise, food, reply, reply_json, session, tool_call
 from test_phase_start import card, start_and_collect
 
 EVENING = datetime.time(20, 30)
@@ -181,16 +181,30 @@ async def test_the_week_so_far_counts_only_logged_days(reverse, api, model):
     assert week["deviation_pct"] == -13.0
 
 
-async def test_an_implausible_day_is_flagged_and_the_question_is_sent(reverse, api, model, outbox):
+async def test_an_implausible_day_gets_codes_question_and_no_recap(reverse, api, model, outbox):
+    # Ticket 20: code asks (Real / Typo) with buttons; test_day_confirmation covers the answers.
     log(api, "2026-11-10", 12000)
-    question = "12,000 kcal today: a typo in MFP, or real?"
-    model.script(reply_json(message(question)))
+
+    await reverse.run_due_jobs(at("2026-11-10"))
+
+    [card] = outbox.sent
+    assert "12,000" in card.text and card.buttons
+    assert model.requests == []
+
+
+async def test_a_confirmed_implausible_day_is_flagged_in_the_recap(reverse, api, model, outbox):
+    log(api, "2026-11-10", 12000)
+    await reverse.sync(at("2026-11-10", datetime.time(19)))
+    model.script(tool_call("confirm_day", date="2026-11-10", kind="real"), reply("Noted."))
+    await reverse.on_message("today's 12,000 is real, birthday", at("2026-11-10", datetime.time(19)))
+    model.requests.clear()
+    model.script(reply_json(message(send=False)))
 
     await reverse.run_due_jobs(at("2026-11-10"))
 
     day = recap_facts(reverse, model)["day"]
     assert day["checks"]["implausible_intake"] is True
-    assert outbox.texts == [question]
+    assert day["intake"]["confirmed"] is True and day["intake"]["logged"] == "complete"
 
 
 async def test_a_normal_day_is_not_flagged_implausible(reverse, api, model):

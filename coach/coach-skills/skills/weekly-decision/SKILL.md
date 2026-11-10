@@ -95,7 +95,9 @@ Add a flag only when it's true and worth the user's attention. Severity `info` =
   clearly off target on most days (judge daily totals, never single meals); `fiber_off` when
   fiber is outside `intake.fiber_target_g` on most days; `produce_low` when `produce_g` is
   below `intake.produce_min_g` on most days (skip if `produce_g` is null); `odd_log` for an
-  implausible entry, with a question.
+  implausible entry, with a question, unless the day is `confirmed`; a `logged: partial`
+  day (suspected partial, not confirmed) is already left out of the totals and the
+  logging completeness by code, and code asks the user about it itself.
 - **WD-F-TRAINING** – `lift_stall` per lift in `training.stalls` (counting lifts whose
   `no_progress_streak` reached `training.stall_sessions`; excluded lifts never get one),
   judged with that exercise's normal behaviour in mind (isolation lifts stall more often),
