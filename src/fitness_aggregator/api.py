@@ -29,19 +29,12 @@ from myfitnesspal_mcp.mfp_web import api_headers  # noqa: E402
 
 from . import hevy  # noqa: E402
 from .config import ROOT  # noqa: E402
+from .log_context import LogContext  # noqa: E402
 
 logger = logging.getLogger(__name__)
 WEB_DIST = ROOT / "web" / "dist" / "web" / "browser"
 
 app = FastAPI(title="fitness-aggregator")
-
-
-class _LogContext:
-    """Stands in for the MCP request context that mfp-mcp reports progress to."""
-
-    async def info(self, message: str) -> None:
-        logger.info(message)
-
 
 KM_PER_MILE = 1.609344
 
@@ -82,7 +75,7 @@ def _mfp_diary_items(day: datetime.date):
         resp.raise_for_status()
         return resp.json().get("items") or []
 
-    return mfp_server.with_session(_LogContext(), op)
+    return mfp_server.with_session(LogContext(), op)
 
 
 def _activity(items: list[dict]) -> tuple[int | None, list[dict[str, Any]]]:
@@ -152,18 +145,18 @@ async def fitness_quick_add(
         resp.raise_for_status()
         return [i.get("id") for i in resp.json().get("items") or []]
 
-    ids = await mfp_server.with_session(_LogContext(), op)
-    refresh = await mfp_server.refresh_after_write(_LogContext(), day)
+    ids = await mfp_server.with_session(LogContext(), op)
+    refresh = await mfp_server.refresh_after_write(LogContext(), day)
     return {"ok": True, "quick_add": item, "ids": ids, **refresh}
 
 
 async def _mfp_day(day: datetime.date) -> dict[str, Any]:
-    summary = await mfp_server.fitness_get_day(date=day.isoformat(), ctx=_LogContext())
+    summary = await mfp_server.fitness_get_day(date=day.isoformat(), ctx=LogContext())
     items = await _mfp_diary_items(day)
     # Latest weigh-in, which may be from an earlier day. The account displays kg,
     # and MFP returns weights in the account's display unit.
     trend = await mfp_server.fitness_get_trends(
-        metric="weight", start=(day - datetime.timedelta(days=90)).isoformat(), end=day.isoformat(), ctx=_LogContext()
+        metric="weight", start=(day - datetime.timedelta(days=90)).isoformat(), end=day.isoformat(), ctx=LogContext()
     )
     points = trend.get("points") or []
     weight = {"kg": points[-1]["value"], "date": points[-1]["day"]} if points else None
@@ -273,19 +266,15 @@ def _sync_exercises(items: list[dict]) -> list[dict[str, Any]]:
     ]
 
 
-def _mfp_sync_day(day: datetime.date):
-    def op(store, client):
-        mfp_day = client.get_date(day)
-        resp = client.session.get(
-            f"{client.BASE_API_URL.rstrip('/')}/v2/diary",
-            params={"entry_date": day.isoformat()},
-            headers=api_headers(client, {"Accept": "application/json"}),
-            timeout=30,
-        )
-        resp.raise_for_status()
-        return mfp_day, resp.json().get("items") or []
+async def _mfp_sync_day(day: datetime.date):
+    mfp_day = await mfp_server.with_session(LogContext(), lambda store, client: client.get_date(day))
+    return mfp_day, await _mfp_diary_items(day)
 
-    return mfp_server.with_session(_LogContext(), op)
+
+def _failed(what: str, exc: BaseException) -> str:
+    """For replies and stored errors: never the exception's text (it could
+    quote request headers or cookies), only its class."""
+    return f"{what} failed ({type(exc).__name__})"
 
 
 @app.get("/api/sync/mfp")
@@ -298,11 +287,11 @@ async def sync_mfp(start: datetime.date, end: datetime.date | None = None) -> di
     end = _sync_range(start, end, SYNC_MFP_MAX_DAYS)
     try:
         weights = await mfp_server.with_session(
-            _LogContext(), lambda store, client: client.get_measurements("Weight", start, end)
+            LogContext(), lambda store, client: client.get_measurements("Weight", start, end)
         )
     except Exception as exc:
         logger.exception("MFP weights failed")
-        raise HTTPException(502, f"MFP weights: {exc}") from exc
+        raise HTTPException(502, _failed("MFP weights", exc)) from exc
     days = []
     day = start
     while day <= end:
@@ -313,9 +302,10 @@ async def sync_mfp(start: datetime.date, end: datetime.date | None = None) -> di
             mfp_day, items = await _mfp_sync_day(day)
         except Exception as exc:
             if mfp_client.is_auth_error(exc):
-                raise HTTPException(502, f"MFP: {exc}") from exc
+                logger.exception("MFP session failed")
+                raise HTTPException(502, _failed("MFP session", exc)) from exc
             logger.exception("MFP %s failed", day)
-            record["error"] = str(exc)[:200]
+            record["error"] = _failed("MFP day", exc)
         else:
             record["food"] = _sync_food(mfp_day)
             record["steps"], _ = _activity(items)
@@ -394,7 +384,7 @@ async def sync_hevy(start: datetime.date, end: datetime.date | None = None) -> d
         sessions = await asyncio.to_thread(_hevy_sync, start, end)
     except Exception as exc:
         logger.exception("Hevy failed")
-        raise HTTPException(502, f"Hevy: {str(exc)[:200]}") from exc
+        raise HTTPException(502, _failed("Hevy", exc)) from exc
     return {"start": start.isoformat(), "end": end.isoformat(), "sessions": sessions}
 
 
@@ -422,11 +412,11 @@ async def day_summary(date: datetime.date | None = None) -> dict[str, Any]:
     errors = {}
     if isinstance(mfp_result, BaseException):
         logger.exception("MFP failed", exc_info=mfp_result)
-        errors["mfp"] = str(mfp_result)
+        errors["mfp"] = _failed("MFP", mfp_result)
         mfp_result = {"nutrition": None, "steps": None, "weight": None, "workouts": []}
     if isinstance(hevy_result, BaseException):
         logger.exception("Hevy failed", exc_info=hevy_result)
-        errors["hevy"] = str(hevy_result)
+        errors["hevy"] = _failed("Hevy", hevy_result)
         hevy_result = []
     return {
         "date": day.isoformat(),
