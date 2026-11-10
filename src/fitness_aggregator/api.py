@@ -233,17 +233,39 @@ def _num(totals: dict, key: str) -> float | None:
     return round(float(value), 1) if isinstance(value, (int, float)) else None
 
 
-def _sync_food(mfp_day) -> dict[str, Any]:
-    """Food totals from the diary page. Fiber is there only if the diary shows
-    a Fiber column (else null); produce grams aren't derivable (null)."""
+def _fiber_g(items: list[dict]) -> float | None:
+    """Fiber summed over the /v2/diary food entries' `nutritional_contents`
+    (grams, already for the logged amount, like /v2/foods). The diary page
+    shows only the visible columns, and a free account can't add Fiber.
+    Entries without a fiber value are skipped; none at all -> None."""
+    values = []
+    for item in items:
+        contents = item.get("nutritional_contents")
+        if not isinstance(contents, dict):
+            continue
+        fiber = contents.get("fiber")
+        if isinstance(fiber, dict):  # {"value", "unit"}, like "energy"
+            if fiber.get("unit") not in (None, "g", "grams"):
+                continue
+            fiber = fiber.get("value")
+        if isinstance(fiber, (int, float)) and not isinstance(fiber, bool):
+            values.append(float(fiber))
+    return round(sum(values), 1) if values else None
+
+
+def _sync_food(mfp_day, items: list[dict]) -> dict[str, Any]:
+    """Food totals from the diary page; fiber from the /v2/diary entries
+    (falling back to a Fiber column if the diary shows one); produce grams
+    aren't derivable (null)."""
     entries = sum(len(meal.entries) for meal in mfp_day.meals)
     totals = mfp_day.totals if entries else {}
+    fiber = _fiber_g(items) if entries else None
     return {
         "kcal": _num(totals, "calories"),
         "protein_g": _num(totals, "protein"),
         "carbs_g": _num(totals, "carbohydrates"),
         "fat_g": _num(totals, "fat"),
-        "fiber_g": _num(totals, "fiber"),
+        "fiber_g": fiber if fiber is not None else _num(totals, "fiber"),
         "produce_g": None,
         "complete": bool(mfp_day.complete),
         "entries": entries,
@@ -307,7 +329,7 @@ async def sync_mfp(start: datetime.date, end: datetime.date | None = None) -> di
             logger.exception("MFP %s failed", day)
             record["error"] = _failed("MFP day", exc)
         else:
-            record["food"] = _sync_food(mfp_day)
+            record["food"] = _sync_food(mfp_day, items)
             record["steps"], _ = _activity(items)
             record["exercises"] = _sync_exercises(items)
         days.append(record)
