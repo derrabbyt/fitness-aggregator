@@ -41,3 +41,7 @@
   The coach suite now runs in ~1.7 min (277 tests).
 - intake_day gains required `partial_suspected` and `confirmed`; `logged: partial` (enum
   already had it) marks an unconfirmed suspected day, whose kcal stay visible.
+- Follow-up: the phase-start "last diet intake" prefill now leaves out unconfirmed suspected
+  partial days like unlogged ones (confirmed days count); its `source` / `missing` names the
+  days left out as likely partial. The phase-start chat gained `confirm_day` so the user can
+  confirm them during setup (the prefill is recomputed on each message).

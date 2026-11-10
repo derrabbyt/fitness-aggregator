@@ -36,7 +36,9 @@ the input:
      exercises from Hevy.
    - starting calories (last diet intake, daily average), starting trend weight,
      maintenance estimate from the last diet weeks. When `prefill` has no value, say why
-     (its `missing`) and ask the user for the number.
+     (its `missing`) and ask the user for the number. When the source or `missing` names days
+     left out as likely partial, mention them: if the user says one was complete, call
+     `confirm_day` (`kind: complete`); the prefill then counts it.
    - run kcal discount, wrestling kcal per session, lifting kcal per session (counted for each
      lifting session that shows up in Hevy)
    - fat start in g/kg within `limits.fat_g_per_kg_start`

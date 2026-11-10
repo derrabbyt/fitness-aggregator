@@ -272,3 +272,63 @@ async def test_a_confirmation_lapses_when_the_day_changes_in_mfp(reverse, api, c
     messaging.send(coach, "Next message.", at("2026-11-16", datetime.time(8)), kind="test")
     card = questions(outbox)[-1]
     assert len(questions(outbox)) == 2 and "400 kcal" in card.text  # checked again
+
+
+# --- phase-start prefill: last diet intake ------------------------------------------------
+
+
+def intake_prefill(model):
+    return model.requests[-1].input["setup"]["prefill"]["starting_calories_kcal"]
+
+
+async def test_the_last_diet_intake_prefill_leaves_out_a_partial_day(coach, api, model):
+    diet_history(api, **{"2026-11-04": 158})  # the prefill window is 2 - 8 Nov
+    await coach.sync()
+    model.script(reply("I read these from your history: ..."))
+
+    await coach.on_message("start reverse")
+
+    intake = intake_prefill(model)
+    assert intake["value"] == 2000  # the six complete days, not (6 x 2000 + 158) / 7
+    assert "1 day" in intake["source"] and "partial" in intake["source"]
+
+
+async def test_the_last_diet_intake_prefill_counts_a_confirmed_day(coach, api, model):
+    diet_history(api, **{"2026-11-04": 158})
+    await coach.sync()
+    model.script(tool_call("confirm_day", date="2026-11-04", kind="complete"), reply("Noted."))
+    await coach.on_message("4 Nov was complete")
+    model.script(reply("I read these from your history: ..."))
+
+    await coach.on_message("start reverse")
+
+    intake = intake_prefill(model)
+    assert intake["value"] == 1737  # (6 x 2000 + 158) / 7
+    assert "partial" not in intake["source"]
+
+
+async def test_a_left_out_day_can_be_confirmed_in_the_setup_chat(coach, api, model):
+    diet_history(api, **{"2026-11-04": 158})
+    await coach.sync()
+    model.script(reply("I read these from your history: ..."))
+    await coach.on_message("start reverse")
+    model.script(tool_call("confirm_day", date="2026-11-04", kind="complete"), reply("Noted, 4 Nov counts."))
+
+    await coach.on_message("4 Nov was complete")
+    model.script(reply("Here are the values again."))
+    await coach.on_message("show me the values again")
+
+    assert not model.results(1)[0].is_error
+    assert intake_prefill(model)["value"] == 1737
+
+
+async def test_too_few_days_left_after_partial_ones_says_so(coach, api, model):
+    diet_history(api, **{"2026-11-03": 158, "2026-11-05": 150, "2026-11-07": 120})
+    await coach.sync()
+    model.script(reply("I need your recent intake."))
+
+    await coach.on_message("start reverse")
+
+    intake = intake_prefill(model)
+    assert intake["value"] is None
+    assert "3 days" in intake["missing"] and "partial" in intake["missing"]

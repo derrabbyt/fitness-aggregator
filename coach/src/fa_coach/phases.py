@@ -429,17 +429,26 @@ def prefill(coach: "Coach", phase_id: str, now: datetime.datetime) -> dict[str, 
     out: dict[str, Any] = {}
 
     first = yesterday - (INTAKE_DAYS - 1) * DAY
+    # unconfirmed suspected partial days count as unlogged; say so, so the user can confirm them
+    incomplete = daycheck.incomplete_days(coach, first, yesterday, p)
     logged = [d for d in history.days(coach.db, first.isoformat(), yesterday.isoformat())
-              if d["logged"] and d["kcal"] is not None]
+              if d["logged"] and d["kcal"] is not None and d["date"] not in incomplete]
+    left_out = ""
+    if incomplete:
+        n = len(incomplete)
+        left_out = (f"; left out {n} day{'s' if n > 1 else ''} that look partly logged "
+                    f"({', '.join(sorted(incomplete))}): likely partial unless the user confirms "
+                    f"{'they were' if n > 1 else 'it was'} complete")
     if len(logged) >= MIN_LOGGED_DAYS:
         out["starting_calories_kcal"] = {
             "value": round(statistics.fmean(d["kcal"] for d in logged)),
-            "source": f"MFP: daily average of the {len(logged)} logged days {first} to {yesterday}",
+            "source": f"MFP: daily average of the {len(logged)} logged days {first} to {yesterday}{left_out}",
         }
     else:
         out["starting_calories_kcal"] = {
             "value": None,
-            "missing": f"only {len(logged)} of the {INTAKE_DAYS} days {first} to {yesterday} are logged in MFP",
+            "missing": (f"only {len(logged)} of the {INTAKE_DAYS} days {first} to {yesterday} are "
+                        f"fully logged in MFP{left_out}"),
         }
 
     weight = trend_weight(coach, today)
