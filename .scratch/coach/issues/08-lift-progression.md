@@ -4,7 +4,7 @@
 
 **Blocked by:** 07 (Weekly check-in: facts, verdict, report)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Per tracked lift: status improved / same / declined / new baseline / paused vs the best of up to 3 previous sessions (at least 2 needed), counted only if trained within the recency window
 - [x] Progress = more load or reps at the same execution; micro-progressions count; for dips, pull-ups and similar, bodyweight gained counts as added load (effective load)

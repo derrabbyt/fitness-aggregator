@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 (Coach service skeleton)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] The api has REST read endpoints returning compact per-day records for a date range: food totals (kcal, protein, carbs, fat, fiber; produce grams if derivable, else null) and whether the day is logged, weight, steps, runs (kcal, distance, duration); and Hevy sessions with exercise id, title and per-set load and reps
 - [x] The api reads Hevy in pages of 5 and reaches MFP only through its existing session; nothing new talks to MFP directly

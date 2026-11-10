@@ -4,7 +4,7 @@
 
 **Blocked by:** 08 (Lift progression in the weekly decision)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] A newly synced lifting session triggers daily facts (kind training) and the training-feedback skill once per session
 - [x] PRs are named; stalls on tracked lifts are flagged the first time only; new baselines are mentioned only on their first session; paused exercises aren't judged

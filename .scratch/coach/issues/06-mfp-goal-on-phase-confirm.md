@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 (Phase start: reverse)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] The api's tools endpoint has `fitness_set_goal` (calories, protein, carbs, fat) that sets the MFP nutrition goal and returns the stored goal
 - [x] `fitness_set_goal` is not in the food bot's read-tool allowlist and is never offered to the coach model

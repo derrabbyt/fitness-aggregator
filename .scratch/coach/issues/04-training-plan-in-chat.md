@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 (Context notes and profile in chat)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] The current sheet export is moved into the repo's data folder under a stable name and seeds the saved plan on first start (week grid with times, optional runs; exercise lists per session kept for offering tracked lifts)
 - [x] After seeding, the plan changes only through chat; the CSV is not re-read

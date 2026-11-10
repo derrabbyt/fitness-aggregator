@@ -4,9 +4,9 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] `docker compose up -d --build` starts a `coach` service alongside `api` and `bot`; it polls `COACH_TELEGRAM_BOT_TOKEN` and ignores every user except `TELEGRAM_ALLOWED_USER_ID`
+- [x] `docker compose up -d --build` starts a `coach` service alongside `api` and `bot`; it polls `COACH_TELEGRAM_BOT_TOKEN` and ignores every user except `TELEGRAM_ALLOWED_USER_ID`
 - [x] `/profile` from the allowed user gets a reply showing the coach profile (empty for now); messages from anyone else get no reply
 - [x] The coach is its own uv project with pinned deps in the one image; its SQLite database lives in the coach's directory under `state/`
 - [x] The `Coach` core holds no Telegram or network code; it takes an api client, a model client and a clock, and writes outgoing messages and buttons to an outbox
@@ -26,3 +26,4 @@
 - Deps are pre-added for the planned work so later tickets don't fight over `coach/uv.lock`: `anthropic`, `httpx`, `mcp` (for `fitness_set_goal`), `python-telegram-bot`, `jsonschema`, `pyyaml`.
 - `ports.ModelRequest` / `ModelReply` / `ToolCall` are a first sketch of the model client interface; ticket 03 may reshape them together with `FakeModel`. `model.py` is a placeholder that fails if called.
 - Until the chat exists (ticket 03), free text and unknown commands get a one-line reply listing the commands.
+- **Live start (2026-11-10, orchestrator):** `docker compose up -d --build` from `coach-v1` started `api` (healthy), `bot` and `coach`. The coach polled its token, loaded only the allowed live read tools (7 MFP, 3 Hevy), ran the 16-week first sync (all api sync requests 200). `/profile` from the allowed user replied "your coach profile is empty"; `/sync` triggered a sync. Ignoring other users wasn't tried live (no second account); the adapter filters by `TELEGRAM_ALLOWED_USER_ID`.

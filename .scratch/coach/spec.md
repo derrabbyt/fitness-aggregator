@@ -1,6 +1,6 @@
 # Coach v1: reverse-into-bulk loop
 
-Status: ready-for-agent
+Status: resolved
 
 Sources: `SPEC.md` (scope v0), the coach-skills package, `GLOSSARY.md`, ADRs 0001–0003.
 

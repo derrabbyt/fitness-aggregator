@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] `/api/sync/mfp` fills `food.fiber_g` with the day's sum of fiber over food entries (from the same `/v2/diary` read the endpoint already does; no extra MFP request), or null when no entry has a fiber value. Find the field name and units in the library sources (`/tmp/claude-1000/-home-debian-projects-fitness-aggregator/b78f9df1-d31b-4728-a922-f644ddfbd08f/scratchpad/libsrc/`, NOTES.md) and code defensively (missing key → ignored; all missing → null)
 - [x] The coach stores and uses it unchanged (it already handles `fiber_g`); README "Sync endpoints" updated

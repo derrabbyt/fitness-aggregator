@@ -4,7 +4,7 @@
 
 **Blocked by:** 08 (Lift progression in the weekly decision), 09 (Proposals with approve and reject)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Read tools for chat return aggregated data: weekly facts, daily facts, lift history, context notes, targets, training plan, proposals, coach profile; `load_skill` loads other skills by name
 - [x] Questions ("why did you hold?", "how are my squats?") are answered from stored facts and verdicts, citing the rule in plain words

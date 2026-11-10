@@ -4,7 +4,7 @@
 
 **Blocked by:** 17, 18 (same modules)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Core param `data.partial_day_share: 0.5`: a day whose intake is below that share of the median of the user's other logged days in the 7 days around it (fall back to the daily target when fewer than 3 such days) is **incomplete** unless the user confirmed it. Schema, params, README assumption row; validator green
 - [x] Incomplete days are excluded from the maintenance estimate (a week containing one is not usable), from weekly logging completeness and from adherence / intake vs target; daily and weekly facts mark them (`partial_suspected`, `confirmed`) and validate against the schemas

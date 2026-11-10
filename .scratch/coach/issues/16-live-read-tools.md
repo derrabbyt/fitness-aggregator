@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 (model tool loop), 10 (chat about the plan)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] A read-only allowlist in coach code, e.g. `MFP_READ_TOOLS = {fitness_get_day, fitness_get_activity, fitness_get_exercise, fitness_get_exercise_entries, fitness_get_note, fitness_get_trends, fitness_search_food}` and all Hevy read tools (`hevy_get_account`, `hevy_list_workouts`, `hevy_get_workout`). Left out on purpose: every write (`fitness_log_*`, `fitness_delete_*`, `fitness_modify_food`, `fitness_quick_add`, `fitness_clear_food_pin`, `fitness_set_goal`), `fitness_draft_food` (the coach doesn't log food) and `fitness_bulk_export` (huge output; the synced data covers it)
 - [x] Tool definitions come from the api's `tools/list` (filtered by the allowlist) so schemas stay in sync, fetched once at start-up and cached; if the api is down at start-up the coach runs without live tools and retries the listing later. Calls go through the coach's api client to `fa-api` only (one MFP session owner); read calls may be retried, writes are never reachable

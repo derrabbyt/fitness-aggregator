@@ -4,7 +4,7 @@
 
 **Blocked by:** 17
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] New setup value `step_goal` (default 10,000; changeable in chat via `record_setup_value`, not a calibration proposal) and core params: `steps.kcal_per_step_at_70kg: 0.04`, `steps.share: 0.75`, `steps.not_tracked_below: 2500`, `steps.run_steps_per_km: 1200` (schema, params, README assumption rows; validator green)
 - [x] `k = kcal_per_step_at_70kg × trend weight / 70 × share`. Day steps for targets = MFP steps − Strava run distance × `run_steps_per_km` (floor 0). A day under `not_tracked_below` raw steps counts as not tracked: no step adjustment, and it's left out of averages

@@ -4,7 +4,7 @@
 
 **Blocked by:** code-review fixes (`coach/review-fixes`), 16
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] **MFP goal = base maintenance + surplus** (the rest-day target; ticket 18 refines this to base at average steps + surplus), not the average daily target. Activity (runs, lifting, wrestling, extra sessions) stays on top: exact in the coach's daily targets, mentally in MFP. Macros for the MFP goal are computed at that kcal (protein and fat in g/kg as usual, carbs the remainder). Applies to phase confirm, approved calorie proposals and approved calibration changes. The phase-start preview and approval cards say what MFP will show and that activity comes on top. Update spec (`.scratch/coach/spec.md`: stories 29 and 54, "fa-api additions", "Facts, rules and guardrails"), root `SPEC.md`, ADR 0001's consequence line if it says "average", skills (phase-start, weekly-report, coach-chat, TOOLS.md), README and tests.
 - [x] **Calibration changes keep the measured maintenance:** base = maintenance estimate − average counted activity with the new values, so base moves and the average stays. Because base changes, the MFP goal (base + surplus) changes: set it once through `mfp_goal.set_once`, read back once, never retried (ticket 10 currently skips the write when the average is unchanged).

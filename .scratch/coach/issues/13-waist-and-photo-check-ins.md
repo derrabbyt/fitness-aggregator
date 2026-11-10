@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 (Phase start: reverse)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Waist and photo due dates are computed in code from the measurement params and the phase start; reminders are sent once when due (photos only when photos are enabled)
 - [x] The photo prompt includes the protocol: same spot and light, camera at hip height, morning, fasted, unpumped, same poses

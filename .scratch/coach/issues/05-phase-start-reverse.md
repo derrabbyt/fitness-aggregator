@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 (Sync history from MFP and Hevy), 04 (Training plan in chat)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] The phase-start skill is loaded with the target phase skill; draft phases with undecided values are refused, listing what must be decided
 - [x] Prefilled values come from code-computed history and are shown for confirmation, never guessed

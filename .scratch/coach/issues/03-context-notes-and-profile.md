@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 (Coach service skeleton)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] The model client wraps the Anthropic SDK, reads `COACH_ANTHROPIC_BASE_URL` / `COACH_ANTHROPIC_API_KEY` with fallback to `ANTHROPIC_BASE_URL` / `ANTHROPIC_API_KEY`, and uses `COACH_MODEL` (default `claude-sonnet-5-5`)
 - [x] Prompts use a cached prefix (coach-core, active phase skill if any, tool definitions), then the task skill, a short state snapshot and the input; chat keeps only a short history

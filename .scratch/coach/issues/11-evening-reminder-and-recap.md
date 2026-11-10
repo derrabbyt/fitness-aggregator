@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 (Phase start: reverse)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Daily facts (kind evening) are computed in code and validate against the daily-facts schema, including today vs daily target and the week so far vs target
 - [x] The missing-log reminder is code-only, at most once per day, and names what's missing

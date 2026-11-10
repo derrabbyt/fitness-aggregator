@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 (Phase start: reverse)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] The weekly job runs at the configured check-in day and time, once per week
 - [x] Weekly facts are computed in code and validate against the weekly-facts schema: 7-day averages, weekly rate, weigh-in count, logging completeness, weekly intake vs target, daily targets with counted activity, maintenance estimate (back-calculated, ≥ 3 weeks, glycogen weeks excluded), phase week, glycogen window, gain band and `vs_band`, carb remainder, predicted weight and prediction miss, data freshness, context notes for the week, and verdict history

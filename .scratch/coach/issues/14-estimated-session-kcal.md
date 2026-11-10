@@ -4,7 +4,7 @@
 
 **Blocked by:** 04 (Training plan in chat)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] `set_session_status` (extra, and done for a planned session without synced data) takes `kcal` (the user's number), or `activity` + `duration_min` for code's estimate, or the model's own `kcal_estimate` only when code can't estimate
 - [x] Code estimates kcal = MET × current 7-day trend weight (kg) × hours as the first choice, with a MET table per activity type in core params (schema, params, README assumption row; the validator stays green)

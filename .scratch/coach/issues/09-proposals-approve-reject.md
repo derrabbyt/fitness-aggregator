@@ -4,7 +4,7 @@
 
 **Blocked by:** 06 (MFP goal set on phase confirm), 07 (Weekly check-in: facts, verdict, report)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] `propose_change` stores a proposal as `open` or `blocked_by_guardrail` with violations: max change (except a phase's first change), lockout, confirmation not met, rejected direction returning too early, unusable week, adherence gate, invalid calibration values
 - [x] An identical open proposal is referenced, not duplicated
