@@ -64,3 +64,5 @@ Original decisions (weights superseded):
 - The weekly report's code fallback has a training line (`weekly_checkin.training_summary`).
 - Left for ticket 12: `mark_baseline_reset` / `set_exercise_paused` tools, the training-feedback
   skill wording (status `not_judged`, `counts` instead of `tracked` in daily facts).
+
+**Bodyweight tolerance (user, 2026-11-10):** for bodyweight lifts (pull-ups, dips, …), a change in effective load that comes only from bodyweight counts as the same load unless the 7-day trend weight moved by at least 1 kg since the compared session (core param, e.g. `training.bodyweight_same_load_kg: 1.0`). Gaining ≥ 1 kg at the same reps = improved.
