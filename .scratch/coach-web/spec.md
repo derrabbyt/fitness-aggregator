@@ -38,7 +38,7 @@ The page reads the coach's stored data and opens instantly. A refresh button syn
 2. As the user, I want bottom tabs Home, Week, Training and Setup, so that every part is one tap away with my thumb.
 3. As the user, I want the layout to work on desktop too, wider but with the same content, so that I can use it at a computer.
 4. As the user, I want the page reachable only inside my tailnet, with no login, so that it's private without extra steps.
-5. As the user, I want the old day view kept under `/legacy`, so that nothing I relied on disappears.
+5. As the user, I want the old day view kept under `/legacy`, reachable by URL only and never linked from the UI, so that nothing I relied on disappears and the UI stays clean.
 6. As the user, I want the page to follow my phone's light or dark theme, so that it's comfortable at night.
 7. As the user, I want the page to open instantly from the coach's stored data, so that I don't wait for MFP.
 8. As the user, I want a refresh control that syncs MFP and Hevy now and then reloads, so that I can see food I just logged.
