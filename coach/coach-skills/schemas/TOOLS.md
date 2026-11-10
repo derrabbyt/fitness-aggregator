@@ -1,7 +1,7 @@
 # Coach tools (contract for code)
 
 Tools the coach model can call in the **coach chat** and in jobs that need them. All return
-pre-aggregated JSON, never raw MyFitnessPal dumps. Names are suggestions; Claude Code can
+pre-aggregated JSON, never raw MyFitnessPal dumps (except the live reads below). Names are suggestions; Claude Code can
 rename them to fit the codebase as long as SKILL.md references are updated in the same change.
 
 Rule for every write tool: **code validates, code applies.** The model only asks.
@@ -20,6 +20,19 @@ Rule for every write tool: **code validates, code applies.** The model only asks
 | `get_proposals` | `status` (optional) | list of `proposal.schema.json` |
 | `get_coach_profile` | – | `{profile: {key: value}}`: short entries (preferences, known issues); also in every call's state snapshot |
 | `load_skill` | `name` | SKILL.md of another skill from the index |
+
+## Live reads (MyFitnessPal and Hevy, through the api)
+
+In the coach chat (every task that gets all tools) the model also gets these api MCP tools,
+with the api's own descriptions and schemas, listed at start-up: `fitness_get_day`,
+`fitness_get_activity`, `fitness_get_exercise`, `fitness_get_exercise_entries`,
+`fitness_get_note`, `fitness_get_trends`, `fitness_search_food`, `hevy_get_account`,
+`hevy_list_workouts`, `hevy_get_workout`. Raw, not aggregated: use them to look things up
+and explain ("what did I eat on Tuesday?", "which entry looks like a typo?", "what did I do
+on pull-ups last week?"), never to compute targets or decisions. Results over 20,000
+characters come back cut (`truncated: true`). The list is read-only in code
+(`fa_coach/live_tools.py`); no MFP or Hevy write is reachable, and the api may be
+unreachable (then the tools are missing for a while).
 
 ## Write
 

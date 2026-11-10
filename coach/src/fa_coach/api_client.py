@@ -3,7 +3,9 @@
 Sync reads come from the api's REST endpoints (`api_url`, ticket 02); the
 MFP goal is set and read through the `fitness_set_goal` / `fitness_get_goal`
 MCP tools (`tools_url`): one POST each, never retried (fa_coach/mfp_goal.py
-decides what the outcome means).
+decides what the outcome means). The model's live read tools
+(`live_tools.py`) are listed and called through `list_tools` / `read_tool`:
+allowlisted reads only, which may be retried.
 """
 
 import datetime
@@ -12,11 +14,16 @@ from typing import Any
 
 import httpx
 
+from .live_tools import server_of
+
 # The api reads MFP day by day (two requests per day), so a 4-week chunk can
 # take a few minutes.
 READ_TIMEOUT = httpx.Timeout(600.0, connect=10.0)
 # The goal write is a read, one POST and a read-back on the api's side.
 TOOL_TIMEOUT = httpx.Timeout(180.0, connect=10.0)
+# Live reads (a day, a search) are quick; a listing even more so.
+READ_TOOL_TIMEOUT = httpx.Timeout(60.0, connect=10.0)
+READ_ATTEMPTS = 2  # a read may be sent again after a network error; writes never get here
 
 
 def _goal(stored: dict[str, Any] | None) -> dict[str, Any] | None:
@@ -66,6 +73,44 @@ class HttpApiClient:
         if result.get("isError"):
             raise RuntimeError(f"api {name}: {text.strip()[:200]}")
         return json.loads(text)
+
+    async def list_tools(self, server: str) -> list[dict[str, Any]]:
+        """MCP `tools/list` of the api's "mfp" or "hevy" server."""
+        return (await self._read_rpc(server, "tools/list", {}))["tools"]
+
+    async def read_tool(self, server: str, name: str, args: dict[str, Any]) -> Any:
+        """One live read for the model: the tool's JSON result (or its text if
+        it isn't JSON). Refuses anything not on the read-only allowlist."""
+        if server_of(name) != server:
+            raise PermissionError(f"{name} is not a live read tool")
+        result = await self._read_rpc(server, "tools/call", {"name": name, "arguments": args})
+        text = "\n".join(c.get("text", "") for c in result.get("content") or [] if c.get("type") == "text")
+        if result.get("isError"):
+            raise RuntimeError(f"api {name}: {text.strip()[:200]}")
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            return text
+
+    async def _read_rpc(self, server: str, method: str, params: dict[str, Any]) -> dict[str, Any]:
+        """A JSON-RPC POST for reads only (never `_tool`'s writes): sent again
+        once after a network error."""
+        body = {"jsonrpc": "2.0", "id": 1, "method": method, "params": params}
+        for attempt in range(READ_ATTEMPTS):
+            try:
+                async with httpx.AsyncClient(timeout=READ_TOOL_TIMEOUT) as client:
+                    resp = await client.post(f"{self.tools_url}/{server}/mcp", json=body,
+                                             headers={"Accept": "application/json, text/event-stream"})
+                break
+            except httpx.TransportError:
+                if attempt == READ_ATTEMPTS - 1:
+                    raise
+        if resp.status_code >= 400:
+            raise RuntimeError(f"api {server} {method}: {resp.status_code} {resp.reason_phrase}")
+        data = resp.json()
+        if "error" in data:
+            raise RuntimeError(f"api {server} {method}: {data['error'].get('message')}")
+        return data["result"]
 
     async def _get(self, path: str, start: datetime.date, end: datetime.date) -> dict[str, Any]:
         async with httpx.AsyncClient(timeout=READ_TIMEOUT) as client:

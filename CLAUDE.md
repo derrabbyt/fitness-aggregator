@@ -34,6 +34,9 @@ never `up` the services (README, Development).
   `fa-api`, is the only process that opens `state/coach/coach.db`, and changes
   nothing without the user's tap. Its Claude settings are `COACH_MODEL`,
   `COACH_DECISION_MODEL` and `COACH_ANTHROPIC_*` (falling back to `ANTHROPIC_*`).
+  Its model gets live MFP/Hevy reads through the api's MCP tools, filtered by
+  `READ_TOOLS` in `coach/src/fa_coach/live_tools.py`: keep that allowlist
+  read-only (never a write or `fitness_set_goal`; `coach/tests/test_live_tools.py`).
 - **Hevy pages of 5.** `/user_workouts_paged` returns 400 for the library's
   default page size of 10.
 
