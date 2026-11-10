@@ -30,7 +30,7 @@ MIN_SLEEP = datetime.timedelta(hours=3)  # longest gap must be at least this
 MERGE_WAKE = datetime.timedelta(minutes=60)  # a phone check at night up to this long ...
 MIN_PART = datetime.timedelta(minutes=90)  # ... joins a neighbouring gap at least this long
 CHECK_COST = datetime.timedelta(minutes=5)  # awake time counted per interruption besides its span
-CHECKS_FROM, CHECKS_TO = datetime.time(21, 0), datetime.time(6, 0)  # only checks in this span join gaps (a morning routine ends the night)
+CHECKS_FROM, CHECKS_TO = datetime.time(21, 0), datetime.time(5, 0)  # only checks in this span join gaps (a morning routine ends the night; the user wakes ~05:00)
 
 router = APIRouter()
 
