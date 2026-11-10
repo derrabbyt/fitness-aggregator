@@ -89,23 +89,54 @@ def reminders(outbox) -> list[str]:
     return [t for t in outbox.texts if "waist" in t.lower() or "photo" in t.lower()]
 
 
-async def test_the_reminder_is_sent_once_when_due(coach, make_coach, outbox):
+async def test_the_reminder_goes_out_once_the_evening_before_the_due_date(coach, make_coach, outbox):
+    activate(coach)  # evening reminder time 20:30
+    await coach.run_due_jobs(at("2026-11-09", 9))
+    outbox.clear()
+
+    await coach.run_due_jobs(at("2026-11-21", 20, 30))
+    await coach.run_due_jobs(at("2026-11-22", 20, 29))
+    assert reminders(outbox) == []
+
+    await coach.run_due_jobs(at("2026-11-22", 20, 30))
+    await coach.run_due_jobs(at("2026-11-22", 21))
+    await coach.run_due_jobs(at("2026-11-23", 7))
+    await make_coach().run_due_jobs(at("2026-11-24", 7))  # after a restart, the next day
+
+    [text] = reminders(outbox)
+    assert "tomorrow morning" in text.lower()
+    assert "waist" in text.lower() and "photo" in text.lower()
+    for words in PROTOCOL:
+        assert words in text.lower(), words
+
+
+async def test_a_missed_evening_is_reminded_once_on_the_due_day(coach, outbox):
     activate(coach)
     await coach.run_due_jobs(at("2026-11-09", 9))
     outbox.clear()
 
-    await coach.run_due_jobs(at("2026-11-22", 20))
-    await coach.run_due_jobs(at("2026-11-23", 6, 59))
+    await coach.run_due_jobs(at("2026-11-23", 6, 59))  # the coach was down the evening before
     assert reminders(outbox) == []
 
     await coach.run_due_jobs(at("2026-11-23", 7))
-    await coach.run_due_jobs(at("2026-11-23", 7, 1))
-    await make_coach().run_due_jobs(at("2026-11-24", 7))  # after a restart, the next day
+    await coach.run_due_jobs(at("2026-11-23", 20, 30))
 
     [text] = reminders(outbox)
+    assert "tomorrow" not in text.lower()
     assert "waist" in text.lower() and "photo" in text.lower()
-    for words in PROTOCOL:
-        assert words in text.lower(), words
+
+
+async def test_without_an_evening_reminder_time_the_reminder_goes_out_on_the_due_morning(coach, outbox):
+    activate(coach, logistics={**SETUP["logistics"], "evening_reminder_time": None})
+    await coach.run_due_jobs(at("2026-11-09", 9))
+    outbox.clear()
+
+    await coach.run_due_jobs(at("2026-11-22", 23))
+    assert reminders(outbox) == []
+
+    await coach.run_due_jobs(at("2026-11-23", 7))
+    [text] = reminders(outbox)
+    assert "tomorrow" not in text.lower()
 
 
 async def test_the_baseline_photo_set_is_asked_for_on_the_start_date_without_the_waist(coach, outbox):
@@ -134,18 +165,18 @@ async def test_reminders_count_toward_the_daily_message_limit(coach, outbox):
     assert messaging.sent_today(coach, at("2026-11-09", 9)) == 1
     outbox.clear()
 
-    early = at("2026-11-23", 6)
+    early = at("2026-11-22", 6)
     assert messaging.send(coach, "one", early, kind="test") and messaging.send(coach, "two", early, kind="test")
     outbox.clear()
-    await coach.run_due_jobs(at("2026-11-23", 7))
-    await coach.run_due_jobs(at("2026-11-24", 6, 59))
+    await coach.run_due_jobs(at("2026-11-22", 20, 30))
+    await coach.run_due_jobs(at("2026-11-23", 6, 59))
     assert reminders(outbox) == []  # held back by the limit, not lost
 
-    await coach.run_due_jobs(at("2026-11-24", 7))
-    await coach.run_due_jobs(at("2026-11-24", 8))
+    await coach.run_due_jobs(at("2026-11-23", 7))
+    await coach.run_due_jobs(at("2026-11-23", 8))
     [text] = reminders(outbox)
     assert "waist" in text.lower() and "photo" in text.lower()
-    assert messaging.sent_today(coach, at("2026-11-24", 8)) == 1
+    assert messaging.sent_today(coach, at("2026-11-23", 8)) == 1
 
 
 async def test_no_reminder_without_an_active_phase(coach, outbox):
@@ -211,7 +242,7 @@ async def test_a_bare_number_counts_as_the_waist_only_while_a_waist_reminder_is_
     await coach.on_message("84", at("2026-11-20", 8))
     assert measurements.waist_values(coach) == []
 
-    await coach.run_due_jobs(at("2026-11-23", 7))
+    await coach.run_due_jobs(at("2026-11-22", 20, 30))
     await coach.on_message("84.5 cm", at("2026-11-23", 7, 30))
     model.script(reply("Okay."))
     await coach.on_message("85", at("2026-11-23", 8))
@@ -234,7 +265,7 @@ async def test_switching_photos_off_in_chat_stops_photo_reminders_and_nothing_el
         {"date": "2026-11-23", "kind": "waist"}, {"date": "2026-12-07", "kind": "waist"}]
     outbox.clear()
 
-    await coach.run_due_jobs(at("2026-11-23", 7))
+    await coach.run_due_jobs(at("2026-11-22", 20, 30))
 
     [text] = reminders(outbox)
     assert "waist" in text.lower() and "photo" not in text.lower()

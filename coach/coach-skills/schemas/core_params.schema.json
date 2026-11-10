@@ -15,7 +15,7 @@
         "evaluation_period_days": { "const": 7 },
         "min_weighins_per_week": { "type": "integer", "minimum": 1, "maximum": 7 },
         "sync_max_age_hours": { "type": "number", "minimum": 1 },
-        "weight_outlier_kg": { "type": "number", "exclusiveMinimum": 0, "description": "A weigh-in further than this from the median of its neighbours is marked an outlier (code only, silent) and left out of trend inputs." },
+        "weight_outlier_kg": { "type": "number", "exclusiveMinimum": 0, "description": "A weigh-in further than this from the median of its neighbours is a clear typo: marked an outlier (code only, silent) and left out of trend inputs. Normal spikes stay in." },
         "weight_outlier_window_days": { "type": "integer", "minimum": 1, "description": "Neighbours of a weigh-in: the other weigh-ins within this many days either side; at least two are needed to judge." },
         "implausible_intake_factor": { "type": "number", "exclusiveMinimum": 1, "description": "A logged day above this many times its daily target is flagged implausible (daily facts checks.implausible_intake)." }
       }

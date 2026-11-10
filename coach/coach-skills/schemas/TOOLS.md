@@ -72,12 +72,29 @@ A proposal is `blocked_by_guardrail` if any of these hold:
    `decisions.rejected_return_weeks` usable weeks since the rejection still pointed that way
    → `rejected_return_too_early`.
 5. `based_on_week` was unusable → `week_unusable`; weekly adherence failed → `adherence_gate`.
-6. `calibration_change` with out-of-range values → `invalid_values`.
+6. `calibration_change` with out-of-range values (`phase_setup.schema.json` ranges) or keys
+   other than `run_kcal_discount`, `wrestling_kcal_per_session`,
+   `lifting_kcal_per_session` → `invalid_values`.
 
 Not a guardrail: other open proposals may coexist (no stacking rule). An identical open
 proposal should be referenced, not duplicated (idempotency).
 
-On **approve**: apply delta to `surplus_kcal` (or new calibration values), recompute targets,
-set the MyFitnessPal calorie goal to the new average daily target, log the change.
-On **reject**: store `user_reason` if given. On **counter**: new proposal with
-`source=user_counter`, `counter_of` set; the old one becomes `superseded`.
+Each violation also gets a line in `guardrail.details`: `{violation, text, earliest_checkin}`
+(what failed and the first weekly check-in that could pass it if the weeks until then count;
+null when waiting doesn't help, e.g. a too-large change). The proposal is "based on" the
+given `based_on_week`, else the replaced proposal's week (counters), else the latest stored
+check-in. The "too fast" scenario per phase is in code (reverse_bulk `E`, cut `too_fast`).
+A `calibration_change` is checked by 6 only.
+
+On **approve** (one atomic claim, so a double tap applies once): apply delta to
+`surplus_kcal` and the average daily target from today, macros at the current macro reference
+weight, then set the MyFitnessPal goal to the new average daily target once, read it back,
+never retry (a failed or uncertain write is reported; the coach targets stay as approved).
+Other open calorie proposals become `superseded` (they were based on the old targets).
+A calibration change updates the phase's setup value (counted from today; no MFP goal
+write). The next weekly report lists the change (`changes_applied`).
+On **reject**: code asks for an optional reason; store it with `add_rejection_reason`.
+On the **counter** button: code asks for the user's number; the proposal stays open. The
+reply → new proposal with `source=user_counter`, `counter_of` set; when it is open, the
+old one becomes `superseded`. Every tap removes that proposal's buttons from its cards
+and shows the outcome (the counter tap changes nothing, so its buttons stay).

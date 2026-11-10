@@ -11,7 +11,11 @@ Input (assembled by code):
 - `verdict` – the weekly-decision output
 - `proposal_result` – the stored proposal returned by `propose_change` (status `open` or
   `blocked_by_guardrail` with violations), or null
-- `changes_applied` – proposals approved since the last report
+- `changes_applied` – changes approved since the last report: `{proposal_id, type, source,
+  approved_on, what, why, recheck_on}`, for calorie changes also `delta_kcal`,
+  `avg_daily_target_before_kcal` / `_after_kcal`, `expected_weekly_rate_change_kg`,
+  `mfp_goal`, `mfp_goal_status` (`set`, `not_set`, `uncertain`); for calibration changes
+  `previous_values` / `new_values`
 - `deferred` – observations held back from daily messages this week (`[{date, text}]`)
 - `due` – waist and photo check-ins due in the coming week, `[{date, kind}]` with kind
   `waist` or `photos` (photos only while they're on); empty when nothing is due
@@ -23,10 +27,12 @@ Output: one JSON object matching `coach_message.schema.json` (`send: true`).
 1. **Decision** – one or two sentences: the scenario in plain words and what happens. Never
    name the scenario letter alone; say what it means.
 2. **Proposal** – if `proposal_result.status` is `open`: the change in kcal per day on
-   average, why, and what to expect. Add buttons `approve_proposal`, `reject_proposal`,
-   `counter_proposal` with `ref_id` = proposal id, and say a counter is "reply with your
-   number". If `blocked_by_guardrail`: don't show buttons; say plainly that no change is
-   possible yet and when it could be (from the verdict's reasoning).
+   average, why, and what to expect. Code puts the approve / reject / counter buttons on the
+   message (you may list them in `buttons`; code replaces them); say a counter is "reply with
+   your number". If `proposal_result.referenced` is true, it's the same open proposal as
+   before: say it's still waiting. If `blocked_by_guardrail`: no buttons; say plainly that no
+   change is possible yet, which guardrail stopped it and when it could pass, from
+   `proposal_result.guardrail.details` (`text`, `earliest_checkin`).
 3. **Weight** – 7-day average, weekly rate and the target band for this phase week; in the
    glycogen window say the jump is expected and not judged.
 4. **Food** – weekly average vs target and whether the adherence gate passed. Macro, fiber
@@ -37,8 +43,11 @@ Output: one JSON object matching `coach_message.schema.json` (`send: true`).
    say in a few words that lift progression wasn't evaluated, and list the sessions only. For scenario D: "training needs a look",
    nothing more specific.
 6. **Activity** – average steps only if relevant (step floor flag, unusual week).
-7. **Changes applied this week** – for each: what changed, why, what to expect, when it gets
-   re-checked (per the confirmation rules).
+7. **Changes applied this week** – for each: what changed (`what`, the targets before and
+   after), why (`why`), what to expect (`expected_weekly_rate_change_kg`: the change in
+   weekly weight gain it should bring; a carb increase can also show as a small water jump),
+   when it gets re-checked (`recheck_on`), and if `mfp_goal_status` isn't `set`, that the
+   MyFitnessPal goal needs checking by hand.
 8. **Deferred items** – merged into the sections above if they fit, otherwise one short list.
 9. **Next week** – what to expect (e.g. the band for next week, the jump after a carb
    increase) and anything due from `due`: waist, photos, with the day.
@@ -46,7 +55,7 @@ Output: one JSON object matching `coach_message.schema.json` (`send: true`).
 
 ## Rules
 
-- **WR-NUMBERS** – Only numbers from `facts`, `verdict` or `proposal_result`. No new
+- **WR-NUMBERS** – Only numbers from `facts`, `verdict`, `proposal_result` or `changes_applied`. No new
   calculations (CORE-NO-MATH).
 - **WR-LENGTH** – Fits on one phone screen in a normal week; longer only when there's a
   proposal, an unusable week to explain, or several flags.
