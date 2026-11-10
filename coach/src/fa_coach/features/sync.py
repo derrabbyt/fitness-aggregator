@@ -15,7 +15,7 @@ import datetime
 import statistics
 from typing import Any
 
-from .. import history
+from .. import errors, history
 from ..registry import registry
 
 HISTORY_DAYS = 16 * 7
@@ -38,7 +38,7 @@ async def sync_mfp(coach, now: datetime.datetime) -> None:
             records = await coach.api.mfp_days(start, end)
             good = [r for r in records if not r.get("error")]
             if records and not good:
-                raise RuntimeError(f"every day failed, e.g. {records[0]['date']}: {records[0]['error']}")
+                raise NoDayRead(f"MFP couldn't read any day from {start} to {end}")
             failed += [r["date"] for r in records if r.get("error")]
             with coach.db.transaction():
                 for record in good:
@@ -99,7 +99,8 @@ class _Run:
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
         if exc is not None:
-            _set(self.coach.db, self.source, last_error=_short(exc), last_count=None, last_new=None)
+            error = str(exc) if isinstance(exc, NoDayRead) else errors.brief("the sync failed", exc)
+            _set(self.coach.db, self.source, last_error=error, last_count=None, last_new=None)
             return  # the core logs it; other sources still run
         _set(
             self.coach.db,
@@ -120,9 +121,8 @@ def _set(db, source: str, **values: Any) -> None:
     db.execute(f"UPDATE sync_state SET {columns} WHERE source = ?", (*values.values(), source))
 
 
-def _short(exc: BaseException) -> str:
-    text = str(exc).strip().splitlines()[0] if str(exc).strip() else type(exc).__name__
-    return text[:200]
+class NoDayRead(RuntimeError):
+    """Every day of a chunk failed. Its message is the coach's own (shown to the user)."""
 
 
 # --- storing -----------------------------------------------------------------
