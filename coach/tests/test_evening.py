@@ -249,7 +249,10 @@ async def test_the_daily_limit_holds_back_the_reminder_and_the_recap(reverse, ap
 
     api.days["2026-11-10"] = {"weight_kg": 80.6}  # nothing logged: a reminder would be due
     await coach.run_due_jobs(at("2026-11-10"))
-    assert outbox.items == []
+    assert outbox.items == []  # held back for the weekly report
+    held = messaging.deferred(coach, datetime.date(2026, 11, 10), datetime.date(2026, 11, 10))
+    assert [(i["source"], i["text"]) for i in held] == [
+        ("evening-reminder", "Evening check: today's food and steps are not in MyFitnessPal yet.")]
 
     # Next day the limit starts over; a recap the model wants to send past the
     # limit is held back for the weekly report instead.

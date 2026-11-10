@@ -12,7 +12,7 @@ Once a day, at the evening reminder time (setup value
    (`messaging.deferred`).
 
 Both messages count toward the daily message limit (`messaging.send`). A
-recap held back by the limit is stored as a deferred item instead. In the
+reminder or recap held back by the limit is stored as a deferred item instead. In the
 glycogen window the facts carry no weight values, so the recap can't comment
 on weight.
 """
@@ -30,6 +30,7 @@ logger = logging.getLogger("fa-coach")
 Date = datetime.date
 DAY = datetime.timedelta(days=1)
 SKILL = "evening-recap"
+REMINDER = "evening-reminder"
 
 
 @registry.job("evening", order=5)  # before stale-data: its own sync counts there
@@ -49,7 +50,9 @@ async def evening(coach, now: datetime.datetime) -> None:
     missing = _missing(record)
     if missing:
         if p["messaging"].get("missing_log_reminders_per_day", 1) > 0:
-            messaging.send(coach, _reminder(missing), now, kind="evening-reminder")
+            text = _reminder(missing)
+            if not messaging.send(coach, text, now, kind=REMINDER):
+                messaging.defer(coach, today, text, REMINDER, now)
         return
     await _recap(coach, phase, p, record, now)
 
