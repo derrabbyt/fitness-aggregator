@@ -28,7 +28,7 @@ router = APIRouter()
 logger = logging.getLogger("fa-api.health_inbox")
 
 
-def _check_token(request: Request) -> None:
+def check_token(request: Request) -> None:
     expected = os.environ.get("HEALTH_INGEST_TOKEN", "")
     if not expected:
         return
@@ -77,7 +77,7 @@ def _summary(body: bytes) -> dict[str, Any]:
 
 @router.post("/api/health-data")
 async def receive(request: Request) -> dict[str, Any]:
-    _check_token(request)
+    check_token(request)
     body = await request.body()
     if len(body) > MAX_BYTES:
         raise HTTPException(413, f"body over {MAX_BYTES // (1024 * 1024)} MB")
@@ -105,9 +105,12 @@ async def sleep(date: str) -> dict[str, Any]:
     """The night Marrow dates `date` (its `sleep_analysis` entry), for the web UI.
     Exports are incremental, so every stored file is read; a later file wins."""
     try:
-        datetime.date.fromisoformat(date)
+        day = datetime.date.fromisoformat(date)
     except ValueError:
         raise HTTPException(400, "date must be YYYY-MM-DD")
+    from .phone_sleep import estimate  # phone-use estimate (pings), shown next to Health's entry
+
+    phone = estimate(day)
     night = None
     for path in sorted(INBOX.glob("*.json")) if INBOX.exists() else []:
         if path.name.endswith(".meta.json"):
@@ -122,15 +125,14 @@ async def sleep(date: str) -> dict[str, Any]:
             for point in m.get("data") or []:
                 if isinstance(point, dict) and str(point.get("date", ""))[:10] == date:
                     night = point
-    if night is None:
-        return {"date": date, "night": None}
     keys = ("asleep", "inBed", "totalSleep", "sleepStart", "sleepEnd", "core", "deep", "rem", "awake")
-    return {"date": date, "night": {k: night[k] for k in keys if k in night}}
+    health = {k: night[k] for k in keys if k in night} if night is not None else None
+    return {"date": date, "night": health, "phone": phone}
 
 
 @router.get("/api/health-data")
 async def inbox(request: Request) -> list[dict[str, Any]]:
-    _check_token(request)
+    check_token(request)
     if not INBOX.exists():
         return []
     out = []
