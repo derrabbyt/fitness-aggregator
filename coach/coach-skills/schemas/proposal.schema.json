@@ -45,7 +45,7 @@
         "passed": { "type": "boolean" },
         "violations": {
           "type": "array",
-          "items": { "enum": ["exceeds_max_change", "lockout", "confirmation_not_met", "rejected_return_too_early", "week_unusable", "adherence_gate", "invalid_values"] }
+          "items": { "enum": ["exceeds_max_change", "lockout", "confirmation_not_met", "rejected_return_too_early", "week_unusable", "adherence_gate", "invalid_values", "size_or_direction_mismatch"] }
         },
         "details": {
           "type": "array",

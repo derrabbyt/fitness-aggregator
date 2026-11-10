@@ -33,6 +33,9 @@ Guardrails (coach-skills/schemas/TOOLS.md):
    still pointing that way.
 5. week_unusable / adherence_gate: the week the proposal is based on.
 6. invalid_values: calibration values outside phase_setup's ranges.
+7. size_or_direction_mismatch (weekly_decision only): the direction the
+   scenario calls for and the step size the trend calls for
+   (`_size_or_direction`).
 `phase_start` skips 2-4; a calibration change is checked only by 6.
 """
 
@@ -50,6 +53,10 @@ Date = datetime.date
 DAY = datetime.timedelta(days=1)
 # The phase decision table's "too fast" scenario: one confirming week is enough.
 FAST_LANE_SCENARIO = {"reverse_bulk": "E", "cut": "too_fast"}
+# The phase decision table's scenarios that change calories (all others: no
+# calorie change). Phases not listed (drafts) get no size/direction check.
+SCENARIO_DIRECTION = {"reverse_bulk": {"C": "increase", "E": "decrease"}}
+STEP_TOLERANCE_KCAL = 25
 CALIBRATION_KEYS = phases.CALIBRATION_KEYS
 DECIDED = ("approved", "rejected", "superseded")
 
@@ -184,7 +191,44 @@ def _guardrails(coach, phase, spec, based_on: str | None, original, now) -> tupl
     if based is not None and based["skip_reason"] == "adherence_gate":
         found.append(("adherence_gate", f"Week {based_on} failed the adherence gate (intake off target or "
                       "incomplete logs), so no change can be based on it.", _earliest(coach, now, 1)))
+    if spec["source"] == "weekly_decision" and based is not None:
+        wrong = _size_or_direction(coach, phase, based, delta, first, d)
+        if wrong:
+            found.append(("size_or_direction_mismatch", wrong, None))
     return _pack(found)
+
+
+def _size_or_direction(coach, phase, based: dict[str, Any], delta: int, first: bool, d) -> str | None:
+    """What a verdict's calorie change should be, by code: the direction from
+    the scenario, the size from how far the trend is outside the band
+    (`decisions.far_off_margin_kg_per_week` or more: the large step, else the
+    small one, ±STEP_TOLERANCE_KCAL). A phase's first change keeps its start
+    range (exceeds_max_change). None if it matches, else what code expected."""
+    table = SCENARIO_DIRECTION.get(phase["phase_id"])
+    if table is None:
+        return None  # no decision table in code for this phase yet
+    want = table.get(based["scenario"])
+    week = f"week {based['iso_week']} (scenario {based['scenario']})"
+    if want is None:
+        return f"For {week} code expected no calorie change; this is {delta:+} kcal a day."
+    sign = 1 if want == "increase" else -1
+    expected, why = f"an {want}", ""
+    step = None
+    if not first:  # a phase's first change keeps its start range (exceeds_max_change)
+        facts = coach.db.value("SELECT facts FROM weekly_checkins WHERE status = 'ok' AND phase_row_id = ?"
+                               " AND iso_week = ? ORDER BY id DESC LIMIT 1", (phase["id"], based["iso_week"]))
+        weight = json.loads(facts)["weight"] if facts else {}
+        rate, band = weight.get("weekly_rate_kg"), weight.get("band")
+        if rate is not None and band is not None:
+            beyond = round(band["low"] - rate if want == "increase" else rate - band["high"], 2)
+            far = beyond >= d["far_off_margin_kg_per_week"]
+            step = d["large_step_kcal"] if far else d["small_step_kcal"]
+            expected += f" of about {sign * step:+g} kcal a day"
+            why = (f": the trend ({rate:+.2f} kg/week) is {max(beyond, 0):.2f} kg/week outside the band "
+                   f"({'at least' if far else 'less than'} {d['far_off_margin_kg_per_week']:g})")
+    if delta * sign > 0 and (step is None or abs(abs(delta) - step) <= STEP_TOLERANCE_KCAL):
+        return None
+    return f"For {week} code expected {expected}{why}; this is {delta:+} kcal a day."
 
 
 def _pack(found) -> tuple[list[str], list[dict[str, Any]]]:

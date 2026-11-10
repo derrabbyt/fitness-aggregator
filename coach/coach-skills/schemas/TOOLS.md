@@ -76,6 +76,13 @@ A proposal is `blocked_by_guardrail` if any of these hold:
 6. `calibration_change` with out-of-range values (`phase_setup.schema.json` ranges) or keys
    other than `run_kcal_discount`, `wrestling_kcal_per_session`,
    `lifting_kcal_per_session` → `invalid_values`.
+7. `weekly_decision` only (the verdict's own proposal; user requests and counters keep
+   1–5): the direction must be the one the phase's scenario calls for (reverse_bulk: C
+   increase, E decrease, every other scenario no calorie change), and the size the one the
+   trend calls for: `decisions.large_step_kcal` when the 7-day rate is
+   `decisions.far_off_margin_kg_per_week` or more outside the band, else
+   `decisions.small_step_kcal` (±25 kcal; a phase's first change keeps its start range)
+   → `size_or_direction_mismatch`, saying what code expected.
 
 Not a guardrail: other open proposals may coexist (no stacking rule). An identical open
 proposal should be referenced, not duplicated (idempotency).
