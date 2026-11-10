@@ -55,6 +55,22 @@
           }
         },
         "steps": { "type": ["integer", "null"] },
+        "target_build_up": {
+          "type": "object",
+          "description": "How today's target_kcal is made: base_at_step_goal_kcal + step_kcal + sessions_kcal + surplus_kcal. step_kcal = k x (day_steps - step_goal), so far: today's steps are provisional. Not tracked (too few steps): counted at the average, no step adjustment.",
+          "required": ["base_at_step_goal_kcal", "step_goal", "day_steps", "steps_tracked", "step_kcal", "sessions_kcal", "surplus_kcal", "target_kcal"],
+          "additionalProperties": false,
+          "properties": {
+            "base_at_step_goal_kcal": { "type": "number" },
+            "step_goal": { "type": ["integer", "null"] },
+            "day_steps": { "type": ["integer", "null"], "description": "MFP steps minus run steps (and steps of reported sessions with a distance)." },
+            "steps_tracked": { "type": "boolean" },
+            "step_kcal": { "type": ["number", "null"] },
+            "sessions_kcal": { "type": "number" },
+            "surplus_kcal": { "type": "number" },
+            "target_kcal": { "type": "number" }
+          }
+        },
         "sessions": { "type": "array", "items": { "$ref": "weekly_facts.schema.json#/$defs/session" } },
         "week_to_date": {
           "type": "object",

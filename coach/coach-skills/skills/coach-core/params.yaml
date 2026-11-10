@@ -77,6 +77,17 @@ activity:
     rowing: 6.0
     martial_arts: 6.0
 
+# Steps as live activity (step kcal on top of base at the step goal)
+steps:
+  step_goal: 10000                # default; setup value step_goal overrides it
+  # assumption: ~0.04 kcal per step at 70 kg (scaled by trend weight), 75 % of it counted
+  kcal_per_step_at_70kg: 0.04
+  share: 0.75
+  # assumption: under this many raw steps the phone/watch wasn't carried; not tracked
+  not_tracked_below: 2500
+  # assumption: steps per km of running, removed from the day's steps (runs count via Strava)
+  run_steps_per_km: 1200
+
 measurements:
   waist_every_weeks: 2
   photos_every_weeks: 2

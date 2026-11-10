@@ -45,6 +45,14 @@ This skill's rules always apply; if another skill seems to contradict them, this
   exact in the coach's daily targets; the user adds it mentally in MyFitnessPal.
   Planned wrestling counts only from the phase start on; before it, only synced
   (Strava, Hevy) and reported sessions count.
+- **CORE-STEPS** – Steps are live activity. A day's target = base at the step goal + step
+  kcal (k × (day steps − step goal), run steps removed) + counted sessions + surplus. Base at
+  the step goal is just where "0" is shown: the energy stays anchored to the measured
+  maintenance, so changing the goal changes no day's target. A day under the tracking
+  threshold is not tracked (counted at the average). Today's step kcal are "so far":
+  provisional until the day ends. The MyFitnessPal goal is a rest day at average steps.
+  Steps stay a measuring tool: never push them as a target; the soft step-floor note is
+  unchanged.
 - **CORE-NOISE** – No decisions from single days, salty or large meals, travel, illness, bad
   sleep or alcohol. Judge trends; explain spikes.
 - **CORE-CONFLICT** – When signals disagree (e.g. weight up, waist down), explain the

@@ -24,6 +24,10 @@ today's food, weight and steps are all logged.
 - Minor things (fiber, a slightly low protein day) go into `deferred_to_weekly`, one short
   sentence each with the numbers from the facts.
 - In the glycogen window, don't comment on weight (code withholds it: `day.weight.withheld`).
+- Today's target already includes its step kcal (`day.target_build_up`: base at the step
+  goal + `step_kcal` + sessions + surplus; steps so far, run steps removed). A low or high
+  target from steps is not a target miss; mention step kcal only when they explain the gap.
+  Never tell the user to walk more (CORE-STEPS).
 
 ## Message
 

@@ -47,7 +47,7 @@ The calories a day's sessions add to its daily target: runs at their synced calo
 _Avoid_: exercise calories, burned calories
 
 **MFP goal**:
-The calorie and macro goal stored in MyFitnessPal; the coach sets it to base maintenance + surplus (a rest day: activity comes on top) and otherwise ignores it. MFP is only the logging tool; the daily targets live in the coach.
+The calorie and macro goal stored in MyFitnessPal; the coach sets it to base maintenance + surplus (a rest day at the average steps: activity comes on top) and otherwise ignores it. MFP is only the logging tool; the daily targets live in the coach.
 _Avoid_: target (a target lives in the coach, not in MFP)
 
 ## Weekly decision

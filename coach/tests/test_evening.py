@@ -28,7 +28,7 @@ def message(text: str = "", *, send: bool = True, deferred: list[str] | None = N
 
 
 def log(api, day: str, kcal: float = 2300, *, protein_g: float = 161, fat_g: float = 72,
-        weight_kg: float | None = 80.6, steps: int | None = 11000) -> None:
+        weight_kg: float | None = 80.6, steps: int | None = 9000) -> None:  # 9,000: the average, no step kcal
     api.days[day] = {"food": food(kcal, protein_g=protein_g, fat_g=fat_g), "weight_kg": weight_kg, "steps": steps}
 
 
@@ -129,6 +129,10 @@ async def test_a_silent_evening_stores_its_deferred_item_for_that_week(reverse, 
     assert facts["messages_sent_today"] == 0
     day = facts["day"]
     assert day["intake"]["target_kcal"] == 2300 and day["intake"]["actual_kcal"] == 2300
+    build = day["target_build_up"]
+    assert (build["day_steps"], build["step_goal"], build["steps_tracked"]) == (9000, 10000, True)
+    assert build["target_kcal"] == 2300
+    assert build["step_kcal"] in (-34, -35)  # 1,000 below the goal, at the average: base at goal is 2570.5
     assert day["intake"]["logged"] == "complete"
     assert day["intake"]["protein_g"] == 120
     assert day["macro_targets"]["protein_g"] == 161 and day["macro_targets"]["fat_g"] == 72

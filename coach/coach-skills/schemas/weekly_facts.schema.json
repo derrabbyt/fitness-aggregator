@@ -195,10 +195,10 @@
       "type": "object",
       "required": ["surplus_kcal", "base_maintenance_kcal", "avg_daily_target_kcal", "maintenance_estimate", "mfp_goal_kcal"],
       "additionalProperties": false,
-      "description": "Daily target = base_maintenance_kcal + that day's activity kcal + surplus_kcal. surplus_kcal can be negative (e.g. early reverse, cut).",
+      "description": "Daily target = base_at_step_goal_kcal + step kcal (k x (day steps - step_goal)) + that day's counted sessions + surplus_kcal; on an average-steps day that is base_maintenance_kcal + sessions + surplus_kcal. surplus_kcal can be negative (e.g. early reverse, cut).",
       "properties": {
         "surplus_kcal": { "type": "number" },
-        "base_maintenance_kcal": { "type": "number", "description": "Maintenance without counted activity." },
+        "base_maintenance_kcal": { "type": "number", "description": "Maintenance without counted sessions, at the average day steps." },
         "avg_daily_target_kcal": { "type": "number" },
         "maintenance_estimate": {
           "type": "object",
@@ -211,6 +211,10 @@
             "excluded_weeks": { "type": "array", "items": { "type": "string" }, "description": "Glycogen or unusable weeks left out of the calculation." }
           }
         },
+        "step_goal": { "type": "integer", "description": "Steps where step kcal are 0 (setup value, default steps.step_goal)." },
+        "avg_day_steps": { "type": ["number", "null"], "description": "Average day steps (run steps removed, untracked days left out) over the maintenance window; base_maintenance_kcal is at these steps." },
+        "step_kcal_per_1000_steps": { "type": ["number", "null"], "description": "k x 1000: what 1,000 day steps above or below the goal add to or take off a day's target." },
+        "base_at_step_goal_kcal": { "type": ["number", "null"], "description": "base_maintenance_kcal - k x (avg_day_steps - step_goal): the base shown at the step goal. Daily target = this + k x (day steps - step_goal) + counted sessions + surplus_kcal. Null: no step model (no step adjustment)." },
         "mfp_goal_kcal": { "type": ["number", "null"], "description": "Calorie goal currently set in MyFitnessPal: base_maintenance_kcal + surplus_kcal (a rest day; activity comes on top, added mentally in MFP)." }
       }
     },

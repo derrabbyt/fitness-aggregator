@@ -15,6 +15,7 @@ Rule for every write tool: **code validates, code applies.** The model only asks
 | `get_lift_history` | `exercise_id`, `n_sessions` | sessions since last baseline: date, sets (load, reps), top set (effective load, e1RM), status, PR, streaks, notes |
 | `get_tracked_exercises` | – | exercises in the synced Hevy history (16 weeks): id, title, Hevy type, bodyweight or not, sessions, last date, `classification` (`counts`/`excluded`/null = not classified yet, counts), paused |
 | `get_context_notes` | `from`, `to` | list of `context_note.schema.json` |
+| `get_today` | `date?` (default today) | syncs first, then the day's live balance: steps / step goal and steps to go, step kcal vs the goal (today: so far, provisional), the target build-up (base at the step goal, step kcal, each counted session, surplus), macros, eaten, left. Same view as `/today` |
 | `get_targets` | – | active phase (week, glycogen window), current targets (base maintenance, surplus, expected counted activity, average daily target, MFP goal = base + surplus, a rest day) + daily targets for the current week |
 | `get_training_plan` | – | the saved plan in force today (sessions per weekday with ids, exercise lists) + this week day by day with the user's reports + upcoming lasting changes |
 | `get_proposals` | `status` (optional) | list of `proposal.schema.json` |

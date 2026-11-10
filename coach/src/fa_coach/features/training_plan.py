@@ -178,8 +178,8 @@ def exercise_lists(coach, day: Date | None = None) -> dict[str, list[dict[str, A
 def statuses(coach, day: Date) -> list[dict[str, Any]]:
     """The user's reports for `day`: planned sessions skipped or done, extras."""
     rows = coach.db.all(
-        "SELECT id, session_id, status, type, name, kcal, kcal_source, activity, duration_min, met, trend_weight_kg"
-        " FROM session_statuses WHERE date = ? ORDER BY created_at, id",
+        "SELECT id, session_id, status, type, name, kcal, kcal_source, activity, duration_min, met, trend_weight_kg,"
+        " distance_km FROM session_statuses WHERE date = ? ORDER BY created_at, id",
         (day.isoformat(),),
     )
     return [dict(row) for row in rows]
@@ -435,7 +435,9 @@ async def update_training_plan(coach, args: dict[str, Any], now: datetime.dateti
     "Wrestling and lifting without the user's kcal count their setup values per session. "
     "Counting: runs and lifting count on their own when they sync (Strava, Hevy), so don't add those as extras; "
     "a planned run marked done counts its kcal only if it won't sync. Wrestling counts as planned unless "
-    "skipped. Optional sessions that didn't happen need no report. Returns that day and `reported` (kcal, "
+    "skipped. Optional sessions that didn't happen need no report. `distance_km` of a walk, hike or a run that "
+    "won't sync, when the user gives it: its steps are taken off the day's steps so they don't count twice. "
+    "Returns that day and `reported` (kcal, "
     "kcal_source reported/estimated/model_estimate, kcal_counted, `say`); confirm in one line with the kcal "
     "counted and whether they were estimated.",
     {
@@ -451,6 +453,7 @@ async def update_training_plan(coach, args: dict[str, Any], now: datetime.dateti
             "activity": {"type": "string", "minLength": 1, "maxLength": 40},
             "duration_min": {"type": "number", "exclusiveMinimum": 0, "maximum": 600},
             "kcal_estimate": {"type": "number", "minimum": 0, "maximum": MAX_KCAL},
+            "distance_km": {"type": "number", "exclusiveMinimum": 0, "maximum": 100},
         },
         "required": ["date", "status"],
         "additionalProperties": False,
@@ -466,7 +469,8 @@ async def set_session_status(coach, args: dict[str, Any], now: datetime.datetime
     if status == "extra":
         if "type" not in args:
             raise ToolError("an extra session needs its type")
-        kcal = session_kcal.resolve(coach, args, args["type"], now, required=True)
+        kcal = {**session_kcal.resolve(coach, args, args["type"], now, required=True),
+                "distance_km": args.get("distance_km")}
         _insert(db, f"x_{secrets.token_hex(4)}", day, None, "extra", args["type"], args.get("name"), kcal, at)
         return {**_day_view(coach, day), "reported": _reported(coach, args["type"], kcal)}
     if status == "clear" and "extra_id" in args:
@@ -488,12 +492,13 @@ async def set_session_status(coach, args: dict[str, Any], now: datetime.datetime
     if status == "skipped":
         _insert(db, f"s_{secrets.token_hex(4)}", day, session["id"], status, session["type"], session["name"], {}, at)
         return _day_view(coach, day)
-    kcal = session_kcal.resolve(coach, args, session["type"], now, required=session["type"] != "run")
+    kcal = {**session_kcal.resolve(coach, args, session["type"], now, required=session["type"] != "run"),
+            "distance_km": args.get("distance_km")}
     _insert(db, f"s_{secrets.token_hex(4)}", day, session["id"], status, session["type"], session["name"], kcal, at)
     return {**_day_view(coach, day), "reported": _reported(coach, session["type"], kcal)}
 
 
-_KCAL_COLUMNS = ("kcal", "kcal_source", "activity", "duration_min", "met", "trend_weight_kg")
+_KCAL_COLUMNS = ("kcal", "kcal_source", "activity", "duration_min", "met", "trend_weight_kg", "distance_km")
 
 
 def _insert(db, id_: str, day: Date, session_id: str | None, status: str, type_: str, name: str | None,

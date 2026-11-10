@@ -359,7 +359,8 @@ def _apply_calories(coach, phase, proposal, current, today: Date, now) -> dict[s
     average = current["avg_daily_target_kcal"] + delta
     surplus = current["surplus_kcal"] + delta
     goal = phases.mfp_goal_for(p, current["base_maintenance_kcal"], surplus, phases.macro_reference_weight(coach, today))
-    values = {k: current[k] for k in ("base_maintenance_kcal", "avg_activity_kcal", "maintenance_estimate_kcal")}
+    values = {k: current[k] for k in ("base_maintenance_kcal", "avg_activity_kcal", "maintenance_estimate_kcal",
+                                      "step_kcal_per_step", "avg_day_steps")}
     values.update(surplus_kcal=surplus, avg_daily_target_kcal=average, mfp_goal=goal)
     phases.set_targets(coach, phase["id"], values, valid_from=today, source=proposal["source"], now=now,
                        ref=proposal["id"])
@@ -434,7 +435,8 @@ def _apply_calibration(coach, phase, proposal, current, today: Date, now) -> dic
     phases.set_targets(coach, phase["id"], {
         "base_maintenance_kcal": new["base_maintenance_kcal"], "surplus_kcal": current["surplus_kcal"],
         "avg_activity_kcal": new["avg_activity_kcal"], "maintenance_estimate_kcal": current["maintenance_estimate_kcal"],
-        "avg_daily_target_kcal": average, "mfp_goal": goal or current["mfp_goal"]},
+        "avg_daily_target_kcal": average, "mfp_goal": goal or current["mfp_goal"],
+        "step_kcal_per_step": current["step_kcal_per_step"], "avg_day_steps": current["avg_day_steps"]},
         valid_from=today, source=phases.CALIBRATION_SOURCE, now=now, ref=proposal["id"])
     changes = ", ".join(f"{k.replace('_', ' ')} {before[k]} → {v}" for k, v in proposal["new_values"].items())
     effect = (f"Your average daily target is now {now_avg:,} kcal (was {was:,})." if now_avg != was

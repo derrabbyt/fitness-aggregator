@@ -43,7 +43,9 @@ Output: one JSON object matching `coach_message.schema.json` (`send: true`).
    stalls (`training.stalls`) and deload signals as flags only; sport-load note if applied. If `training.progression_met` is null,
    say in a few words that lift progression wasn't evaluated, and list the sessions only. For scenario D: "training needs a look",
    nothing more specific.
-6. **Activity** – average steps only if relevant (step floor flag, unusual week).
+6. **Activity** – average steps only if relevant (step floor flag, unusual week). The daily
+   targets already move with steps (`targets.base_at_step_goal_kcal`,
+   `step_kcal_per_1000_steps`), so a high-step day's bigger target is not over-eating.
 7. **Changes applied this week** – for each: what changed (`what`, the targets before and
    after), why (`why`), what to expect (`expected_weekly_rate_change_kg`: the change in
    weekly weight gain it should bring; a carb increase can also show as a small water jump),
