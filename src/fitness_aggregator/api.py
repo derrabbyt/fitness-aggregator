@@ -455,12 +455,31 @@ from .health_inbox import router as health_inbox_router  # noqa: E402
 
 from .phone_sleep import router as phone_sleep_router  # noqa: E402
 
+from starlette.exceptions import HTTPException as StarletteHTTPException  # noqa: E402
+
+from .coach_proxy import router as coach_proxy_router  # noqa: E402
+
 app.include_router(health_inbox_router)  # PoC: Apple Health exports into state/health_inbox
 app.include_router(phone_sleep_router)  # PoC: phone pings -> sleep estimate
+app.include_router(coach_proxy_router)  # /api/coach/* -> the coach's HTTP API
+
+
+class _SpaFiles(StaticFiles):
+    """The Angular app's routes (/week, /home/food, /legacy, ...) are client-side:
+    any path that isn't a file (and isn't under /api) gets index.html."""
+
+    async def get_response(self, path: str, scope):
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code != 404 or path == "api" or path.startswith("api/"):
+                raise
+            return await super().get_response("index.html", scope)
+
 
 if WEB_DIST.is_dir():
     # Built Angular app; html=True serves index.html for "/".
-    app.mount("/", StaticFiles(directory=WEB_DIST, html=True), name="web")
+    app.mount("/", _SpaFiles(directory=WEB_DIST, html=True), name="web")
 
 
 def main() -> None:

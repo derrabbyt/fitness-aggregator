@@ -23,6 +23,20 @@ registers its handlers on the shared `registry`:
     @registry.state("profile")        # adds a key to the state snapshot of every model
                                       # task: (coach, now) -> small JSON-able value
 
+The web page (coach-web; `views.py`, `web_adapter.py`) reads and edits
+through these; the HTTP adapter maps them onto `/api/coach/...` itself:
+
+    @registry.view("home", schema="web_home")
+                                      # a read model: (coach, query, now) -> JSON object;
+                                      # GET /api/coach/home?day=...; `query` is the URL's
+                                      # query as a dict of strings; raise views.WebError
+    @registry.view_part("home", "food", schema="web_home_food", order=10)
+                                      # one key of a view, from its own module:
+                                      # (coach, query, now) -> JSON value
+    @registry.web_command("example")  # an edit: async (coach, body, now) -> JSON-able;
+                                      # POST /api/coach/example with a JSON body; runs
+                                      # like a Telegram update (one at a time, outbox sent)
+
 Database tables come from `fa_coach/migrations/NN_<name>.sql` (NN = ticket
 number), so adding a feature means adding files, not editing shared ones.
 Names must be unique; a clash fails at import.
@@ -47,6 +61,8 @@ JobFn = Callable[["Coach", Now], Awaitable[None]]
 ToolFn = Callable[["Coach", dict[str, Any], Now], Awaitable[Any]]
 StateFn = Callable[["Coach", Now], Any]
 ToolSourceFn = Callable[["Coach", Now], Awaitable[list["Tool"]]]
+ViewFn = Callable[["Coach", dict[str, str], Now], Any]
+WebCommandFn = Callable[["Coach", dict[str, Any], Now], Awaitable[Any]]
 
 
 @dataclass(frozen=True)
@@ -78,6 +94,25 @@ class Tool:
         return {"name": self.name, "description": self.description, "input_schema": self.input_schema}
 
 
+@dataclass(frozen=True)
+class View:
+    """A read model for the web page. `schema`: its JSON schema in
+    coach-skills/schemas (without `.schema.json`); `parts` add keys."""
+
+    name: str
+    schema: str
+    fn: ViewFn
+
+
+@dataclass(frozen=True)
+class ViewPart:
+    view: str
+    key: str
+    schema: str
+    order: int
+    fn: ViewFn
+
+
 class Registry:
     def __init__(self) -> None:
         self.commands: dict[str, Command] = {}
@@ -89,6 +124,9 @@ class Registry:
         self._syncers: dict[str, Ordered] = {}
         self._state: dict[str, Ordered] = {}
         self._tool_sources: dict[str, Ordered] = {}
+        self.views: dict[str, View] = {}
+        self._view_parts: dict[str, ViewPart] = {}
+        self.web_commands: dict[str, WebCommandFn] = {}
 
     # --- registration ------------------------------------------------------
 
@@ -118,6 +156,30 @@ class Registry:
 
     def tool_source(self, name: str, order: int = 100) -> Callable[[ToolSourceFn], ToolSourceFn]:
         return self._ordered(self._tool_sources, "tool source", order, name)
+
+    def view(self, name: str, schema: str) -> Callable[[ViewFn], ViewFn]:
+        def add(fn: ViewFn) -> ViewFn:
+            _unique(self.views, name, "view")
+            self.views[name] = View(name, schema, fn)
+            return fn
+
+        return add
+
+    def view_part(self, view: str, key: str, schema: str, order: int = 100) -> Callable[[ViewFn], ViewFn]:
+        def add(fn: ViewFn) -> ViewFn:
+            _unique(self._view_parts, f"{view}.{key}", "view part")
+            self._view_parts[f"{view}.{key}"] = ViewPart(view, key, schema, order, fn)
+            return fn
+
+        return add
+
+    def web_command(self, name: str) -> Callable[[WebCommandFn], WebCommandFn]:
+        def add(fn: WebCommandFn) -> WebCommandFn:
+            _unique(self.web_commands, name, "web command")
+            self.web_commands[name] = fn
+            return fn
+
+        return add
 
     def text(self, order: int = 100) -> Callable[[TextFn], TextFn]:
         return self._ordered(self._text, "text handler", order)
@@ -164,6 +226,9 @@ class Registry:
     @property
     def tool_sources(self) -> list[Ordered]:
         return _sorted(self._tool_sources)
+
+    def view_parts(self, view: str) -> list[ViewPart]:
+        return sorted((p for p in self._view_parts.values() if p.view == view), key=lambda p: (p.order, p.key))
 
     @property
     def state_providers(self) -> list[Ordered]:

@@ -2,7 +2,8 @@
 
 Environment (see .env.example): COACH_TELEGRAM_BOT_TOKEN,
 TELEGRAM_ALLOWED_USER_ID, FA_API_URL, FA_TOOLS_URL, COACH_MODEL,
-COACH_DECISION_MODEL, COACH_ANTHROPIC_* (else ANTHROPIC_*).
+COACH_DECISION_MODEL, COACH_ANTHROPIC_* (else ANTHROPIC_*), COACH_HTTP_HOST /
+COACH_HTTP_PORT (the web page's API, default 0.0.0.0:8002, not published).
 """
 
 import logging
@@ -27,7 +28,8 @@ def main() -> None:
         clock=SystemClock(),
         outbox=outbox,
     )
-    telegram_adapter.run(coach, outbox, settings.telegram_token, settings.allowed_user_id)
+    telegram_adapter.run(coach, outbox, settings.telegram_token, settings.allowed_user_id,
+                         web_host=settings.web_host, web_port=settings.web_port)
 
 
 if __name__ == "__main__":

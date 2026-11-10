@@ -20,6 +20,8 @@ class Settings:
     anthropic_api_key: str | None
     anthropic_base_url: str | None
     state_dir: Path
+    web_host: str = "0.0.0.0"
+    web_port: int = 8002
 
     @property
     def db_path(self) -> Path:
@@ -41,4 +43,7 @@ class Settings:
             anthropic_api_key=env.get("COACH_ANTHROPIC_API_KEY") or env.get("ANTHROPIC_API_KEY") or None,
             anthropic_base_url=env.get("COACH_ANTHROPIC_BASE_URL") or env.get("ANTHROPIC_BASE_URL") or None,
             state_dir=STATE / "coach",
+            # The web page's API (/api/coach/), reached only by fa-api over the compose network.
+            web_host=env.get("COACH_HTTP_HOST") or "0.0.0.0",
+            web_port=int(env.get("COACH_HTTP_PORT") or 8002),
         )

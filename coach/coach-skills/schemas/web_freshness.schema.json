@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_freshness.schema.json",
+  "title": "Web: freshness",
+  "description": "How current the synced data is, now (not as of the day shown). stale: the older of MFP's and Hevy's last successful syncs is missing or older than data.sync_max_age_hours. The page shows one warning line only when stale.",
+  "type": "object",
+  "required": ["last_sync_at", "age_hours", "stale"],
+  "additionalProperties": false,
+  "properties": {
+    "last_sync_at": { "type": ["string", "null"], "format": "date-time" },
+    "age_hours": { "type": ["number", "null"], "minimum": 0 },
+    "stale": { "type": "boolean" }
+  }
+}

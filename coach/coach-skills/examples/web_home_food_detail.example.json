@@ -1,0 +1,12 @@
+{
+  "date": "2026-11-11",
+  "start": "2026-11-09",
+  "end": "2026-11-15",
+  "iso_week": "2026-W46",
+  "days": [
+    { "date": "2026-11-09", "eaten_kcal": 2250, "target_kcal": 2300, "logged": "complete" },
+    { "date": "2026-11-10", "eaten_kcal": 2400, "target_kcal": 2300, "logged": "complete" },
+    { "date": "2026-11-11", "eaten_kcal": null, "target_kcal": 2300, "logged": "missing" }
+  ],
+  "so_far": { "days_logged": 2, "eaten_kcal": 4650, "target_kcal": 4600, "deviation_pct": 1.1 }
+}
