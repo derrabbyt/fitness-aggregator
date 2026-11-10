@@ -14,6 +14,7 @@ from __future__ import annotations
 import datetime
 import hmac
 import json
+import logging
 import os
 from typing import Any
 
@@ -24,6 +25,7 @@ from .config import STATE
 INBOX = STATE / "health_inbox"
 MAX_BYTES = 50 * 1024 * 1024
 router = APIRouter()
+logger = logging.getLogger("fa-api.health_inbox")
 
 
 def _check_token(request: Request) -> None:
@@ -37,7 +39,14 @@ def _check_token(request: Request) -> None:
         or request.query_params.get("token", "")
     )
     if not hmac.compare_digest(given.encode(), expected.encode()):
-        raise HTTPException(401, "missing or wrong token")
+        # Says how a token arrived (never its value) so a client setup can be debugged.
+        via = ("x-token header" if request.headers.get("x-token") else
+               "authorization header" if auth else
+               "token query" if request.query_params.get("token") else None)
+        detail = (f"wrong token via {via} ({len(given)} chars, expected {len(expected)})" if via
+                  else f"no token; headers seen: {sorted(request.headers.keys())}")
+        logger.info("health-data 401: %s", detail)
+        raise HTTPException(401, detail)
 
 
 def _summary(body: bytes) -> dict[str, Any]:
