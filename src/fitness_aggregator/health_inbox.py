@@ -102,8 +102,10 @@ async def receive(request: Request) -> dict[str, Any]:
 
 @router.get("/api/sleep")
 async def sleep(date: str) -> dict[str, Any]:
-    """The night Marrow dates `date` (its `sleep_analysis` entry), for the web UI.
-    Exports are incremental, so every stored file is read; a later file wins."""
+    """Sleep for `date`, for the web UI. `phone` is the estimate from phone pings
+    (what the UI shows). `night` is legacy: Marrow's Apple Health `sleep_analysis`
+    entry for that date (exports are incremental, so every stored file is read and
+    a later file wins); the UI no longer shows it."""
     try:
         day = datetime.date.fromisoformat(date)
     except ValueError:
