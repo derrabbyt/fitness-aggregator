@@ -9,3 +9,7 @@
 - [ ] Read model and schema extended; tests cover a lifting day, a run day, planned / skipped wrestling, an extra session, no sessions, the trend line, banner states (none, open proposal, waiting question), banner absent on past days
 - [ ] UI per the design direction; tap → Training tab
 - [ ] Build + screenshots in Comments; tests green
+
+## Decisions (user, 2026-11-10, from ticket 01)
+
+Overrides the text above where they differ: two blocks instead of one. **Gym** = lifting sessions (one line each: name, time of day, duration), with the lift trend line under them. **Other activities** = runs (distance, duration, **pace**), wrestling, extra sessions. No "planned" tag anywhere. Tapping either block opens the Training tab.
