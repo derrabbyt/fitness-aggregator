@@ -391,7 +391,8 @@ def render_card(preview: dict[str, Any]) -> str:
         f"Week-1 preview: {preview['phase_name']}",
         f"Average daily target: {preview['average_daily_target_kcal']:,} kcal",
         f"MyFitnessPal goal: {goal['kcal']:,} kcal · P {goal['protein_g']} g · C {goal['carbs_g']} g · "
-        f"F {goal['fat_g']} g",
+        f"F {goal['fat_g']} g (a rest day; activity comes on top: add it in your head in MyFitnessPal, "
+        "the coach counts it exactly in each day's target)",
         "Daily targets:",
         f"- Rest day: {days['rest']:,} kcal",
         f"- Lifting day: {days['lifting']:,} kcal",

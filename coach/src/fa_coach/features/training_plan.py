@@ -9,7 +9,8 @@
   get a planned session skipped or done, or an extra session; its kcal are
   the user's, or estimated (`session_kcal.resolve`).
 - `counted_activity(...)` turns one day's plan, synced data and reports into
-  the kcal that day's sessions add to its daily target;
+  the kcal that day's sessions add to its daily target (planned wrestling
+  only from the phase start on; before it only synced and reported sessions);
   `counted_activity_on(coach, day, params)` loads those inputs from the database.
 
 Read API for other features: `plan_for(coach, day)`, `statuses(coach, day)`,
@@ -221,6 +222,8 @@ def counted_activity(
     synced: dict[str, Any],
     statuses: list[dict[str, Any]],
     params: dict[str, Any],
+    *,
+    count_planned: bool = True,
 ) -> dict[str, Any]:
     """The kcal that `day`'s sessions add to its daily target.
 
@@ -236,7 +239,9 @@ def counted_activity(
     day. HealthKit entries (copies of runs, "Strength training") never count.
     Each Hevy session counts lifting_kcal_per_session; a planned lift marked
     done with no Hevy session that day counts the same. Planned wrestling counts
-    unless reported skipped. Extras count with their reported kcal (runs
+    unless reported skipped, but only with `count_planned` (days from the
+    active phase's start on); before that only a wrestling session reported
+    done counts. Extras count with their reported kcal (runs
     discounted); a wrestling or lifting extra without kcal counts its setup
     value. Reported kcal may be the user's, code's estimate or the model's
     (`kcal_source`); all count alike. Optional sessions that didn't happen
@@ -272,8 +277,10 @@ def counted_activity(
         kind, name = planned["type"], planned["name"]
         if status == "skipped":
             add(kind, "plan", "skipped", 0, name)
-        elif kind == "wrestling":
+        elif kind == "wrestling" and (status == "done" or count_planned):
             add(kind, "plan", "done" if status == "done" else "planned", param("wrestling_kcal_per_session"), name)
+        elif kind == "wrestling":
+            continue  # before the phase start only synced and reported sessions count
         elif status != "done":
             continue  # runs and lifts count when they sync; optional ones that didn't happen count nothing
         elif kind == "lift" and not lifts:
@@ -294,13 +301,24 @@ def counted_activity(
             "types": sorted({s["type"] for s in counted}, key=TYPES.index)}
 
 
-def counted_activity_on(coach, day: Date, params: dict[str, Any]) -> dict[str, Any]:
+_PHASE_START = object()
+
+
+def counted_activity_on(coach, day: Date, params: dict[str, Any], *,
+                        planned_from: Any = _PHASE_START) -> dict[str, Any]:
     """`counted_activity` for `day` with the plan, synced data and reports
-    from the database."""
+    from the database. Planned (unreported) wrestling counts only on days
+    from `planned_from` on: by default the active phase's start date; None
+    (no phase) counts none. The phase-start preview passes the new phase's
+    start."""
+    if planned_from is _PHASE_START:
+        phase = phases.active(coach)
+        planned_from = Date.fromisoformat(phase["start_date"]) if phase else None
     iso = day.isoformat()
     mfp = history.days(coach.db, iso, iso)
     synced = {"exercises": mfp[0]["exercises"] if mfp else [], "lift_sessions": history.sessions(coach.db, iso, iso)}
-    return counted_activity(day, plan_for(coach, day), synced, statuses(coach, day), params)
+    return counted_activity(day, plan_for(coach, day), synced, statuses(coach, day), params,
+                            count_planned=planned_from is not None and day >= planned_from)
 
 
 @registry.job("training-plan-seed", order=0)

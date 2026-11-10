@@ -225,7 +225,7 @@ Code computes the numbers and enforces a few guardrails; skills make the decisio
 | A–E decision, sport load, mixed weeks, change size, stall flags, body-fat advice | Skill with hard rules |
 | Reports, proposals, explanations, photo review, context tagging, Q&A | Skill |
 | Guardrails in the propose\_change tool: nothing applied without my OK; max 200 kcal per change, except a phase's first change (follows the phase skill); lockout and two-week rule | Code |
-| On approval: set the MFP calorie goal to the average daily target | Code |
+| On approval: set the MFP calorie goal to base maintenance + surplus (a rest day; activity comes on top, exact in the app, mentally in MFP) | Code |
 
 - **Targets live in the app,** never MFP's activity-adjusted goal. Daily target = base maintenance + that day's activity + surplus (see Triggers, Activity). Training plan: a saved default week, seeded once from a CSV export of my Google Sheet (a live Sheet integration comes later); after that it changes only through Telegram, for this week or for good.
 - **Phase skill = phase config:** rules in prose plus a parameter block that code reads too. The prose refers to parameters by name and never repeats the numbers.

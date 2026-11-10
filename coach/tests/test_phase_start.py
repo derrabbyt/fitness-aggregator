@@ -5,19 +5,19 @@ preview computed by code, and nothing is active until the user taps confirm.
 Worked example used below (clock: Mon 9 Nov 2026): four fully logged diet
 weeks (12 Oct - 8 Nov) at 2000 kcal, weekly weight averages 82.0, 81.5,
 81.0, 80.5 kg. Maintenance = 2000 + 1.5 kg x 7500 / 21 days = 2536 kcal.
-The seeded plan has wrestling on Fridays: 4 x 600 kcal over those 28 days =
-85.71 kcal/day of counted activity, so base maintenance = 2450.29. Week 1 =
-2000 + 300 = 2300 kcal on average, i.e. surplus = -236 kcal: rest day 2214,
-lifting day (+300) 2514, wrestling day (+600) 2814. Macros at 80.5 kg:
-protein 2.0 g/kg = 161 g, fat 0.9 g/kg = 72 g, carbs (2300 - 644 - 652.05) / 4
-= 251 g."""
+The seeded plan has wrestling on Fridays, but those 28 days are before the
+phase start, where planned wrestling doesn't count: no counted activity, so
+base maintenance = 2536. Week 1 = 2000 + 300 = 2300 kcal on average, i.e.
+surplus = -236 kcal: rest day 2300 (the MFP goal), lifting day (+300) 2600,
+wrestling day (+600) 2900. Macros at 80.5 kg: protein 161 g, fat 72 g,
+carbs (2300 - 644 - 652.05) / 4 = 251 g."""
 
 import datetime
 
 import pytest
 
 from fa_coach import phases
-from fakes import exercise, food, reply, session, tool_call, tool_calls
+from fakes import exercise, food, reply, run, session, tool_call, tool_calls
 
 SETUP = {
     "starting_calories_kcal": 2000,
@@ -172,6 +172,35 @@ async def test_start_phase_refuses_while_values_are_missing(diet_history, model)
 # --- preview, confirm, edit -----------------------------------------------------
 
 
+async def test_the_mfp_goal_is_base_plus_surplus_with_activity_on_top(diet_history, api, model, outbox):
+    """A 400 kcal Strava run in the window (Tue 3 Nov, synced late): 300
+    counted / 28 = 10.71 kcal a day, base 2536 - 10.71 = 2525.29, surplus
+    -236. The MFP goal is the rest day, 2525.29 - 236 = 2289 kcal (carbs
+    (2289.29 - 644 - 652.05) / 4 = 248 g), below the 2300 average; runs come
+    on top (run day 2289 + 300)."""
+    api.days["2026-11-03"]["exercises"] = [run(400, 7, 40)]
+    await diet_history.sync()
+
+    await start_and_collect(diet_history, model)
+
+    preview = model.results(len(model.requests) - 2)[0].content
+    assert preview["average_daily_target_kcal"] == 2300
+    goal = {"kcal": 2289, "protein_g": 161, "carbs_g": 248, "fat_g": 72}
+    assert preview["mfp_goal"] == goal
+    assert preview["daily_targets_kcal"]["rest"] == 2289
+    assert preview["daily_targets_kcal"]["run"] == 2589
+    text = card(outbox).text
+    assert "MyFitnessPal goal: 2,289 kcal" in text and "activity comes on top" in text
+    await diet_history.on_button(*_confirm(card(outbox)))
+    assert api.goal_writes() == [goal]
+    assert phases.targets(diet_history)["mfp_goal_kcal"] == 2289
+
+
+def _confirm(preview_card) -> tuple[str, str]:
+    button = preview_card.buttons[0][0]
+    return button.action, button.ref_id
+
+
 async def test_full_start_previews_then_confirms_once(diet_history, model, outbox, api):
     coach = diet_history
     await start_and_collect(coach, model)
@@ -180,7 +209,8 @@ async def test_full_start_previews_then_confirms_once(diet_history, model, outbo
     assert preview["average_daily_target_kcal"] == 2300
     assert preview["mfp_goal"] == {"kcal": 2300, "protein_g": 161, "carbs_g": 251, "fat_g": 72}
     days = preview["daily_targets_kcal"]
-    assert (days["rest"], days["lifting"], days["wrestling"]) == (2214, 2514, 2814)
+    assert (days["rest"], days["lifting"], days["wrestling"]) == (2300, 2600, 2900)
+    assert preview["avg_counted_activity_kcal"] == 0  # planned wrestling before the start doesn't count
     assert days["run"] is None  # no synced run to base a typical run on
     assert preview["macros"]["protein_g"] == 161 and preview["macros"]["fat_g"] == 72
 
@@ -210,7 +240,7 @@ async def test_full_start_previews_then_confirms_once(diet_history, model, outbo
     assert targets["avg_daily_target_kcal"] == 2300 and targets["mfp_goal_kcal"] == 2300
     assert round(targets["surplus_kcal"]) == -236
     friday = phases.daily_target(coach, datetime.date(2026, 11, 13))
-    assert friday["kcal"] == 2814
+    assert friday["kcal"] == 2900  # from the phase start on, planned wrestling counts
     params = phases.params(coach)
     assert params["activity"]["lifting_kcal_per_session"] == 300
     assert params["messaging"]["evening_reminder_time"] == "20:30"

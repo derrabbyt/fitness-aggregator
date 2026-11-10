@@ -53,7 +53,7 @@ A second Telegram bot, the **coach**, running as its own service. It syncs my fo
 26. As the user, I want the coach to classify every exercise I log in Hevy as counting (compounds, machines, most bigger isolation work) or excluded (prehab/rehab and slow movers like lateral raises), and let me flip any, so that exercises that aren't meant to progress don't decide my calories.
 27. As the user, I want to give run discount, wrestling kcal, lifting kcal, fat start, week-1 increase, optional time goal, photos on/off and waist at start, so that targets reflect my situation.
 28. As the user, I want to set logistics once (weekly check-in day and time, evening reminder time, message limit, what "a while" means for the step floor), so that the coach messages me when it suits me.
-29. As the user, I want a week-1 preview computed by code (average daily target, the MFP goal it will set, targets on rest / lifting / run / wrestling days, macros), so that I see exactly what I'm agreeing to.
+29. As the user, I want a week-1 preview computed by code (average daily target, the MFP goal it will set: base maintenance + surplus, a rest day with activity on top, targets on rest / lifting / run / wrestling days, macros), so that I see exactly what I'm agreeing to.
 30. As the user, I want nothing to change until I tap confirm, so that a half-finished setup has no effect.
 31. As the user, I want the coach to refuse to start a draft phase with undecided values, so that cut or maintenance can't start half-defined.
 32. As the user, I want to be told in advance that a 1–2 kg glycogen and water jump is expected in the first weeks, so that I don't panic.
@@ -84,7 +84,7 @@ A second Telegram bot, the **coach**, running as its own service. It syncs my fo
 ### Proposals
 
 53. As the user, I want proposals to arrive with approve, reject and counter buttons, so that deciding is one tap.
-54. As the user, I want an approved calorie change to update my targets and set my MFP goal to the new average daily target, so that MFP shows the right number without me touching it.
+54. As the user, I want an approved calorie change (or a calibration change that moves base maintenance) to update my targets and set my MFP goal to the new base maintenance + surplus (a rest day; activity stays on top, exact in the coach's daily targets and added mentally in MFP), with macros at that kcal, so that MFP shows the right number without me touching it. MFP is only a logging tool; the real daily targets live in the coach.
 55. As the user, I want the MFP goal write sent once, checked by reading it back, and never retried, so that MFP isn't changed twice by mistake.
 56. As the user, I want approval to apply exactly once even if I double-tap, so that a change is never applied twice.
 57. As the user, I want to reply with my own number to counter a proposal, so that I can steer within the guardrails.
@@ -138,7 +138,7 @@ A second Telegram bot, the **coach**, running as its own service. It syncs my fo
 ### fa-api additions
 
 - **Read endpoints for sync** (REST, on the existing api): compact per-day records for a date range: food totals (kcal, protein, carbs, fat, fiber, and produce grams if derivable, else null) plus whether the day is logged/complete, weight, steps, runs (kcal, distance, duration) from MFP; and Hevy lifting sessions with exercise id and title, and per-set load and reps. Hevy is read in pages of 5. Reads only.
-- **`fitness_set_goal`** MCP tool on the tools endpoint (:8001, host-localhost only): sets the MFP calorie and macro goal using the MFP library's goal-setting call, and returns the stored goal. Not added to the food bot's read-tool allowlist; the coach model never receives it. Only coach code calls it, once per approved calorie proposal or confirmed phase start, then reads the goal back once to confirm. Never retried.
+- **`fitness_set_goal`** MCP tool on the tools endpoint (:8001, host-localhost only): sets the MFP calorie and macro goal using the MFP library's goal-setting call, and returns the stored goal. Not added to the food bot's read-tool allowlist; the coach model never receives it. Only coach code calls it, once per confirmed phase start, approved calorie proposal or approved calibration change that moves the goal, then reads the goal back once to confirm. Never retried. The goal is base maintenance + surplus (the rest-day target), not the average daily target. Without MFP premium, MFP may store macros as a percentage split in 5 % steps: the write counts as set when calories match (±1 kcal) and each macro is within 5 % of the calories; a calorie mismatch is not set.
 
 ### Coach core (the test seam)
 
@@ -171,6 +171,8 @@ The Telegram layer is a thin adapter: it turns updates into `on_message` / `on_b
 - Code computes daily facts and weekly facts per the schemas: 7-day averages, weekly rate, weigh-in count, logging completeness, weekly intake vs target, per-lift progression vs best of the last 3 sessions (heaviest working set with 4–20 reps; more load or reps with neither less improves, estimated 1RM only when load and reps move in opposite directions; bodyweight added for dips and pull-ups; only exercises classified as counting; see ticket 08's Decisions), stalls, deload signal, maintenance estimate (back-calculated, 7,500 kcal ≈ 1 kg, windows of 3+ weeks, glycogen weeks excluded), phase week, glycogen window, gain band, carb remainder, predicted weight and prediction miss.
 - Params: coach-core params merged with the active phase's params (phase wins), passed inside the facts.
 - Macros: protein and fat in g/kg of the current 7-day trend weight, recalculated weekly; carbs take the remainder.
+- Daily target = base maintenance + that day's counted activity + surplus; the MFP goal = base maintenance + surplus (macros at that kcal). A calibration change keeps the measured maintenance: base = maintenance estimate − average counted activity with the new values, so base moves, the average stays, and the MFP goal follows the base.
+- Planned wrestling counts as planned (unless reported skipped) only from the phase start on. Before it (the maintenance back-calculation and the preview's activity window) only synced activity (Strava runs, Hevy lifting) and reported sessions count.
 - Code-only rules (no model call): weigh-in outlier marking, missing-log reminder (one per day), data-freshness check, waist and photo due dates, applying approved proposals, setting the MFP goal.
 - `propose_change` runs the guardrails in code (max change except a phase's first change, lockout, confirmation, rejected-return, unusable week, adherence gate, invalid calibration values) and stores the proposal as `open` or `blocked_by_guardrail` with violations. It never applies anything.
 - Approval uses one atomic claim per proposal (as the food bot's cards do), so an approval applies exactly once. The same claim will serve the later web page.

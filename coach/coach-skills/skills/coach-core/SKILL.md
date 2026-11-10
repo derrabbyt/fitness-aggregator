@@ -40,8 +40,11 @@ This skill's rules always apply; if another skill seems to contradict them, this
   `null` (a setup value not recorded yet), say so and ask for it instead of guessing.
 - **CORE-TARGETS** – Targets live in the app, never in MyFitnessPal. MyFitnessPal is a data
   source only; ignore its activity-adjusted goal. Daily target = base maintenance + that
-  day's counted activity + `surplus_kcal`. The MyFitnessPal goal shows the average daily
-  target; the user adjusts mentally on hard and rest days.
+  day's counted activity + `surplus_kcal`. The MyFitnessPal goal is base maintenance +
+  surplus: a rest day. Activity (runs, lifting, wrestling, extra sessions) comes on top,
+  exact in the coach's daily targets; the user adds it mentally in MyFitnessPal.
+  Planned wrestling counts only from the phase start on; before it, only synced
+  (Strava, Hevy) and reported sessions count.
 - **CORE-NOISE** – No decisions from single days, salty or large meals, travel, illness, bad
   sleep or alcohol. Judge trends; explain spikes.
 - **CORE-CONFLICT** – When signals disagree (e.g. weight up, waist down), explain the

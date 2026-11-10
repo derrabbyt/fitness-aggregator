@@ -211,7 +211,7 @@
             "excluded_weeks": { "type": "array", "items": { "type": "string" }, "description": "Glycogen or unusable weeks left out of the calculation." }
           }
         },
-        "mfp_goal_kcal": { "type": ["number", "null"], "description": "Calorie goal currently set in MyFitnessPal (average daily target)." }
+        "mfp_goal_kcal": { "type": ["number", "null"], "description": "Calorie goal currently set in MyFitnessPal: base_maintenance_kcal + surplus_kcal (a rest day; activity comes on top, added mentally in MFP)." }
       }
     },
 

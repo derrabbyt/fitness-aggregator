@@ -77,7 +77,8 @@ def _finish(coach, report_input: dict[str, Any], text: str, buttons: Buttons, by
     if not by_model:
         lines = []
         if result is not None and result["status"] == "open":
-            lines.append(f"Proposal: {proposals.describe_change(result)}. {result['reason']}")
+            lines.append(f"Proposal: {proposals.describe_change(result)}. {result['reason']}"
+                         + _goal_line(coach, result))
         elif result is not None:
             lines.append("No change is possible yet:")
             lines += [f"- {d['text']}" for d in result["guardrail"]["details"]]
@@ -238,12 +239,19 @@ def _same_change(p: dict[str, Any], spec: dict[str, Any]) -> bool:
     return p["new_values"] == spec["new_values"]
 
 
+def _goal_line(coach, proposal: dict[str, Any]) -> str:
+    """The MFP goal an approval would set: a rest day, activity on top."""
+    kcal = proposals.mfp_goal_after(coach, proposal, coach.clock.now().date())
+    return f"\n{proposals.mfp_goal_line(kcal)}" if kcal is not None else ""
+
+
 def send_card(coach, result: dict[str, Any]) -> None:
     """The card of a new open proposal, with approve / reject / counter."""
     ref = f"proposal:{result['id']}"
     text = f"Proposal: {proposals.describe_change(result)}. {result['reason']}"
     if result["agent_disagrees"]:
         text += f"\nMy view: {result['agent_disagrees']}"
+    text += _goal_line(coach, result)
     text += "\n\nNothing changes until you tap Approve."
     coach.say(text, buttons_for(result["id"]), ref=ref)
     proposals.add_card(coach, result["id"], ref, text)

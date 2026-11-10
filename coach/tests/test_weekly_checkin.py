@@ -3,11 +3,11 @@ decision model returns a verdict, code stores it with its facts and rule ids,
 and the weekly report goes out.
 
 Worked example (as test_phase_start): the reverse starts Mon 9 Nov 2026 at
-2300 kcal on average (base maintenance 2450.29, surplus -236; rest day 2214,
-Friday wrestling 2814), check-in Mondays 09:00. The glycogen window covers
+2300 kcal on average (base maintenance 2536, surplus -236; rest day 2300,
+Friday wrestling 2900), check-in Mondays 09:00. The glycogen window covers
 phase weeks 1-2. Weekly weight averages: 81.5, 81.8, then week 3 (23-29 Nov)
-82.0. Week 3: rate +0.2 kg (band 0.1-0.3: in band); weekly target 6 x 2214 +
-2814 = 16098 kcal, eaten 2200 a day = 15400 (-4.3 %, within 5 %); predicted
+82.0. Week 3: rate +0.2 kg (band 0.1-0.3: in band); weekly target 6 x 2300 +
+2900 = 16700 kcal, eaten 2300 a day = 16100 (-3.6 %, within 5 %); predicted
 81.8 - 236 x 7 / 7500 = 81.58 kg, error +0.42 kg > 0.3 kg: a miss. Macros at
 the week-2 trend weight 81.8 kg: protein 164 g, fat 74 g; fiber 24.5-40.9 g.
 """
@@ -34,7 +34,7 @@ def week_dates(week: int) -> list[str]:
     return [(PHASE_START + ((week - 1) * 7 + n) * DAY).isoformat() for n in range(7)]
 
 
-def fill_week(api, week: int, *, kcal: float = 2200, avg: float | None = None, weigh_ins: int = 7,
+def fill_week(api, week: int, *, kcal: float = 2300, avg: float | None = None, weigh_ins: int = 7,
               logged: int = 7) -> None:
     avg = WEEK_AVG[week] if avg is None else avg
     for n, day in enumerate(week_dates(week)):
@@ -133,9 +133,9 @@ async def test_the_decision_model_gets_schema_valid_facts_with_the_weeks_numbers
     assert w["vs_band"] == "in_band"
     assert (w["predicted_avg_7d_kg"], w["prediction_error_kg"], w["prediction_miss"]) == (81.58, 0.42, True)
     i = facts["intake"]
-    assert (i["weekly_target_kcal"], i["weekly_actual_kcal"], i["deviation_pct"]) == (16098, 15400, -4.3)
+    assert (i["weekly_target_kcal"], i["weekly_actual_kcal"], i["deviation_pct"]) == (16700, 16100, -3.6)
     assert i["adherence_ok"] is True
-    assert [d["target_kcal"] for d in i["daily"]] == [2214, 2214, 2214, 2214, 2814, 2214, 2214]
+    assert [d["target_kcal"] for d in i["daily"]] == [2300, 2300, 2300, 2300, 2900, 2300, 2300]
     assert (i["macro_targets"]["protein_g"], i["macro_targets"]["fat_g"]) == (164, 74)
     assert i["macro_targets"]["reference_weight_kg"] == 81.8
     assert i["fiber_target_g"] == [24.5, 40.9]
@@ -219,7 +219,7 @@ async def test_an_invalid_verdict_is_not_acted_on_and_the_user_is_told(phase, ap
 async def test_skipped_weeks_neither_count_nor_break_confirmation(phase, api, clock, model):
     await three_weeks(phase, api, clock, model)
     await check_in(phase, clock, model, "2026-11-30", verdict("2026-W48", scenario="C", direction="increase"))
-    fill_week(api, 4, kcal=2600)  # 18200 vs 16100-ish: adherence gate fails
+    fill_week(api, 4, kcal=2600)  # 18200 vs 16700-ish: adherence gate fails
     await check_in(phase, clock, model, "2026-12-07",
                    verdict("2026-W49", scenario="adherence_gate", adherence="fail", direction="increase"))
     fill_week(api, 5, weigh_ins=3)  # too few weigh-ins: unusable

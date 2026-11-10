@@ -14,8 +14,9 @@ Input (assembled by code):
 - `changes_applied` – changes approved since the last report: `{proposal_id, type, source,
   approved_on, what, why, recheck_on}`, for calorie changes also `delta_kcal`,
   `avg_daily_target_before_kcal` / `_after_kcal`, `expected_weekly_rate_change_kg`,
-  `mfp_goal`, `mfp_goal_status` (`set`, `not_set`, `uncertain`); for calibration changes
-  `previous_values` / `new_values`
+  `mfp_goal` (base maintenance + surplus: a rest day, activity on top), `mfp_goal_status`
+  (`set`, `not_set`, `uncertain`); for calibration changes `previous_values` / `new_values`
+  (`what` says whether the MyFitnessPal goal moved with the base)
 - `deferred` – observations held back from daily messages this week (`[{date, text}]`)
 - `due` – waist and photo check-ins due in the coming week, `[{date, kind}]` with kind
   `waist` or `photos` (photos only while they're on); empty when nothing is due

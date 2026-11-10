@@ -11,7 +11,8 @@ Read API for features:
   This is the `params` block facts carry.
 - `setup_value(coach, "logistics.weekly_checkin")`: one setup value of the active phase.
 - `targets(coach, day)`: the targets row in force on `day` (base maintenance,
-  surplus, expected counted activity, average daily target, MFP goal).
+  surplus, expected counted activity, average daily target, MFP goal =
+  base + surplus, `mfp_goal_for`).
   `set_targets(...)` adds a row (phase start, approved proposals).
 - `daily_target(coach, day)`: base + counted activity + surplus for that day,
   with macros.
@@ -394,7 +395,7 @@ def prefill(coach: "Coach", phase_id: str, now: datetime.datetime) -> dict[str, 
 
 def preview(coach: "Coach", setup: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
     """The week-1 preview of a complete setup (phase_setup schema): average
-    daily target and the MFP goal it sets, targets by day type, macros, and
+    daily target and the MFP goal it sets (base + surplus, `mfp_goal_for`), targets by day type, macros, and
     the targets row confirm stores. Raises ValueError if the numbers don't
     work out (e.g. no room for carbs)."""
     from .features import training_plan
@@ -407,7 +408,8 @@ def preview(coach: "Coach", setup: dict[str, Any], now: datetime.datetime) -> di
     else:
         window = (yesterday - (ACTIVITY_DAYS - 1) * DAY, yesterday)
     days = [window[0] + n * DAY for n in range((window[1] - window[0]).days + 1)]
-    counted = [training_plan.counted_activity_on(coach, d, p["activity"]) for d in days]
+    # The window is before the phase start: planned wrestling doesn't count there.
+    counted = [training_plan.counted_activity_on(coach, d, p["activity"], planned_from=now.date()) for d in days]
     avg_activity = statistics.fmean(c["kcal"] for c in counted)
     maintenance = setup["maintenance_estimate_kcal"]
     base = maintenance - avg_activity if setup.get("maintenance_includes_activity", True) else maintenance
@@ -428,8 +430,9 @@ def preview(coach: "Coach", setup: dict[str, Any], now: datetime.datetime) -> di
     at_average = macros(p, average, weight)
     if at_average["carbs_g"] < 0:
         raise ValueError("protein and fat alone exceed the average daily target; check the values")
-    goal = {"kcal": round(average), "protein_g": at_average["protein_g"], "carbs_g": at_average["carbs_g"],
-            "fat_g": at_average["fat_g"]}
+    goal = mfp_goal_for(p, base, surplus, weight)
+    if goal["carbs_g"] < 0:
+        raise ValueError("protein and fat alone exceed the rest-day target; check the values")
     return {
         "phase_id": setup["phase_id"],
         "phase_name": p.get("name", setup["phase_id"]),
@@ -458,6 +461,14 @@ def preview(coach: "Coach", setup: dict[str, Any], now: datetime.datetime) -> di
             "mfp_goal": goal,
         },
     }
+
+
+def mfp_goal_for(p: dict[str, Any], base: float, surplus: float, weight_kg: float) -> dict[str, Any]:
+    """The MFP goal: base maintenance + surplus (a rest day; activity comes
+    on top, exact in the coach's daily targets), macros at that kcal."""
+    kcal = base + surplus
+    m = macros(p, kcal, weight_kg)
+    return {"kcal": round(kcal), "protein_g": m["protein_g"], "carbs_g": m["carbs_g"], "fat_g": m["fat_g"]}
 
 
 # --- confirm hooks -------------------------------------------------------------------

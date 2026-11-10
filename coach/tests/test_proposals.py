@@ -7,8 +7,10 @@ Uses the worked example of test_weekly_checkin: the reverse starts Mon 9 Nov
 2026 at 2300 kcal on average (surplus -236), Monday 09:00 check-ins, the
 glycogen window covers W46-W47. W48 (23-29 Nov) and W49 (30 Nov-6 Dec) are
 the first weeks that count. Approving +100 on Mon 7 Dec gives an average
-daily target of 2400 kcal; macros at the W49 trend weight 82.1 kg: protein
-164 g, fat 74 g (0.9 g/kg), carbs (2400 - 164.2 x 4 - 73.9 x 9) / 4 = 270 g.
+daily target of 2400 kcal and an MFP goal of base 2536 + surplus -136 = 2400
+kcal (a rest day; no counted activity was expected); macros at the W49 trend
+weight 82.1 kg: protein 164 g, fat 74 g (0.9 g/kg), carbs (2400 - 164.2 x 4 -
+73.9 x 9) / 4 = 270 g.
 """
 
 from fa_coach import phases, proposals
@@ -396,7 +398,8 @@ async def test_calibration_values_out_of_range_are_blocked(phase, api, clock, mo
     assert not [m for m in outbox.sent if m.buttons]
 
 
-async def test_an_approved_calibration_change_updates_the_setup_without_a_goal_write(phase, api, clock, model, outbox):
+async def test_an_approved_calibration_change_updates_the_setup_and_the_mfp_goal_once(phase, api, clock, model,
+                                                                                      outbox):
     result = await request(phase, clock, model, type="calibration_change",
                            new_values={"wrestling_kcal_per_session": 500})
     assert result["status"] == "open"
@@ -405,5 +408,5 @@ async def test_an_approved_calibration_change_updates_the_setup_without_a_goal_w
     await phase.on_button("approve_proposal", result["id"], at("2026-12-08", 13))
 
     assert phases.params(phase)["activity"]["wrestling_kcal_per_session"] == 500
-    assert goal_writes(api) == []
+    assert [g["kcal"] for g in goal_writes(api)] == [2314]  # base 2536 + 14.29, see test_plan_chat
     assert "Approved" in [e for e in outbox.edits if e.ref == card.ref][-1].text
