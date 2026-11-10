@@ -34,7 +34,7 @@ class SkillsPackage:
 
     def phase_params(self, phase_id: str) -> dict[str, Any]:
         """The phase's own params.yaml (not merged)."""
-        return _yaml(self.root / "skills" / self.phase_skill_name(phase_id) / "params.yaml")
+        return copy.deepcopy(_yaml(self.root / "skills" / self.phase_skill_name(phase_id) / "params.yaml"))
 
     def undecided(self, phase_id: str) -> list[str]:
         """Key paths in the phase's params.yaml marked TO DECIDE (draft phases
@@ -91,6 +91,14 @@ def _load_schemas(folder: Path) -> dict[str, dict[str, Any]]:
 
 
 def _yaml(path: Path) -> dict[str, Any]:
+    """A params file, parsed again only when it changed on disk. Shared:
+    callers that hand it out copy it first."""
+    stat = path.stat()
+    return _parse_yaml(path, stat.st_mtime_ns, stat.st_size)
+
+
+@cache
+def _parse_yaml(path: Path, mtime_ns: int, size: int) -> dict[str, Any]:
     return yaml.safe_load(path.read_text(encoding="utf-8")) or {}
 
 

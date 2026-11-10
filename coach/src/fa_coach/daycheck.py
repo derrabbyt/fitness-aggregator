@@ -35,10 +35,13 @@ MIN_NEIGHBOURS = 3  # fewer logged neighbours: compare with the daily target
 KINDS = ("complete", "real")
 
 
-def statuses(coach: "Coach", start: Date, end: Date, p: dict[str, Any]) -> dict[str, dict[str, Any]]:
+def statuses(coach: "Coach", start: Date, end: Date, p: dict[str, Any], *,
+             high_side: bool = True) -> dict[str, dict[str, Any]]:
     """{date: {kcal, reference_kcal (what partial is judged against),
     target_kcal, partial_suspected, implausible, confirmed, confirmation,
-    incomplete}} for the days from `start` to `end` with food logged."""
+    incomplete}} for the days from `start` to `end` with food logged.
+    `high_side=False` skips the implausible check (and the daily target
+    unless partial needs it): enough for `incomplete`, and much cheaper."""
     from . import phases  # phases imports this module
 
     rows = history.days(coach.db, (start - NEIGHBOUR_DAYS * DAY).isoformat(),
@@ -55,7 +58,7 @@ def statuses(coach: "Coach", start: Date, end: Date, p: dict[str, Any]) -> dict[
         kcal = eaten.get(iso)
         if kcal is not None:
             others = [eaten[d.isoformat()] for d in _around(day) if d.isoformat() in eaten]
-            target = phases.daily_target(coach, day)
+            target = phases.daily_target(coach, day) if high_side or len(others) < MIN_NEIGHBOURS else None
             target_kcal = target["kcal"] if target else None
             reference = statistics.median(others) if len(others) >= MIN_NEIGHBOURS else target_kcal
             partial = reference is not None and kcal < share * reference
@@ -82,7 +85,7 @@ def status(coach: "Coach", day: Date, p: dict[str, Any]) -> dict[str, Any] | Non
 
 
 def incomplete_days(coach: "Coach", start: Date, end: Date, p: dict[str, Any]) -> set[str]:
-    return {d for d, s in statuses(coach, start, end, p).items() if s["incomplete"]}
+    return {d for d, s in statuses(coach, start, end, p, high_side=False).items() if s["incomplete"]}
 
 
 def confirm(coach: "Coach", day: Date, kind: str, source: str, now: datetime.datetime) -> float | None:

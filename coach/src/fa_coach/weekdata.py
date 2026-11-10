@@ -35,7 +35,7 @@ def intake(coach: "Coach", start: Date, end: Date) -> dict[str, Any]:
     marked complete), `partial` when it is an unconfirmed suspected partial
     day (daycheck.py: its numbers are shown but don't count), else `missing`."""
     synced = {d["date"]: d for d in history.days(coach.db, start.isoformat(), end.isoformat())}
-    checks = daycheck.statuses(coach, start, end, phases.params(coach))
+    checks = daycheck.statuses(coach, start, end, phases.params(coach), high_side=False)
     out: dict[str, Any] = {"days": [], "sessions": [], "macros": []}
     for day in dates(start, end):
         target = phases.daily_target(coach, day)
