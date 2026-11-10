@@ -35,5 +35,9 @@
   after the day's kcal changed confirms nothing ("I'll check it again").
 - The phase-start "last diet intake" prefill (phases.py) still averages every logged day;
   out of scope here.
+- Performance: the day checks call `daily_target` (→ `skills.params`, which re-parsed the
+  YAML on every call) and made the suite ~2x slower; `skills._yaml` now caches by file
+  mtime/size (edits still picked up), and `incomplete_days` skips the high-side check.
+  The coach suite now runs in ~1.7 min (277 tests).
 - intake_day gains required `partial_suspected` and `confirmed`; `logged: partial` (enum
   already had it) marks an unconfirmed suspected day, whose kcal stay visible.
