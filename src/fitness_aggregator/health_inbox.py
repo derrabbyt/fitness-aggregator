@@ -100,6 +100,34 @@ async def receive(request: Request) -> dict[str, Any]:
     return {"stored": path.name, "bytes": len(body), "summary": summary}
 
 
+@router.get("/api/sleep")
+async def sleep(date: str) -> dict[str, Any]:
+    """The night Marrow dates `date` (its `sleep_analysis` entry), for the web UI.
+    Exports are incremental, so every stored file is read; a later file wins."""
+    try:
+        datetime.date.fromisoformat(date)
+    except ValueError:
+        raise HTTPException(400, "date must be YYYY-MM-DD")
+    night = None
+    for path in sorted(INBOX.glob("*.json")) if INBOX.exists() else []:
+        if path.name.endswith(".meta.json"):
+            continue
+        try:
+            metrics = json.loads(path.read_bytes())["data"]["metrics"]
+        except (ValueError, KeyError, TypeError):
+            continue
+        for m in metrics if isinstance(metrics, list) else []:
+            if not isinstance(m, dict) or m.get("name") != "sleep_analysis":
+                continue
+            for point in m.get("data") or []:
+                if isinstance(point, dict) and str(point.get("date", ""))[:10] == date:
+                    night = point
+    if night is None:
+        return {"date": date, "night": None}
+    keys = ("asleep", "inBed", "totalSleep", "sleepStart", "sleepEnd", "core", "deep", "rem", "awake")
+    return {"date": date, "night": {k: night[k] for k in keys if k in night}}
+
+
 @router.get("/api/health-data")
 async def inbox(request: Request) -> list[dict[str, Any]]:
     _check_token(request)
