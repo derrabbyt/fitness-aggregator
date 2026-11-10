@@ -130,10 +130,27 @@ def daily_facts(coach, phase: dict[str, Any], p: dict[str, Any], record: dict[st
             },
             "weight": _weight(coach, record, today, glycogen),
             "steps": record["steps"],
+            "target_build_up": _build_up(target),
             "sessions": activity["sessions"],
             "week_to_date": _week_to_date(coach, week_start, today),
         },
         "params": p,
+    }
+
+
+def _build_up(target: dict[str, Any]) -> dict[str, Any]:
+    """How today's target is made: base at the step goal + step kcal (so far:
+    today's steps are provisional) + counted sessions + surplus."""
+    steps = target["steps"]
+    return {
+        "base_at_step_goal_kcal": target["base_at_step_goal_kcal"],
+        "step_goal": steps["goal"] if steps else None,
+        "day_steps": steps["steps"] if steps else None,
+        "steps_tracked": steps["tracked"] if steps else False,
+        "step_kcal": steps["kcal"] if steps else None,
+        "sessions_kcal": round(target["activity"]["kcal"]),
+        "surplus_kcal": target["surplus_kcal"],
+        "target_kcal": target["kcal"],
     }
 
 

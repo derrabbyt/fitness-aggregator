@@ -145,6 +145,7 @@ Photos are on at the start of the reverse and may be switched off at any point, 
 
 - Daily target = base maintenance + that day's activity + surplus. Runs: Strava/MFP calories × a discount (e.g. 75%). Wrestling: a fixed estimate per session, counted as planned unless I say I skipped it. Lifting: a fixed estimate per session, counted when the session is in Hevy. Runs count only when Strava synced one (HealthKit duplicates never count) or I report it. Other sessions: I just say what I did and for how long; kcal are estimated (code from activity × duration × trend weight, else the model's estimate), and a number I give always wins. At phase review the agent proposes new run-discount and wrestling values when they drift; I confirm. Base maintenance excludes activity, which the back-calculation subtracts.
 - Steps are a measuring tool, not a target to enforce. Large swings (2k to 30k) are expected and not a problem.
+- Steps are live activity: each day's target moves by step kcal × (that day's steps − a step goal, default 10k), run steps removed so runs count once. Base is shown at the step goal and stays anchored to the measured maintenance (at the average steps), so the goal only moves where "0" is, not the energy. The MFP goal is a rest day at average steps. `/today` shows the live balance (provisional until the day ends).
 - Soft step floor of \~10k: a gentle note only if steps stay very low for a while and no other training happened.
 
 **Fat gain**
@@ -225,7 +226,7 @@ Code computes the numbers and enforces a few guardrails; skills make the decisio
 | A–E decision, sport load, mixed weeks, change size, stall flags, body-fat advice | Skill with hard rules |
 | Reports, proposals, explanations, photo review, context tagging, Q&A | Skill |
 | Guardrails in the propose\_change tool: nothing applied without my OK; max 200 kcal per change, except a phase's first change (follows the phase skill); lockout and two-week rule | Code |
-| On approval: set the MFP calorie goal to the average daily target | Code |
+| On approval: set the MFP calorie goal to base maintenance at average steps + surplus (a normal-step rest day; activity and steps come on top, exact in the app, mentally in MFP) | Code |
 
 - **Targets live in the app,** never MFP's activity-adjusted goal. Daily target = base maintenance + that day's activity + surplus (see Triggers, Activity). Training plan: a saved default week, seeded once from a CSV export of my Google Sheet (a live Sheet integration comes later); after that it changes only through Telegram, for this week or for good.
 - **Phase skill = phase config:** rules in prose plus a parameter block that code reads too. The prose refers to parameters by name and never repeats the numbers.

@@ -15,6 +15,7 @@ from fa_coach.features import training_plan
 from fakes import exercise, reply, run, session, tool_calls
 
 PARAMS = {"run_kcal_discount": 0.75, "wrestling_kcal_per_session": 600, "lifting_kcal_per_session": 400}
+START = datetime.date(2026, 11, 9)  # the phase start: planned wrestling counts from here on
 
 
 def healthkit(name: str, kcal: float, *, is_run: bool) -> dict:
@@ -42,7 +43,7 @@ async def week(coach, api, clock, model):
 
 
 def counted(coach, date: str) -> dict:
-    return training_plan.counted_activity_on(coach, datetime.date.fromisoformat(date), PARAMS)
+    return training_plan.counted_activity_on(coach, datetime.date.fromisoformat(date), PARAMS, planned_from=START)
 
 
 def summary(day: dict) -> list[tuple]:
@@ -139,5 +140,30 @@ async def test_counted_sessions_fit_the_weekly_facts_schema(week, model):
 async def test_a_missing_setup_value_is_an_error_not_a_guess(week):
     with pytest.raises(ValueError, match="wrestling_kcal_per_session"):
         training_plan.counted_activity_on(
-            week, datetime.date(2026, 11, 13), {**PARAMS, "wrestling_kcal_per_session": None}
+            week, datetime.date(2026, 11, 13), {**PARAMS, "wrestling_kcal_per_session": None}, planned_from=START
         )
+
+
+def counted_before_start(coach, date: str) -> dict:
+    """As if the phase started after `date` (the preview and maintenance windows)."""
+    return training_plan.counted_activity_on(coach, datetime.date.fromisoformat(date), PARAMS,
+                                             planned_from=datetime.date(2026, 11, 16))
+
+
+async def test_before_the_phase_start_planned_wrestling_counts_only_when_reported(week, model):
+    assert counted_before_start(week, "2026-11-13")["sessions"] == []  # planned, not reported
+
+    await _report(week, model, date="2026-11-13", status="done", session_id="fri-1")
+
+    assert summary(counted_before_start(week, "2026-11-13")) == [("wrestling", "plan", "done", 600)]
+
+
+async def test_before_the_phase_start_synced_sessions_still_count(week):
+    assert summary(counted_before_start(week, "2026-11-09")) == [("lift", "training_log", "done", 400)]
+    assert summary(counted_before_start(week, "2026-11-10")) == [("run", "strava", "done", 389.25)]
+
+
+async def test_without_an_active_phase_no_planned_wrestling_counts(week):
+    day = training_plan.counted_activity_on(week, datetime.date(2026, 11, 13), PARAMS)
+
+    assert day["kcal"] == 0

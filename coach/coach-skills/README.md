@@ -112,6 +112,10 @@ changes the schema, the skills that reference it, the examples, and reruns
 | `training.min_sessions_for_compare` | 2 (the judged session included) | the first session only starts a lift's history |
 | `training.compare_best_of_last_sessions` | 3 | SPEC says "best of last 2–3" |
 | `activity.met_by_activity` | running 8.0, cycling 7.5, swimming 6.0, football 7.0, basketball 6.5, tennis 7.0, hiking 6.0, walking 3.5, rowing 6.0, martial_arts 6.0 (grappling, BJJ, boxing …; wrestling and lifting use their setup values instead) | estimating kcal for sessions reported without kcal (MET × 7-day trend weight × hours); conservative "general" values in the style of the Compendium of Physical Activities. Other activities, or no trend weight yet: the model's own estimate, stored as `model_estimate` |
+| `steps.kcal_per_step_at_70kg`, `steps.share` | 0.04 kcal per step at 70 kg (× trend weight / 70), 75 % counted | step kcal on top of base at the step goal (user decision: steps are live activity) |
+| `steps.not_tracked_below` | 2,500 raw steps | below it the phone or watch wasn't carried: the day is not tracked (counted at the average, no step adjustment) and left out of averages |
+| `steps.run_steps_per_km` | 1,200 | run steps are removed from the day's steps (runs count through Strava), as are reported sessions with a distance |
+| `steps.step_goal` | 10,000 (setup value `step_goal` overrides it, changeable in chat) | where "0" step kcal is shown; doesn't change the energy the user gets |
 | `nutrition.macro_reference_weight` | trend_7d | which weight g/kg uses; recalculated weekly |
 | `decisions.prediction_miss_kg` | 0.3 | a weekly prediction error above this is a miss (log check, lower confidence) |
 | Adherence-gate weeks | skipped like unusable weeks for confirmation (code records the skip with each stored verdict) | SPEC says no changes when adherence fails, not how they count |

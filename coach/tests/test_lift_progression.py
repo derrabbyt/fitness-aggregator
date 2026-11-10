@@ -342,7 +342,7 @@ def lifting(api, *, week3_bench: int, week3_pull: int) -> None:
 async def run_week3(coach, api, clock, model, *, avg: float | None, bench_reps: int, pull_reps: int,
                     data: dict) -> dict:
     lifting(api, week3_bench=bench_reps, week3_pull=pull_reps)
-    await three_weeks(coach, api, clock, model, avg=avg, kcal=2250)
+    await three_weeks(coach, api, clock, model, avg=avg, kcal=2350)
     await check_in(coach, clock, model, "2026-11-30", data)
     return decision_requests(model)[-1].input
 

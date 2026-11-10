@@ -14,8 +14,9 @@ Input (assembled by code):
 - `changes_applied` – changes approved since the last report: `{proposal_id, type, source,
   approved_on, what, why, recheck_on}`, for calorie changes also `delta_kcal`,
   `avg_daily_target_before_kcal` / `_after_kcal`, `expected_weekly_rate_change_kg`,
-  `mfp_goal`, `mfp_goal_status` (`set`, `not_set`, `uncertain`); for calibration changes
-  `previous_values` / `new_values`
+  `mfp_goal` (base maintenance + surplus: a rest day, activity on top), `mfp_goal_status`
+  (`set`, `not_set`, `uncertain`); for calibration changes `previous_values` / `new_values`
+  (`what` says whether the MyFitnessPal goal moved with the base)
 - `deferred` – observations held back from daily messages this week (`[{date, text}]`)
 - `due` – waist and photo check-ins due in the coming week, `[{date, kind}]` with kind
   `waist` or `photos` (photos only while they're on); empty when nothing is due
@@ -42,7 +43,9 @@ Output: one JSON object matching `coach_message.schema.json` (`send: true`).
    stalls (`training.stalls`) and deload signals as flags only; sport-load note if applied. If `training.progression_met` is null,
    say in a few words that lift progression wasn't evaluated, and list the sessions only. For scenario D: "training needs a look",
    nothing more specific.
-6. **Activity** – average steps only if relevant (step floor flag, unusual week).
+6. **Activity** – average steps only if relevant (step floor flag, unusual week). The daily
+   targets already move with steps (`targets.base_at_step_goal_kcal`,
+   `step_kcal_per_1000_steps`), so a high-step day's bigger target is not over-eating.
 7. **Changes applied this week** – for each: what changed (`what`, the targets before and
    after), why (`why`), what to expect (`expected_weekly_rate_change_kg`: the change in
    weekly weight gain it should bring; a carb increase can also show as a small water jump),

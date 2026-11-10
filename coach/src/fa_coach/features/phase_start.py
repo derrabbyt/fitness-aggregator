@@ -53,8 +53,9 @@ LOGISTICS = ("weekly_checkin", "evening_reminder_time", "max_unprompted_messages
 KEYS = ("starting_calories_kcal", "starting_trend_weight_kg", "maintenance_estimate_kcal",
         "maintenance_includes_activity", "run_kcal_discount", "wrestling_kcal_per_session",
         "lifting_kcal_per_session", "fat_g_per_kg_start", "week1_increase_kcal", "time_goal_weeks",
-        "photos_enabled", "waist_cm_start") + tuple(f"logistics.{k}" for k in LOGISTICS)
-OPTIONAL = ("maintenance_includes_activity",)  # has a default (true); never needs asking
+        "photos_enabled", "waist_cm_start", "step_goal") + tuple(f"logistics.{k}" for k in LOGISTICS)
+# Have a default (maintenance includes activity; the step goal from core params): never need asking.
+OPTIONAL = ("maintenance_includes_activity", "step_goal")
 CLASSIFY = "exercise_classification"  # not a setup value: every Hevy exercise classified (features/lifts.py)
 
 
@@ -206,8 +207,10 @@ def still_needed(coach, phase_id: str, values: dict[str, Any], today: datetime.d
     "Store one phase setup value as soon as the user gives or confirms it (validated by code against the "
     "phase-setup schema and the phase's params). Logistics keys: logistics.weekly_checkin ('sun 18:00'), "
     "logistics.evening_reminder_time ('20:30'), logistics.max_unprompted_messages_per_day, "
-    "logistics.soft_floor_min_days. Optional values the user declines are recorded as null. After the phase "
-    "started, changes logistics, photos_enabled, time_goal_weeks and waist_cm_start of the active phase. "
+    "logistics.soft_floor_min_days. step_goal (default 10,000 steps: where step kcal are 0; it doesn't change "
+    "the energy the user gets). Optional values the user declines are recorded as null. After the phase "
+    "started, changes logistics, photos_enabled, time_goal_weeks, waist_cm_start and step_goal of the active "
+    "phase. "
     "Returns what is still needed (exercise_classification: classify the exercises with classify_exercises).",
     {
         "type": "object",
@@ -391,7 +394,8 @@ def render_card(preview: dict[str, Any]) -> str:
         f"Week-1 preview: {preview['phase_name']}",
         f"Average daily target: {preview['average_daily_target_kcal']:,} kcal",
         f"MyFitnessPal goal: {goal['kcal']:,} kcal · P {goal['protein_g']} g · C {goal['carbs_g']} g · "
-        f"F {goal['fat_g']} g",
+        f"F {goal['fat_g']} g (a rest day; activity comes on top: add it in your head in MyFitnessPal, "
+        "the coach counts it exactly in each day's target)",
         "Daily targets:",
         f"- Rest day: {days['rest']:,} kcal",
         f"- Lifting day: {days['lifting']:,} kcal",
@@ -402,6 +406,12 @@ def render_card(preview: dict[str, Any]) -> str:
         f"Each day: base maintenance {preview['base_maintenance_kcal']:,} kcal + that day's counted activity "
         f"{preview['surplus_kcal']:+,} kcal surplus.",
     ]
+    steps = preview.get("steps") or {}
+    if steps.get("kcal_per_1000_steps") is not None:
+        lines.append(
+            f"Steps: base at your step goal ({steps['step_goal']:,} steps) is {steps['base_at_step_goal_kcal']:,} "
+            f"kcal; each day moves {steps['kcal_per_1000_steps']:g} kcal per 1,000 steps above or below it (run "
+            f"steps left out). The targets above are at your average {steps['avg_day_steps']:,} steps.")
     weeks, jump = preview["glycogen_window_weeks"], preview.get("glycogen_jump_kg")
     if weeks:
         span = "Week 1" if weeks == 1 else f"Weeks 1–{weeks}"

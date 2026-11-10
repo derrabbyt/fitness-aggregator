@@ -15,7 +15,8 @@ Rule for every write tool: **code validates, code applies.** The model only asks
 | `get_lift_history` | `exercise_id`, `n_sessions` | sessions since last baseline: date, sets (load, reps), top set (effective load, e1RM), status, PR, streaks, notes |
 | `get_tracked_exercises` | – | exercises in the synced Hevy history (16 weeks): id, title, Hevy type, bodyweight or not, sessions, last date, `classification` (`counts`/`excluded`/null = not classified yet, counts), paused |
 | `get_context_notes` | `from`, `to` | list of `context_note.schema.json` |
-| `get_targets` | – | active phase (week, glycogen window), current targets (base maintenance, surplus, expected counted activity, average daily target, MFP goal) + daily targets for the current week |
+| `get_today` | `date?` (default today) | syncs first, then the day's live balance: steps / step goal and steps to go, step kcal vs the goal (today: so far, provisional), the target build-up (base at the step goal, step kcal, each counted session, surplus), macros, eaten, left. Same view as `/today` |
+| `get_targets` | – | active phase (week, glycogen window), current targets (base maintenance, surplus, expected counted activity, average daily target, MFP goal = base + surplus, a rest day) + daily targets for the current week |
 | `get_training_plan` | – | the saved plan in force today (sessions per weekday with ids, exercise lists) + this week day by day with the user's reports + upcoming lasting changes |
 | `get_proposals` | `status` (optional) | list of `proposal.schema.json` |
 | `get_coach_profile` | – | `{profile: {key: value}}`: short entries (preferences, known issues); also in every call's state snapshot |
@@ -109,15 +110,19 @@ A `calibration_change` is checked by 6 only.
 
 On **approve** (one atomic claim, so a double tap applies once): apply delta to
 `surplus_kcal` and the average daily target from today, macros at the current macro reference
-weight, then set the MyFitnessPal goal to the new average daily target once, read it back,
-never retry (a failed or uncertain write is reported; the coach targets stay as approved).
+weight, then set the MyFitnessPal goal to base maintenance + the new surplus (a rest day;
+activity comes on top) once, read it back, never retry (a failed or uncertain write is
+reported; the coach targets stay as approved). Without MFP premium, macros may be stored
+rounded to a 5 % split: calories matching and each macro within 5 % of the calories counts
+as set (the card says MFP shows rounded macros; the exact grams are in the coach).
 Other open calorie proposals become `superseded` (they were based on the old targets).
 A calibration change updates the phase's setup value (counted from today) and recomputes
-the targets from today as the phase start did: the expected counted activity moves by what
-the new values change over the last 28 days; when maintenance includes activity, base
-maintenance moves the other way, so the average stays and only the days' targets shift.
-The surplus never changes, so it doesn't restart the lockout. If the average daily target
-moved, the MFP goal is set once like a calorie change. The next weekly report lists the
+the targets from today, keeping the measured maintenance: the expected counted activity
+moves by what the new values change over the last 28 days; when maintenance includes
+activity, base maintenance moves the other way, so the average stays and only the days'
+targets shift. The surplus never changes, so it doesn't restart the lockout. When base
+moved, the MFP goal (base + surplus) moves with it and is set once like a calorie change.
+The proposal card and the approval say what MyFitnessPal will show. The next weekly report lists the
 change (`changes_applied`).
 On **reject**: code asks for an optional reason; store it with `add_rejection_reason`.
 On the **counter** button: code asks for the user's number; the proposal stays open

@@ -11,10 +11,19 @@ Read API for features:
   This is the `params` block facts carry.
 - `setup_value(coach, "logistics.weekly_checkin")`: one setup value of the active phase.
 - `targets(coach, day)`: the targets row in force on `day` (base maintenance,
-  surplus, expected counted activity, average daily target, MFP goal).
+  surplus, expected counted activity, average daily target, MFP goal =
+  base + surplus, `mfp_goal_for`).
   `set_targets(...)` adds a row (phase start, approved proposals).
-- `daily_target(coach, day)`: base + counted activity + surplus for that day,
-  with macros.
+- `daily_target(coach, day)`: base at the step goal + step kcal + counted
+  activity + surplus for that day, with macros (see "Steps" below).
+- Steps: `day_steps(coach, day, params)` (MFP steps minus run steps; not
+  tracked under `steps.not_tracked_below`), `avg_day_steps`,
+  `step_kcal_per_step(params, weight)`. A targets row keeps base
+  maintenance at the average day steps of its window plus k and that
+  average; base at the step goal = base - k x (average - goal), and a day
+  gets k x (its steps - goal) on top. So the step goal only moves where "0"
+  is shown; on an average-steps day the target is base + sessions + surplus
+  (= the MFP goal on a rest day).
 - `macros(params, kcal, weight_kg)`, `macro_reference_weight(coach, day)`,
   `trend_weight(coach, day)`, `phase_week(phase, day)`, `in_glycogen_window(coach, day)`.
 - `maintenance_estimate(coach, end, params)`: back-calculated from logged
@@ -120,6 +129,8 @@ def params_for(skills, phase_id: str, setup: dict[str, Any]) -> dict[str, Any]:
         merged["macros"]["fat_g_per_kg_start"] = setup["fat_g_per_kg_start"]
     if setup.get("photos_enabled") is not None:
         merged["measurements"]["photos_enabled"] = setup["photos_enabled"]
+    if setup.get("step_goal") is not None:
+        merged["steps"]["step_goal"] = setup["step_goal"]
     if "time_goal_weeks" in setup:
         merged["time_goal_weeks"] = setup["time_goal_weeks"]
     return merged
@@ -143,16 +154,19 @@ def in_glycogen_window(coach: "Coach", day: Date) -> bool:
 
 def set_targets(coach: "Coach", phase_row_id: str, values: dict[str, Any], *, valid_from: Date, source: str,
                 now: datetime.datetime, ref: str | None = None) -> None:
-    """Add a targets row. `values`: base_maintenance_kcal, surplus_kcal,
-    avg_activity_kcal, maintenance_estimate_kcal, avg_daily_target_kcal,
-    mfp_goal {kcal, protein_g, carbs_g, fat_g}. Call inside the caller's transaction."""
+    """Add a targets row. `values`: base_maintenance_kcal (at the average
+    day steps), surplus_kcal, avg_activity_kcal, maintenance_estimate_kcal,
+    avg_daily_target_kcal, mfp_goal {kcal, protein_g, carbs_g, fat_g}, and
+    the step model step_kcal_per_step, avg_day_steps (None: no step
+    adjustment). Call inside the caller's transaction."""
     coach.db.execute(
         "INSERT INTO targets (phase_row_id, valid_from, source, ref, base_maintenance_kcal, surplus_kcal,"
-        " avg_activity_kcal, maintenance_estimate_kcal, avg_daily_target_kcal, mfp_goal, created_at)"
-        " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        " avg_activity_kcal, maintenance_estimate_kcal, avg_daily_target_kcal, mfp_goal, step_kcal_per_step,"
+        " avg_day_steps, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         (phase_row_id, valid_from.isoformat(), source, ref, values["base_maintenance_kcal"], values["surplus_kcal"],
          values["avg_activity_kcal"], values["maintenance_estimate_kcal"], values["avg_daily_target_kcal"],
-         json.dumps(values["mfp_goal"]), now.isoformat(timespec="seconds")),
+         json.dumps(values["mfp_goal"]), values.get("step_kcal_per_step"), values.get("avg_day_steps"),
+         now.isoformat(timespec="seconds")),
     )
 
 
@@ -183,16 +197,19 @@ def target_history(coach: "Coach") -> list[dict[str, Any]]:
 
 def _targets(row) -> dict[str, Any]:
     out = {k: row[k] for k in ("valid_from", "source", "ref", "base_maintenance_kcal", "surplus_kcal",
-                               "avg_activity_kcal", "maintenance_estimate_kcal", "avg_daily_target_kcal")}
+                               "avg_activity_kcal", "maintenance_estimate_kcal", "avg_daily_target_kcal",
+                               "step_kcal_per_step", "avg_day_steps")}
     out["mfp_goal"] = json.loads(row["mfp_goal"])
     out["mfp_goal_kcal"] = out["mfp_goal"]["kcal"]
     return out
 
 
 def daily_target(coach: "Coach", day: Date) -> dict[str, Any] | None:
-    """`day`'s target: base maintenance + counted activity + surplus, with
-    macros at the macro reference weight. None without an active phase or
-    before its start."""
+    """`day`'s target: base at the step goal + step kcal + counted activity
+    + surplus, with macros at the macro reference weight. `steps` is the step
+    part (None for a targets row without a step model); today's steps are
+    provisional until the day ends. None without an active phase or before
+    its start."""
     from .features import training_plan  # features import this module
 
     phase = active(coach)
@@ -201,15 +218,73 @@ def daily_target(coach: "Coach", day: Date) -> dict[str, Any] | None:
         return None
     p = params(coach)
     activity = training_plan.counted_activity_on(coach, day, p["activity"])
-    kcal = current["base_maintenance_kcal"] + activity["kcal"] + current["surplus_kcal"]
+    steps = step_part(coach, day, current, p)
+    base_at_goal = steps["base_at_goal_kcal"] if steps else current["base_maintenance_kcal"]
+    # = base at goal + k x (steps - goal): exact, so an average-steps day is base + sessions + surplus
+    vs_average = steps["exact_vs_average"] if steps else 0
+    kcal = current["base_maintenance_kcal"] + vs_average + activity["kcal"] + current["surplus_kcal"]
     return {
         "date": day.isoformat(),
         "kcal": round(kcal),
         "base_maintenance_kcal": round(current["base_maintenance_kcal"]),
+        "base_at_step_goal_kcal": round(base_at_goal),
         "surplus_kcal": round(current["surplus_kcal"]),
+        "steps": steps and {k: v for k, v in steps.items() if k not in ("base_at_goal_kcal", "exact_vs_average")},
         "activity": activity,
         "macros": macros(p, kcal, macro_reference_weight(coach, day)),
     }
+
+
+# --- steps ----------------------------------------------------------------------
+
+
+def step_kcal_per_step(p: dict[str, Any], weight_kg: float) -> float:
+    """k: kcal_per_step_at_70kg x weight / 70 x share."""
+    s = p["steps"]
+    return s["kcal_per_step_at_70kg"] * weight_kg / 70 * s["share"]
+
+
+def day_steps(coach: "Coach", day: Date, p: dict[str, Any]) -> dict[str, Any]:
+    """{raw, steps, tracked, run_steps_removed}: MFP's steps minus the steps of
+    Strava runs and of reported sessions with a distance (x run_steps_per_km,
+    floor 0). Under not_tracked_below raw steps (or none) the day is not
+    tracked: `steps` None."""
+    from .features import training_plan  # features import this module
+
+    s = p["steps"]
+    record = history.day(coach.db, day.isoformat())
+    raw = record["steps"] if record else None
+    if raw is None or raw < s["not_tracked_below"]:
+        return {"raw": raw, "steps": None, "tracked": False, "run_steps_removed": 0}
+    strava = [e for e in record["exercises"] if e["run"] and (e["source"] or "").lower() == "strava"]
+    km = sum(e["distance_km"] or 0 for e in strava)
+    for report in training_plan.statuses(coach, day):
+        synced_run = report["type"] == "run" and report["status"] == "done" and strava  # Strava's distance counts
+        if report["status"] in ("done", "extra") and report["distance_km"] and not synced_run:
+            km += report["distance_km"]
+    removed = min(raw, round(km * s["run_steps_per_km"]))
+    return {"raw": raw, "steps": raw - removed, "tracked": True, "run_steps_removed": removed}
+
+
+def avg_day_steps(coach: "Coach", days: list[Date], p: dict[str, Any]) -> float | None:
+    """Mean day steps over the tracked days among `days`; None if none is tracked."""
+    tracked = [d["steps"] for d in (day_steps(coach, day, p) for day in days) if d["tracked"]]
+    return statistics.fmean(tracked) if tracked else None
+
+
+def step_part(coach: "Coach", day: Date, current: dict[str, Any], p: dict[str, Any]) -> dict[str, Any] | None:
+    """The step part of `day`'s target under the targets row `current`: base
+    at the step goal and k x (day steps - goal). A day that isn't tracked
+    counts at the window's average (no step adjustment)."""
+    k, avg = current.get("step_kcal_per_step"), current.get("avg_day_steps")
+    if k is None or avg is None:
+        return None
+    goal = p["steps"]["step_goal"]
+    d = day_steps(coach, day, p)
+    counted = d["steps"] if d["tracked"] else avg
+    return {**d, "goal": goal, "avg_day_steps": round(avg), "kcal_per_1000_steps": round(k * 1000, 1),
+            "kcal": round(k * (counted - goal)), "exact_vs_average": k * (counted - avg),
+            "base_at_goal_kcal": current["base_maintenance_kcal"] - k * (avg - goal)}
 
 
 def macros(p: dict[str, Any], kcal: float, weight_kg: float) -> dict[str, Any]:
@@ -394,7 +469,7 @@ def prefill(coach: "Coach", phase_id: str, now: datetime.datetime) -> dict[str, 
 
 def preview(coach: "Coach", setup: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
     """The week-1 preview of a complete setup (phase_setup schema): average
-    daily target and the MFP goal it sets, targets by day type, macros, and
+    daily target and the MFP goal it sets (base + surplus, `mfp_goal_for`), targets by day type, macros, and
     the targets row confirm stores. Raises ValueError if the numbers don't
     work out (e.g. no room for carbs)."""
     from .features import training_plan
@@ -407,8 +482,11 @@ def preview(coach: "Coach", setup: dict[str, Any], now: datetime.datetime) -> di
     else:
         window = (yesterday - (ACTIVITY_DAYS - 1) * DAY, yesterday)
     days = [window[0] + n * DAY for n in range((window[1] - window[0]).days + 1)]
-    counted = [training_plan.counted_activity_on(coach, d, p["activity"]) for d in days]
+    # The window is before the phase start: planned wrestling doesn't count there.
+    counted = [training_plan.counted_activity_on(coach, d, p["activity"], planned_from=now.date()) for d in days]
     avg_activity = statistics.fmean(c["kcal"] for c in counted)
+    avg_steps = avg_day_steps(coach, days, p)
+    k = step_kcal_per_step(p, setup["starting_trend_weight_kg"]) if avg_steps is not None else None
     maintenance = setup["maintenance_estimate_kcal"]
     base = maintenance - avg_activity if setup.get("maintenance_includes_activity", True) else maintenance
 
@@ -428,8 +506,9 @@ def preview(coach: "Coach", setup: dict[str, Any], now: datetime.datetime) -> di
     at_average = macros(p, average, weight)
     if at_average["carbs_g"] < 0:
         raise ValueError("protein and fat alone exceed the average daily target; check the values")
-    goal = {"kcal": round(average), "protein_g": at_average["protein_g"], "carbs_g": at_average["carbs_g"],
-            "fat_g": at_average["fat_g"]}
+    goal = mfp_goal_for(p, base, surplus, weight)
+    if goal["carbs_g"] < 0:
+        raise ValueError("protein and fat alone exceed the rest-day target; check the values")
     return {
         "phase_id": setup["phase_id"],
         "phase_name": p.get("name", setup["phase_id"]),
@@ -444,6 +523,13 @@ def preview(coach: "Coach", setup: dict[str, Any], now: datetime.datetime) -> di
         "typical_run_kcal_counted": round(typical_run) if typical_run is not None else None,
         "macros": at_average,
         "base_maintenance_kcal": round(base),
+        "steps": {
+            "step_goal": p["steps"]["step_goal"],
+            "avg_day_steps": round(avg_steps) if avg_steps is not None else None,
+            "kcal_per_1000_steps": round(k * 1000, 1) if k is not None else None,
+            "base_at_step_goal_kcal": round(base - k * (avg_steps - p["steps"]["step_goal"])) if k is not None
+            else None,
+        },
         "avg_counted_activity_kcal": round(avg_activity),
         "activity_window": {"start": days[0].isoformat(), "end": days[-1].isoformat()},
         "surplus_kcal": round(surplus),
@@ -456,8 +542,19 @@ def preview(coach: "Coach", setup: dict[str, Any], now: datetime.datetime) -> di
             "maintenance_estimate_kcal": maintenance,
             "avg_daily_target_kcal": average,
             "mfp_goal": goal,
+            "step_kcal_per_step": k,
+            "avg_day_steps": avg_steps,
         },
     }
+
+
+def mfp_goal_for(p: dict[str, Any], base: float, surplus: float, weight_kg: float) -> dict[str, Any]:
+    """The MFP goal: base maintenance (at the average day steps) + surplus,
+    a normal-step rest day (activity and steps off the average come on top,
+    exact in the coach's daily targets), macros at that kcal."""
+    kcal = base + surplus
+    m = macros(p, kcal, weight_kg)
+    return {"kcal": round(kcal), "protein_g": m["protein_g"], "carbs_g": m["carbs_g"], "fat_g": m["fat_g"]}
 
 
 # --- confirm hooks -------------------------------------------------------------------

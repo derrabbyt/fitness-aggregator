@@ -140,7 +140,9 @@ from `.env` (and `cookie.txt`) afterwards.
   activity per day: Strava runs × run discount (HealthKit copies never count),
   a fixed kcal per Hevy session, wrestling as planned unless skipped, and
   reported extras (`features/training_plan.py`, `counted_activity`).
-- **Commands:** `/profile` shows the coach profile; `/sync` syncs now.
+- **Commands:** `/profile` shows the coach profile; `/sync` syncs now; `/today`
+  syncs and shows the live balance (steps vs the step goal, step kcal so far, the
+  target build-up, eaten and left).
 - **Chat:** free text goes to the model with the coach-chat and context-log
   skills. Context (sick, travel, camp week, creatine) is stored as a dated,
   tagged context note in your words; preferences go into the profile. Memory:
@@ -196,8 +198,13 @@ docker compose exec api curl -s 'http://127.0.0.1:8000/api/sync/hevy?start=2026-
 
 ### MFP goal (api tools, coach code only)
 
-Confirming a phase start (and, later, approving a calorie change) sets the
-MFP goal to the average daily target and macros. Coach code
+Confirming a phase start, approving a calorie change, or approving a
+calibration change that moves base maintenance sets the MFP goal to base
+maintenance + surplus (a rest day at average steps; activity and steps off
+the average come on top, exact in the
+coach's daily targets) and macros at that kcal. Without MFP premium, MFP
+may store macros as a 5 % split: the write counts as set when the calories
+match and each macro is within 5 % of the calories. Coach code
 (`coach/src/fa_coach/mfp_goal.py`, `set_once`) sends it once per change,
 reads it back once, says on the card whether MFP shows it, and never retries;
 the coach's targets stand either way. The tools on `:8001/mfp/mcp`

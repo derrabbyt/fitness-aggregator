@@ -86,6 +86,7 @@ def compute(coach: "Coach", end: Date, now: datetime.datetime) -> dict[str, Any]
             "avg_daily_target_kcal": round(current["avg_daily_target_kcal"]),
             "maintenance_estimate": _maintenance(coach, end, p),
             "mfp_goal_kcal": current["mfp_goal_kcal"],
+            **_step_model(current, p),
         },
         "history": _history(coach, phase, start),
         "context_notes": notes,
@@ -95,6 +96,15 @@ def compute(coach: "Coach", end: Date, now: datetime.datetime) -> dict[str, Any]
     for hook in facts_hooks:
         hook(coach, facts, now)
     return facts
+
+
+def _step_model(current: dict[str, Any], p: dict[str, Any]) -> dict[str, Any]:
+    """Base at the step goal and step kcal per 1,000 steps (null without a step model)."""
+    k, avg, goal = current.get("step_kcal_per_step"), current.get("avg_day_steps"), p["steps"]["step_goal"]
+    on = k is not None and avg is not None
+    return {"step_goal": goal, "avg_day_steps": round(avg) if on else None,
+            "step_kcal_per_1000_steps": round(k * 1000, 1) if on else None,
+            "base_at_step_goal_kcal": round(current["base_maintenance_kcal"] - k * (avg - goal)) if on else None}
 
 
 def iso_week(day: Date) -> str:

@@ -1,5 +1,6 @@
 """The MFP goal on phase confirm (ticket 06): once a phase start is stored,
-code sets the MFP goal to the confirmed average daily target and macros
+code sets the MFP goal to the confirmed base maintenance + surplus (a rest
+day; activity comes on top) and macros at that kcal
 (`mfp_goal.set_once`: sent once, read back once, never retried) and adds a
 line to the confirmation card saying whether MFP now shows it. Whatever MFP
 does, the phase stays active and the coach targets stay as confirmed.

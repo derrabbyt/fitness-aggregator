@@ -20,6 +20,7 @@
     "fat_g_per_kg_start": { "type": "number", "description": "Within the phase's macros.fat_g_per_kg_min..max." },
     "week1_increase_kcal": { "type": ["number", "null"], "description": "reverse_bulk only; within start.week1_increase_kcal." },
     "time_goal_weeks": { "type": ["integer", "null"], "minimum": 1 },
+    "step_goal": { "type": "integer", "minimum": 1000, "maximum": 40000, "description": "Steps where step kcal are 0 (default steps.step_goal). Changeable during a phase; it moves only where 0 is shown, not the energy." },
     "photos_enabled": { "type": "boolean" },
     "waist_cm_start": { "type": ["number", "null"], "minimum": 40, "maximum": 200 },
     "logistics": {

@@ -4,7 +4,7 @@
   "title": "Core parameters",
   "description": "Validates skills/coach-core/params.yaml. Sections and keys are fixed so a typo fails validation instead of silently using a default.",
   "type": "object",
-  "required": ["version", "data", "adherence", "decisions", "maintenance_estimate", "training", "nutrition", "activity", "measurements", "reviews", "messaging"],
+  "required": ["version", "data", "adherence", "decisions", "maintenance_estimate", "training", "nutrition", "activity", "steps", "measurements", "reviews", "messaging"],
   "additionalProperties": false,
   "properties": {
     "version": { "const": 1 },
@@ -96,6 +96,18 @@
         "run_kcal_discount": { "type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 1 },
         "wrestling_kcal_per_session": { "type": ["number", "null"] },
         "lifting_kcal_per_session": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+    "steps": {
+      "type": "object", "additionalProperties": false,
+      "description": "Steps as live activity. k = kcal_per_step_at_70kg x trend weight / 70 x share kcal per step. Day steps = MFP steps - run distance x run_steps_per_km (floor 0). Daily target = base at the step goal + k x (day steps - step_goal) + counted sessions + surplus; base at the step goal = maintenance estimate - average counted sessions - k x (average day steps - step_goal) over the estimate's window, so the step goal moves only where 0 is shown.",
+      "required": ["step_goal", "kcal_per_step_at_70kg", "share", "not_tracked_below", "run_steps_per_km"],
+      "properties": {
+        "step_goal": { "type": "integer", "minimum": 1000, "maximum": 40000, "description": "Default; the setup value step_goal overrides it." },
+        "kcal_per_step_at_70kg": { "type": "number", "exclusiveMinimum": 0, "maximum": 0.2 },
+        "share": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "description": "Share of a step's kcal counted (the rest is already in maintenance / NEAT noise)." },
+        "not_tracked_below": { "type": "integer", "minimum": 0, "description": "A day with fewer raw MFP steps counts as not tracked: no step adjustment (counted at the average) and left out of averages." },
+        "run_steps_per_km": { "type": "number", "minimum": 0, "description": "Steps a km of a run (or a reported walk with a distance) adds to MFP's count; removed so runs don't count twice." }
       }
     },
     "measurements": {

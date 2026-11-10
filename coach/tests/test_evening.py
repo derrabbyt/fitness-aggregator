@@ -2,8 +2,8 @@
 
 The phase is the worked example of test_phase_start: reverse started Mon
 9 Nov 2026, evening reminder at 20:30, at most 2 unprompted messages a day.
-Week 1 daily targets: rest day 2214 kcal, lifting day (Hevy session) 2514,
-Friday wrestling 2814. Macros at 80.5 kg: protein 161 g, fat 72 g. The
+Week 1 daily targets: rest day 2300 kcal, lifting day (Hevy session) 2600,
+Friday wrestling 2900. Macros at 80.5 kg: protein 161 g, fat 72 g. The
 glycogen window is phase weeks 1-2 (9-22 Nov).
 """
 
@@ -27,8 +27,8 @@ def message(text: str = "", *, send: bool = True, deferred: list[str] | None = N
             "deferred_to_weekly": deferred or []}
 
 
-def log(api, day: str, kcal: float = 2214, *, protein_g: float = 161, fat_g: float = 72,
-        weight_kg: float | None = 80.6, steps: int | None = 11000) -> None:
+def log(api, day: str, kcal: float = 2300, *, protein_g: float = 161, fat_g: float = 72,
+        weight_kg: float | None = 80.6, steps: int | None = 9000) -> None:  # 9,000: the average, no step kcal
     api.days[day] = {"food": food(kcal, protein_g=protein_g, fat_g=fat_g), "weight_kg": weight_kg, "steps": steps}
 
 
@@ -100,7 +100,7 @@ async def test_the_evening_syncs_before_deciding_so_a_late_log_counts(reverse, a
     await reverse.run_due_jobs(at("2026-11-10"))
 
     assert outbox.items == []
-    assert recap_facts(reverse, model)["day"]["intake"]["actual_kcal"] == 2214
+    assert recap_facts(reverse, model)["day"]["intake"]["actual_kcal"] == 2300
 
 
 async def test_nothing_runs_without_an_active_phase(coach, api, model, outbox):
@@ -116,8 +116,8 @@ async def test_nothing_runs_without_an_active_phase(coach, api, model, outbox):
 
 async def test_a_silent_evening_stores_its_deferred_item_for_that_week(reverse, api, model, outbox):
     coach = reverse
-    log(api, "2026-11-09", 2514)  # Monday: Bench + Pull-up session in Hevy -> lifting day
-    log(api, "2026-11-10", 2214, protein_g=120)
+    log(api, "2026-11-09", 2600)  # Monday: Bench + Pull-up session in Hevy -> lifting day
+    log(api, "2026-11-10", 2300, protein_g=120)
     model.script(reply_json(message(send=False, deferred=["Protein was 120 g on Tuesday vs 161 g."])))
 
     await coach.run_due_jobs(at("2026-11-10"))
@@ -128,14 +128,18 @@ async def test_a_silent_evening_stores_its_deferred_item_for_that_week(reverse, 
     assert facts["phase_week"] == 1 and facts["in_glycogen_window"] is True
     assert facts["messages_sent_today"] == 0
     day = facts["day"]
-    assert day["intake"]["target_kcal"] == 2214 and day["intake"]["actual_kcal"] == 2214
+    assert day["intake"]["target_kcal"] == 2300 and day["intake"]["actual_kcal"] == 2300
+    build = day["target_build_up"]
+    assert (build["day_steps"], build["step_goal"], build["steps_tracked"]) == (9000, 10000, True)
+    assert build["target_kcal"] == 2300
+    assert build["step_kcal"] in (-34, -35)  # 1,000 below the goal, at the average: base at goal is 2570.5
     assert day["intake"]["logged"] == "complete"
     assert day["intake"]["protein_g"] == 120
     assert day["macro_targets"]["protein_g"] == 161 and day["macro_targets"]["fat_g"] == 72
     assert day["vs_target"]["protein_pct"] == 74.5  # 120 / 161
     week = day["week_to_date"]
     assert week["days_elapsed"] == 2 and week["days_logged"] == 2
-    assert week["target_kcal_so_far"] == 2514 + 2214 and week["actual_kcal_so_far"] == 2514 + 2214
+    assert week["target_kcal_so_far"] == 2600 + 2300 and week["actual_kcal_so_far"] == 2600 + 2300
     assert week["deviation_pct"] == 0
     assert facts["params"]["messaging"]["max_unprompted_messages_per_day"] == 2
 
@@ -152,16 +156,16 @@ async def test_an_off_target_week_gets_a_note(reverse, api, model, outbox):
     coach = reverse
     for day in ("2026-11-09", "2026-11-10", "2026-11-11"):
         log(api, day, 2700)
-    note = "Week so far: 8100 kcal vs 6942 target (+16.7%)."
+    note = "Week so far: 8100 kcal vs 7200 target (+12.5%)."
     model.script(reply_json(message(note)))
 
     await coach.run_due_jobs(at("2026-11-11"))
 
     assert outbox.texts == [note]
     week = recap_facts(coach, model)["day"]["week_to_date"]
-    assert week["target_kcal_so_far"] == 2514 + 2214 + 2214
+    assert week["target_kcal_so_far"] == 2600 + 2300 + 2300
     assert week["actual_kcal_so_far"] == 8100
-    assert week["deviation_pct"] == 16.7  # (8100 - 6942) / 6942
+    assert week["deviation_pct"] == 12.5  # (8100 - 7200) / 7200
 
 
 async def test_the_week_so_far_counts_only_logged_days(reverse, api, model):
@@ -173,8 +177,8 @@ async def test_the_week_so_far_counts_only_logged_days(reverse, api, model):
 
     week = recap_facts(reverse, model)["day"]["week_to_date"]
     assert week["days_elapsed"] == 2 and week["days_logged"] == 1
-    assert week["target_kcal_so_far"] == 2214 and week["actual_kcal_so_far"] == 2000
-    assert week["deviation_pct"] == -9.7
+    assert week["target_kcal_so_far"] == 2300 and week["actual_kcal_so_far"] == 2000
+    assert week["deviation_pct"] == -13.0
 
 
 async def test_an_implausible_day_is_flagged_and_the_question_is_sent(reverse, api, model, outbox):

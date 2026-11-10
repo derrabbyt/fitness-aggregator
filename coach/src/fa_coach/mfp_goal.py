@@ -15,7 +15,10 @@ arrived does it read the goal itself (`api.mfp_goal`, once). It never raises
 for MFP or api failures.
 
 Result `status`:
-- "set": MFP shows the requested goal (the api allows a gram/kcal of rounding).
+- "set": MFP shows the requested goal (the api allows a gram/kcal of rounding),
+  or the requested kcal with each macro within MFP's 5 %-of-calories rounding
+  (`macros_rounded`: a free account stores macros as a percentage split).
+  A calorie mismatch is never "set".
 - "not_set": the write was answered, but MFP shows something else
   (`stored`, None = no goal), or the api refused it before sending
   (`write` "not_sent": nothing was sent).
@@ -35,6 +38,7 @@ if TYPE_CHECKING:
     from .core import Coach
 
 TOLERANCE = 1  # kcal or g: MFP may round what it stores (as the api's `matches`)
+MACRO_STEP_PCT = 5  # without premium MFP stores macros as a % split in these steps
 
 
 async def set_once(coach: "Coach", key: str, goal: Goal | Mapping[str, Any],
@@ -68,6 +72,8 @@ async def set_once(coach: "Coach", key: str, goal: Goal | Mapping[str, Any],
             status = "not_set"
         elif reply.get("matches") is True:
             status = "set"
+        elif write == "sent" and rounded_match(stored, requested):
+            status = "set"  # a free account stores macros as a split in 5 % steps
         elif reply.get("matches") is False and write in ("sent", "rejected"):
             status = "not_set"
         else:
@@ -79,10 +85,11 @@ async def set_once(coach: "Coach", key: str, goal: Goal | Mapping[str, Any],
         except Exception as exc:  # noqa: BLE001
             stored = None
             problems.append(errors.brief("reading it back failed", exc))
-        status = "set" if matches(stored, requested) else "uncertain"
+        status = "set" if matches(stored, requested) or rounded_match(stored, requested) else "uncertain"
 
     result = {"key": key, "status": status, "write": write, "requested": requested.as_dict(),
-              "stored": stored.as_dict() if stored is not None else None, "error": "; ".join(problems) or None}
+              "stored": stored.as_dict() if stored is not None else None, "error": "; ".join(problems) or None,
+              "macros_rounded": status == "set" and not matches(stored, requested)}
     coach.db.execute(
         "UPDATE mfp_goal_writes SET status = ?, write = ?, stored = ?, error = ?, finished_at = ? WHERE key = ?",
         (status, write, json.dumps(result["stored"]) if result["stored"] is not None else None, result["error"],
@@ -108,9 +115,24 @@ def matches(stored: Goal | None, requested: Goal) -> bool:
     return all(abs(a - b) <= TOLERANCE for a, b in zip(stored.as_dict().values(), requested.as_dict().values()))
 
 
+def rounded_match(stored: Goal | None, requested: Goal) -> bool:
+    """Calories match (±TOLERANCE kcal) and each macro is within MFP's
+    rounding of a percentage split in MACRO_STEP_PCT steps of the calories
+    (accounts without premium store macros that way)."""
+    if stored is None or abs(stored.kcal - requested.kcal) > TOLERANCE:
+        return False
+    step = requested.kcal * MACRO_STEP_PCT / 100
+    return all(abs(getattr(stored, k) - getattr(requested, k)) * per_g <= step
+               for k, per_g in (("protein_g", 4), ("carbs_g", 4), ("fat_g", 9)))
+
+
 def describe(result: dict[str, Any]) -> str:
     """One line for the user about how the goal write went."""
     wanted = fmt(result["requested"])
+    if result["status"] == "set" and result.get("macros_rounded"):
+        return (f"🎯 MyFitnessPal now shows the new goal: {round(result['stored']['kcal']):,} kcal. It rounds macros "
+                f"to {MACRO_STEP_PCT} % steps, so it shows {fmt_macros(result['stored'])}; the exact grams are "
+                f"in the coach ({fmt_macros(result['requested'])}).")
     if result["status"] == "set":
         return f"🎯 MyFitnessPal now shows the new goal: {fmt(result['stored'])}."
     if result["write"] == "not_sent":
@@ -128,5 +150,8 @@ def describe(result: dict[str, Any]) -> str:
 
 
 def fmt(goal: dict[str, Any]) -> str:
-    return (f"{round(goal['kcal']):,} kcal · P {round(goal['protein_g'])} g · C {round(goal['carbs_g'])} g · "
-            f"F {round(goal['fat_g'])} g")
+    return f"{round(goal['kcal']):,} kcal · {fmt_macros(goal)}"
+
+
+def fmt_macros(goal: dict[str, Any]) -> str:
+    return f"P {round(goal['protein_g'])} g · C {round(goal['carbs_g'])} g · F {round(goal['fat_g'])} g"

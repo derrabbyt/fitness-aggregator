@@ -37,7 +37,8 @@ async def _report(coach, model, **args):
 
 
 def counted(coach, date: str = "2026-11-09") -> list[tuple]:
-    day = training_plan.counted_activity_on(coach, datetime.date.fromisoformat(date), PARAMS)
+    day = training_plan.counted_activity_on(coach, datetime.date.fromisoformat(date), PARAMS,
+                                            planned_from=datetime.date(2026, 11, 9))
     return [(s["type"], s["source"], s["status"], s["kcal_counted"]) for s in day["sessions"]]
 
 

@@ -103,8 +103,8 @@ async def test_daily_facts_of_a_day_with_its_judged_lift_sessions(phase, api, cl
     day = tool_result(model).content
     facts = day["daily_facts"]
     assert phase.skills.errors(facts, "daily_facts") == []
-    assert facts["date"] == "2026-11-10" and facts["day"]["intake"]["actual_kcal"] == 2200
-    assert facts["day"]["intake"]["target_kcal"] == 2514  # rest day 2214 + the Hevy session's 300
+    assert facts["date"] == "2026-11-10" and facts["day"]["intake"]["actual_kcal"] == 2300
+    assert facts["day"]["intake"]["target_kcal"] == 2600  # rest day 2300 + the Hevy session's 300
     [lifts] = day["lift_sessions"]
     assert lifts["session_id"] == "s1"
     assert [(e["name"], e["status"]) for e in lifts["exercises"]] == [("Bench Press", "improved")]
@@ -206,6 +206,16 @@ async def test_the_coach_disagrees_only_once_per_counter_chain(phase, api, clock
     assert (second["delta_kcal"], second["counter_of"]) == (80, first["id"])
     assert second["agent_disagrees"] is None
     assert "I'd have gone" not in outbox.sent[-1].text
+
+
+async def test_a_bare_number_counter_keeps_the_proposals_sign(phase, api, clock, model, outbox):
+    await two_c_weeks(phase, api, clock, model, delta=-100)
+    pid, _ = await counter_tap(phase, outbox)
+
+    await phase.on_message("50")
+
+    counter = [p for p in proposals.listing(phase) if p["counter_of"] == pid][0]
+    assert counter["delta_kcal"] == -50
 
 
 async def test_a_counter_equal_to_the_proposal_changes_nothing(phase, api, clock, model, outbox):
@@ -318,51 +328,58 @@ async def test_setup_values_in_chat_are_recorded(phase, clock, model):
     assert phases.params(phase)["messaging"]["evening_reminder_time"] == "21:00"
 
 
-async def test_an_approved_calibration_change_recomputes_the_targets(phase, api, clock, model, outbox):
+async def test_an_approved_calibration_change_keeps_maintenance_and_moves_base_and_the_mfp_goal(
+        phase, api, clock, model, outbox):
     """Maintenance includes activity: 600 -> 500 kcal per wrestling session
     lowers the expected counted activity by 4 x 100 / 28 = 14.29 kcal a day
-    (four planned Fridays in the 28 days before), so base maintenance rises
-    by as much (2450.29 -> 2464.57) and the average stays 2300: rest days
-    2229, Fridays 2729. No MFP goal write."""
+    (four planned Fridays since the phase start in the 28 days before), so
+    base maintenance rises by as much (2536 -> 2550.29) and the average stays
+    2300: rest days 2314, Fridays 2814. The MFP goal (base + surplus) moves
+    to 2314 and is set once; macros at the start weight 80.5 kg (no
+    weigh-ins since): carbs (2314.29 - 644 - 652.05) / 4 = 255 g."""
     result = await ask_for_wrestling_500(phase, clock, model)
-
-    await phase.on_button("approve_proposal", result["id"], at("2026-12-08", 13))
-
-    today = at("2026-12-08").date()
-    targets = phases.targets(phase, today)
-    assert targets["avg_daily_target_kcal"] == 2300
-    assert round(targets["base_maintenance_kcal"], 2) == 2464.57
-    assert round(targets["surplus_kcal"]) == -236
-    assert phases.daily_target(phase, at("2026-12-09").date())["kcal"] == 2229
-    assert phases.daily_target(phase, at("2026-12-11").date())["kcal"] == 2729
-    assert goal_writes(api) == []
-    text = [e for e in outbox.edits if e.ref == f"proposal:{result['id']}"][-1].text
-    assert "Approved" in text and "2,300 kcal" in text
-
-
-@pytest.fixture
-def activity_on_top(monkeypatch):
-    """Maintenance without activity: base 2536, surplus 2300 - 2536 - 85.71 = -321.71."""
-    monkeypatch.setitem(SETUP, "maintenance_includes_activity", False)
-
-
-async def test_a_calibration_change_that_moves_the_average_sets_the_mfp_goal_once(
-        activity_on_top, phase, api, clock, model, outbox):
-    """Activity on top of maintenance: the average drops by 14.29 to 2286 kcal
-    and the MFP goal follows, once, macros at the start weight 80.5 kg (no
-    weigh-ins since): protein 161 g, fat 72 g, carbs (2285.71 - 644 - 652.05) / 4 = 247 g."""
-    assert phases.targets(phase, at("2026-11-09").date())["base_maintenance_kcal"] == 2536
-    result = await ask_for_wrestling_500(phase, clock, model)
+    card = [m for m in outbox.sent if m.ref == f"proposal:{result['id']}"][-1]
+    assert "MyFitnessPal's goal: 2,314 kcal" in card.text and "activity comes on top" in card.text
 
     await phase.on_button("approve_proposal", result["id"], at("2026-12-08", 13))
     await phase.on_button("approve_proposal", result["id"], at("2026-12-08", 13, 1))
 
+    today = at("2026-12-08").date()
+    targets = phases.targets(phase, today)
+    assert targets["avg_daily_target_kcal"] == 2300
+    assert round(targets["base_maintenance_kcal"], 2) == 2550.29
+    assert round(targets["surplus_kcal"]) == -236
+    assert phases.daily_target(phase, at("2026-12-09").date())["kcal"] == 2314
+    assert phases.daily_target(phase, at("2026-12-11").date())["kcal"] == 2814
+    assert goal_writes(api) == [{"kcal": 2314, "protein_g": 161, "carbs_g": 255, "fat_g": 72}]
+    assert targets["mfp_goal_kcal"] == 2314
+    text = [e for e in outbox.edits if e.ref == f"proposal:{result['id']}"][-1].text
+    assert "Approved" in text and "2,300 kcal" in text and "2,314 kcal" in text and "MyFitnessPal now shows" in text
+
+
+@pytest.fixture
+def activity_on_top(monkeypatch):
+    """Maintenance without activity: base 2536, surplus 2300 - 2536 - 0 = -236."""
+    monkeypatch.setitem(SETUP, "maintenance_includes_activity", False)
+
+
+async def test_a_calibration_change_that_leaves_the_base_leaves_the_mfp_goal(
+        activity_on_top, phase, api, clock, model, outbox):
+    """Activity on top of maintenance: the average drops by 14.29 to 2286 kcal,
+    but base (2536) and surplus stay, so the MFP goal (2300, a rest day)
+    stays and nothing is written."""
+    assert phases.targets(phase, at("2026-11-09").date())["base_maintenance_kcal"] == 2536
+    result = await ask_for_wrestling_500(phase, clock, model)
+
+    await phase.on_button("approve_proposal", result["id"], at("2026-12-08", 13))
+
     targets = phases.targets(phase, at("2026-12-08").date())
     assert round(targets["avg_daily_target_kcal"]) == 2286
     assert targets["base_maintenance_kcal"] == 2536
-    assert goal_writes(api) == [{"kcal": 2286, "protein_g": 161, "carbs_g": 247, "fat_g": 72}]
+    assert targets["mfp_goal_kcal"] == 2300
+    assert goal_writes(api) == []
     text = [e for e in outbox.edits if e.ref == f"proposal:{result['id']}"][-1].text
-    assert "2,286 kcal" in text and "MyFitnessPal now shows" in text
+    assert "2,286 kcal" in text and "goal stays 2,300 kcal" in text
 
 
 async def test_a_calibration_change_does_not_restart_the_lockout(phase, api, clock, model, outbox):
