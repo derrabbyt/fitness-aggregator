@@ -9,3 +9,6 @@ web/.angular
 bot/.venv
 bot/tests
 **/.pytest_cache
+.claude
+coach/.venv
+coach/tests

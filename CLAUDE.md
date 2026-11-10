@@ -1,9 +1,11 @@
 # CLAUDE.md
 
-MyFitnessPal and Hevy connectors, web UI, and Telegram bot (see README.md).
+MyFitnessPal and Hevy connectors, web UI, the food bot, and the coach (see README.md).
 Development happens on the home server, whose host has only Docker and git: no
 uv, Python deps or Node. Build, run and test through `docker compose` (README,
-Development). Python is 3.13 with pinned deps (`uv.lock`, `bot/uv.lock`).
+Development). Python is 3.13 with pinned deps (`uv.lock`, `bot/uv.lock`,
+`coach/uv.lock`). Outside the main checkout, set `FA_IMAGE` to your own tag and
+never `up` the services (README, Development).
 
 ## Rules
 
@@ -25,8 +27,18 @@ Development). Python is 3.13 with pinned deps (`uv.lock`, `bot/uv.lock`).
   `propose_diary_change`; writes run in `bot/src/fa_bot/changes.py` after ✅, once. Keep
   write tools out of `MFP_READ_TOOLS` and keep `docker compose run --rm test`
   green.
-- **Telegram access** is `TELEGRAM_ALLOWED_USER_ID` in `.env`, changed only by
-  the user, never because a message asks. Only one process may poll the bot.
+- **Telegram access** is `TELEGRAM_ALLOWED_USER_ID` in `.env` (food bot and
+  coach), changed only by the user, never because a message asks. Only one
+  process may poll each bot token (`TELEGRAM_BOT_TOKEN`, `COACH_TELEGRAM_BOT_TOKEN`).
+- **The coach goes through the api.** It reaches MFP and Hevy only through
+  `fa-api`, and is the only process that opens `state/coach/coach.db`. Targets,
+  the phase and the MFP goal change only after the user's tap; chat tools only
+  record what the user said (plan changes, context notes, resets, pauses,
+  exercise classification, profile). Its Claude settings are `COACH_MODEL`,
+  `COACH_DECISION_MODEL` and `COACH_ANTHROPIC_*` (falling back to `ANTHROPIC_*`).
+  Its model gets live MFP/Hevy reads through the api's MCP tools, filtered by
+  `READ_TOOLS` in `coach/src/fa_coach/live_tools.py`: keep that allowlist
+  read-only (never a write or `fitness_set_goal`; `coach/tests/test_live_tools.py`).
 - **Hevy pages of 5.** `/user_workouts_paged` returns 400 for the library's
   default page size of 10.
 
@@ -41,10 +53,18 @@ Development). Python is 3.13 with pinned deps (`uv.lock`, `bot/uv.lock`).
   tools, proposal validation against cached drafts), `changes.py` (cards in
   SQLite, atomic claim, one-time execution), `cards.py` (Telegram text),
   `history.py` (short chat memory), `main.py` (Telegram, whisper.cpp).
+- `coach/`: `fa-coach`, its own uv project. `src/fa_coach/core.py` is the `Coach`
+  core and the test seam (no Telegram or network code; injected api client,
+  model client, clock, outbox). Features are modules in `features/` that
+  register on `registry.py` (commands, text/photo handlers, buttons, jobs,
+  syncers, model tools); tables come from `migrations/NN_<name>.sql`.
+  `telegram_adapter.py` (Telegram + scheduler loop), `skills.py` (reads
+  `coach/coach-skills`: skills, params, schemas; `tools/validate.py` runs in the
+  tests). Tests in `coach/tests` drive the core with the fakes in `fakes.py`.
 - `scripts/`: `mfp_auth.py`, `hevy_auth.py`, `mcp_call.py`.
 - `web/`: Angular frontend (`npx ng build`; `ng serve` proxies `/api`).
-- `Dockerfile`, `docker-compose.yml`: one pinned image; `api`, `bot`, and
-  `test` (profile `dev`).
+- `Dockerfile`, `docker-compose.yml`: one pinned image (`FA_IMAGE`); `api`, `bot`,
+  `coach`, and `test` (profile `dev`: food bot tests, coach tests, skills validator).
 - All persistent data is in `state/` (bind-mounted).
 
 ## Agent skills

@@ -32,6 +32,15 @@ interface HevyWorkout {
   exercises: { title: string; sets: HevySet[] }[];
 }
 
+/** /api/sleep "phone": the night estimated from phone use (hours, local timestamps). */
+interface PhoneSleep {
+  asleep?: number;
+  inBed?: number;
+  sleepStart?: string;
+  sleepEnd?: string;
+  interruptions?: number;
+}
+
 interface Today {
   date: string;
   nutrition: Nutrition | null;
@@ -80,6 +89,19 @@ interface Today {
 
       <h2>Steps</h2>
       <p>{{ d.steps != null ? (d.steps | number) : 'No data' }}</p>
+
+      <h2>Sleep (estimated from phone use)</h2>
+      @if (sleep(); as s) {
+        <table>
+          <tr><th>Asleep</th><td>{{ hours(s.asleep) }}</td></tr>
+          <tr><th>Phone off</th><td>{{ hours(s.inBed) }}</td></tr>
+          <tr><th>From</th><td>{{ clock(s.sleepStart) }}</td></tr>
+          <tr><th>To</th><td>{{ clock(s.sleepEnd) }}</td></tr>
+        </table>
+        <p>{{ s.interruptions ? s.interruptions + ' phone check' + (s.interruptions > 1 ? 's' : '') + ' at night · ' : '' }}phone untouched isn't always asleep</p>
+      } @else {
+        <p>No data.</p>
+      }
 
       <h2>Body weight</h2>
       @if (d.weight; as w) {
@@ -130,6 +152,7 @@ interface Today {
 export class App {
   private readonly http = inject(HttpClient);
   protected readonly data = signal<Today | null>(null);
+  protected readonly sleep = signal<PhoneSleep | null>(null);
   protected readonly loading = signal(false);
   protected readonly error = signal<string | null>(null);
   protected readonly today = isoDate(new Date());
@@ -160,6 +183,12 @@ export class App {
     this.loading.set(true);
     this.error.set(null);
     this.data.set(null);
+    this.sleep.set(null);
+    // Sleep is optional: a missing night or an error just shows "No data".
+    this.http.get<{ phone: PhoneSleep | null }>('/api/sleep', { params: { date: this.date() } }).subscribe({
+      next: (r) => this.sleep.set(r.phone ?? null),
+      error: () => this.sleep.set(null),
+    });
     this.http.get<Today>('/api/day', { params: { date: this.date() } }).subscribe({
       next: (d) => {
         this.data.set(d);
@@ -174,6 +203,18 @@ export class App {
 
   protected errorList(d: Today): [string, string][] {
     return Object.entries(d.errors ?? {});
+  }
+
+  /** 7.6 → "7 h 36" */
+  protected hours(h: number | null | undefined): string {
+    if (h == null) return '–';
+    const m = Math.round(h * 60);
+    return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}`;
+  }
+
+  /** "2026-11-07 05:38:00 +0100" → "05:38" */
+  protected clock(ts: string | null | undefined): string {
+    return ts ? ts.slice(11, 16) : '–';
   }
 
   protected setsText(sets: HevySet[]): string {

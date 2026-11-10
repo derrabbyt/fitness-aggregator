@@ -1,0 +1,105 @@
+# Phase-independent parameters. The single source for these numbers:
+# skills refer to them by name, code reads them from here.
+# A phase's params.yaml may override any key with the same path.
+# Values marked "setup value" are null here and recorded by the agent at setup.
+# Values marked "assumption" were not decided in SPEC.md; confirm or tune them.
+
+version: 1
+
+data:
+  evaluation_period_days: 7
+  min_weighins_per_week: 5
+  sync_max_age_hours: 36            # assumption: older sync = stale data
+  weight_outlier_kg: 3.0            # user review: only clear typos are dropped (the scale records every weigh-in, spikes are real)
+  weight_outlier_window_days: 3     # assumption: neighbours = other weigh-ins within this many days either side (at least 2)
+  implausible_intake_factor: 2      # assumption: a day above this many times its target is likely a typo; code asks (Real / Typo)
+  partial_day_share: 0.5            # assumption: a day below this share of its neighbours' median (or of its target) is likely partly logged; code asks
+
+adherence:
+  require_all_eating_logged: true
+  weekly_intake_tolerance_pct: 5    # weekly average within ±5% of weekly target
+
+decisions:
+  confirmation_weeks: 2             # usable weeks pointing the same way before a calorie change
+  confirmation_weeks_fast_lane: 1   # for the phase's "too fast" scenario (reverse_bulk: E)
+  max_change_kcal: 200              # guardrail; not applied to a phase's first change
+  small_step_kcal: 100              # slightly outside the band
+  large_step_kcal: 200              # far off
+  far_off_margin_kg_per_week: 0.1   # assumption: "far off" = this far beyond the band edge
+  rejected_return_weeks: 2          # a rejected direction can come back after this many usable weeks still pointing that way
+  prediction_miss_kg: 0.3           # a weekly prediction error above this is a miss (log check, lower confidence)
+
+maintenance_estimate:
+  kcal_per_kg: 7500
+  min_window_weeks: 3
+  exclude_glycogen_window: true
+
+training:
+  # Every exercise logged in Hevy is recorded; the model classifies each as counts (compounds,
+  # machines, most bigger isolation work) or excluded (prehab/rehab, slow movers); the user can flip any.
+  rep_range: [4, 20]                # performance = heaviest working set with this many reps; warm-ups never count
+  e1rm_same_band_pct: 1             # load and reps in opposite directions: estimated 1RM (Epley) within ±1 % = same
+  bodyweight_same_load_kg: 1.0      # bodyweight lifts: a bodyweight change under 1 kg since the compared session is the same load (user)
+  compare_best_of_last_sessions: 3  # "best of last 2-3": best of up to 3 previous sessions
+  min_sessions_for_compare: 2       # sessions in a lift's history, the judged one included (the first only starts it)
+  lift_recency_days: 14             # counted only if trained within this window; after a longer break the first session back isn't judged
+  progression_min_share: 0.5        # at least this share of the counted (counting, judged) lifts improved
+  stall_sessions: 3                 # sessions in a row without progress
+  decline_sessions_for_deload: 2    # sessions in a row declining ...
+  deload_min_lifts_declining: 2     # ... on at least this many lifts (assumption: "several lifts")
+  big_drop_pct_ask_reset: 15        # assumption: estimated-1RM drop vs the best recent session that asks "was this a reset?"
+  volume_note_max_sets_per_session: 20
+  volume_note_max_sets_per_muscle_per_session: 4
+
+nutrition:
+  carbs: remainder                  # carbs_g = (kcal - protein_g*4 - fat_g*9) / 4
+  fiber_g_per_kg: [0.3, 0.5]
+  produce_min_g_per_day: 500
+  macro_reference_weight: trend_7d  # assumption: g/kg uses the current 7-day trend weight
+
+activity:
+  soft_step_floor: 10000
+  soft_floor_min_days: null         # setup value: what "for a while" means
+  run_kcal_discount: null           # setup value, e.g. 0.75
+  wrestling_kcal_per_session: null  # setup value
+  lifting_kcal_per_session: null    # setup value: kcal counted per lifting session (Hevy)
+  # assumption: MET per activity for sessions reported without kcal
+  # (kcal = MET x 7-day trend weight kg x hours); conservative "general"
+  # values in the style of the Compendium of Physical Activities
+  met_by_activity:
+    running: 8.0
+    cycling: 7.5
+    swimming: 6.0
+    football: 7.0
+    basketball: 6.5
+    tennis: 7.0
+    hiking: 6.0
+    walking: 3.5
+    rowing: 6.0
+    martial_arts: 6.0
+
+# Steps as live activity (step kcal on top of base at the step goal)
+steps:
+  step_goal: 10000                # default; setup value step_goal overrides it
+  # assumption: ~0.04 kcal per step at 70 kg (scaled by trend weight), 75 % of it counted
+  kcal_per_step_at_70kg: 0.04
+  share: 0.75
+  # assumption: under this many raw steps the phone/watch wasn't carried; not tracked
+  not_tracked_below: 2500
+  # assumption: steps per km of running, removed from the day's steps (runs count via Strava)
+  run_steps_per_km: 1200
+
+measurements:
+  waist_every_weeks: 2
+  photos_every_weeks: 2
+  photos_enabled: true
+
+reviews:
+  block_length_weeks: [4, 6]
+  phase_review_every_weeks: [8, 12]
+
+messaging:
+  missing_log_reminders_per_day: 1
+  max_unprompted_messages_per_day: null   # setup value
+  weekly_checkin: null                    # setup value: weekday + time
+  evening_reminder_time: null             # setup value

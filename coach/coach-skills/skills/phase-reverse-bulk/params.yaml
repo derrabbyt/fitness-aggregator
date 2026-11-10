@@ -1,0 +1,35 @@
+# Reverse into bulk: one continuous phase; the reverse is the first stage of the bulk.
+# Single source for this phase's numbers. SKILL.md refers to these keys by name.
+
+phase_id: reverse_bulk
+name: Reverse into bulk
+draft: false
+direction: gain
+
+macros:
+  protein_g_per_kg: 2.0
+  fat_g_per_kg_min: 0.8
+  fat_g_per_kg_max: 1.0             # cap; calorie changes go to carbs once fat is at the cap
+  fat_g_per_kg_start: null          # setup value, within min..max
+
+start:
+  week1_increase_kcal: [300, 400]   # vs last diet intake
+  week1_activity_change: none
+
+glycogen_window_weeks: 2            # first weeks after the diet ends
+glycogen_jump_kg: [1, 2]            # expected early jump from glycogen and water
+
+weight_band_kg_per_week:            # target band by phase week (7-day average rate)
+  - { from_week: 1, to_week: 6, low: 0.1, high: 0.3 }
+  - { from_week: 7, to_week: null, low: 0.2, high: 0.4 }
+weight_lower_limit_kg_per_week: null
+weight_upper_limit_kg_per_week: 0.5 # above this = gaining too fast (scenario E)
+
+default_lever: calories             # scenario C raises calories, not activity
+
+body_fat:
+  advise_near_pct: [23, 24]         # advise mini-cut or ending the bulk; advice, not a hard stop
+  sources: [user_estimate, photo_estimate]   # never the scale's body-fat reading
+
+time_goal_weeks: null               # setup value, optional (e.g. 30)
+on_phase_end: ask_next

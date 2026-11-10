@@ -1,0 +1,77 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "proposal.schema.json",
+  "title": "Proposal",
+  "description": "A pending change to the plan. Created only through the propose_change tool, which validates guardrails in code. Nothing is applied without the user's approval (Telegram button). On approval, code updates targets and sets the MyFitnessPal calorie goal to the new average daily target.",
+  "type": "object",
+  "required": ["id", "type", "source", "status", "created_at", "reason"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string" },
+    "type": { "enum": ["calorie_change", "calibration_change"] },
+    "source": {
+      "enum": ["weekly_decision", "user_counter", "user_request", "phase_start"],
+      "description": "user_counter: user replied to a proposal with their own number. user_request: user asked for a change unprompted."
+    },
+    "status": { "enum": ["open", "approved", "rejected", "superseded", "blocked_by_guardrail"] },
+    "created_at": { "type": "string", "format": "date-time" },
+    "decided_at": { "type": ["string", "null"], "format": "date-time" },
+    "based_on_week": { "type": ["string", "null"], "pattern": "^[0-9]{4}-W[0-9]{2}$" },
+    "reason": { "type": "string" },
+
+    "delta_kcal": { "type": ["number", "null"], "description": "calorie_change: signed change to surplus_kcal (daily average)." },
+    "is_phase_first_change": { "type": "boolean", "default": false },
+    "new_values": {
+      "type": ["object", "null"],
+      "description": "calibration_change: new activity calibration values. Ranges as in phase_setup.schema.json; code checks them (guardrail invalid_values), so a blocked proposal may hold values outside them.",
+      "additionalProperties": { "type": "number" },
+      "properties": {
+        "run_kcal_discount": { "type": "number" },
+        "wrestling_kcal_per_session": { "type": "number" },
+        "lifting_kcal_per_session": { "type": "number" }
+      }
+    },
+
+    "counter_of": { "type": ["string", "null"], "description": "Id of the proposal this counter-proposal replaces (that one becomes superseded)." },
+    "returning_rejected_proposal_id": { "type": ["string", "null"] },
+    "agent_disagrees": { "type": ["string", "null"], "description": "If the user's counter number passes the guardrails but the agent would choose differently: one sentence why." },
+    "user_reason": { "type": ["string", "null"], "description": "Reason the user gave when rejecting." },
+
+    "guardrail": {
+      "type": ["object", "null"],
+      "required": ["passed", "violations"],
+      "additionalProperties": false,
+      "properties": {
+        "passed": { "type": "boolean" },
+        "violations": {
+          "type": "array",
+          "items": { "enum": ["exceeds_max_change", "lockout", "confirmation_not_met", "rejected_return_too_early", "week_unusable", "adherence_gate", "invalid_values", "size_or_direction_mismatch"] }
+        },
+        "details": {
+          "type": "array",
+          "description": "One per violation, written by code: what failed and when the change could pass. earliest_checkin: the first weekly check-in that could pass it if the weeks until then count; null when waiting doesn't help (e.g. too large a change).",
+          "items": {
+            "type": "object",
+            "required": ["violation", "text", "earliest_checkin"],
+            "additionalProperties": false,
+            "properties": {
+              "violation": { "type": "string" },
+              "text": { "type": "string" },
+              "earliest_checkin": { "type": ["string", "null"], "format": "date" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "calorie_change" } } },
+      "then": { "required": ["delta_kcal"], "properties": { "delta_kcal": { "type": "number" } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "calibration_change" } } },
+      "then": { "required": ["new_values"], "properties": { "new_values": { "type": "object", "minProperties": 1 } } }
+    }
+  ]
+}

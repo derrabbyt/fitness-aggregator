@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "daily_facts.schema.json",
+  "title": "Daily facts",
+  "description": "Computed by code for the two daily skills. kind=evening for evening-recap, kind=training for training-feedback (sent once a logged lifting session has synced). Code rules (weigh-in outliers, the missing-log reminder) run without the model.",
+  "type": "object",
+  "required": ["schema_version", "date", "kind", "phase_id", "phase_week", "in_glycogen_window", "messages_sent_today", "context_notes_today", "params"],
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": { "const": 1 },
+    "date": { "type": "string", "format": "date" },
+    "kind": { "enum": ["evening", "training"] },
+    "phase_id": { "type": "string" },
+    "phase_week": { "type": "integer", "minimum": 1 },
+    "in_glycogen_window": { "type": "boolean" },
+    "messages_sent_today": { "type": "integer", "minimum": 0, "description": "Coach messages already sent today (code rules included)." },
+    "context_notes_today": { "type": "array", "items": { "$ref": "context_note.schema.json" } },
+
+    "day": {
+      "type": "object",
+      "description": "Required for kind=evening.",
+      "required": ["intake", "vs_target", "checks", "weight", "steps", "sessions", "week_to_date"],
+      "additionalProperties": false,
+      "properties": {
+        "intake": { "$ref": "weekly_facts.schema.json#/$defs/intake_day" },
+        "macro_targets": { "$ref": "weekly_facts.schema.json#/properties/intake/properties/macro_targets" },
+        "vs_target": {
+          "type": "object",
+          "description": "Today's totals as a percentage of today's targets (actual / target x 100), computed by code.",
+          "required": ["kcal_pct", "protein_pct", "fat_pct"],
+          "additionalProperties": false,
+          "properties": {
+            "kcal_pct": { "type": ["number", "null"] },
+            "protein_pct": { "type": ["number", "null"] },
+            "fat_pct": { "type": ["number", "null"] }
+          }
+        },
+        "checks": {
+          "type": "object",
+          "required": ["implausible_intake"],
+          "additionalProperties": false,
+          "properties": {
+            "implausible_intake": { "type": "boolean", "description": "Today's kcal exceed data.implausible_intake_factor x today's target: likely a typo in MFP; ask (odd_log)." }
+          }
+        },
+        "weight": {
+          "type": "object",
+          "required": ["kg", "avg_7d_kg", "outlier"],
+          "additionalProperties": false,
+          "properties": {
+            "kg": { "type": ["number", "null"] },
+            "avg_7d_kg": { "type": ["number", "null"] },
+            "outlier": { "type": "boolean" },
+            "withheld": { "type": "boolean", "description": "True in the glycogen window: code leaves the weight out so it isn't commented on." }
+          }
+        },
+        "steps": { "type": ["integer", "null"] },
+        "target_build_up": {
+          "type": "object",
+          "description": "How today's target_kcal is made: base_at_step_goal_kcal + step_kcal + sessions_kcal + surplus_kcal. step_kcal = k x (day_steps - step_goal), so far: today's steps are provisional. Not tracked (too few steps): counted at the average, no step adjustment.",
+          "required": ["base_at_step_goal_kcal", "step_goal", "day_steps", "steps_tracked", "step_kcal", "sessions_kcal", "surplus_kcal", "target_kcal"],
+          "additionalProperties": false,
+          "properties": {
+            "base_at_step_goal_kcal": { "type": "number" },
+            "step_goal": { "type": ["integer", "null"] },
+            "day_steps": { "type": ["integer", "null"], "description": "MFP steps minus run steps (and steps of reported sessions with a distance)." },
+            "steps_tracked": { "type": "boolean" },
+            "step_kcal": { "type": ["number", "null"] },
+            "sessions_kcal": { "type": "number" },
+            "surplus_kcal": { "type": "number" },
+            "target_kcal": { "type": "number" }
+          }
+        },
+        "sessions": { "type": "array", "items": { "$ref": "weekly_facts.schema.json#/$defs/session" } },
+        "week_to_date": {
+          "type": "object",
+          "description": "The phase week from its first day to today. Target, actual and deviation cover only the days with food logged; suspected partial days the user hasn't confirmed are left out.",
+          "required": ["days_elapsed", "days_logged", "target_kcal_so_far", "actual_kcal_so_far", "deviation_pct"],
+          "additionalProperties": false,
+          "properties": {
+            "days_elapsed": { "type": "integer", "minimum": 1, "maximum": 7 },
+            "days_logged": { "type": "integer", "minimum": 0, "maximum": 7 },
+            "target_kcal_so_far": { "type": "number" },
+            "actual_kcal_so_far": { "type": ["number", "null"] },
+            "deviation_pct": { "type": ["number", "null"] }
+          }
+        }
+      }
+    },
+
+    "session": {
+      "type": "object",
+      "description": "Required for kind=training: one newly synced Hevy session, every exercise judged by code.",
+      "required": ["session_id", "date", "exercises"],
+      "additionalProperties": false,
+      "properties": {
+        "session_id": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "exercises": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["exercise_id", "name", "counts", "classification", "bodyweight_exercise", "sets", "top_set", "status", "not_judged_reason", "best_recent", "is_pr", "drop_pct_vs_best_recent", "possible_reset", "no_progress_streak", "decline_streak", "stalled", "new_stall"],
+            "additionalProperties": false,
+            "properties": {
+              "exercise_id": { "type": "string" },
+              "name": { "type": "string" },
+              "counts": { "type": "boolean", "description": "Counts for the weekly progression check (classified counts, or not classified yet). Excluded exercises still get PRs named, never stall flags." },
+              "classification": { "enum": ["counts", "excluded", null] },
+              "bodyweight_exercise": { "type": "boolean", "description": "Effective load includes bodyweight (dips, pull-ups)." },
+              "top_set": { "$ref": "weekly_facts.schema.json#/$defs/set_summary", "description": "The heaviest working set in rep_range; null when there is none." },
+              "not_judged_reason": { "$ref": "weekly_facts.schema.json#/$defs/not_judged_reason" },
+              "best_recent": { "$ref": "weekly_facts.schema.json#/$defs/set_summary", "description": "The best previous session it was compared with; null when not judged." },
+              "decline_streak": { "type": "integer", "minimum": 0 },
+              "stalled": { "type": "boolean", "description": "no_progress_streak >= stall_sessions on a counting exercise." },
+              "new_stall": { "type": "boolean", "description": "The stall starts with this session: flag it now, never again." },
+              "sets": {
+                "type": "array",
+                "description": "Working sets as logged (warm-ups left out).",
+                "items": {
+                  "type": "object",
+                  "required": ["load_kg", "reps"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "load_kg": { "type": "number" },
+                    "reps": { "type": "integer" }
+                  }
+                }
+              },
+              "status": { "$ref": "weekly_facts.schema.json#/$defs/lift_status" },
+              "is_pr": { "type": "boolean", "description": "Beats the best session since the last baseline (never on a baseline's first session or a session that wasn't judged)." },
+              "drop_pct_vs_best_recent": { "type": ["number", "null"] },
+              "possible_reset": { "type": "boolean", "description": "drop_pct_vs_best_recent >= big_drop_pct_ask_reset and no reset/injury/pain note covers the day. Code asks the reset question with buttons." },
+              "no_progress_streak": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+
+    "params": { "type": "object", "description": "Merged core + phase parameters." }
+  },
+  "allOf": [
+    { "if": { "properties": { "kind": { "const": "evening" } } }, "then": { "required": ["day"] } },
+    { "if": { "properties": { "kind": { "const": "training" } } }, "then": { "required": ["session"] } }
+  ]
+}

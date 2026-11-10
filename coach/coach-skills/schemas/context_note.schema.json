@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "context_note.schema.json",
+  "title": "Context note",
+  "description": "A dated free-form note from the user, stored verbatim plus tags extracted by the context-log skill. Code uses tags only as hints; the weekly-decision skill reads the text.",
+  "type": "object",
+  "required": ["id", "created_at", "text", "applies_from", "applies_to", "tags", "suggest_unusable"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "text": { "type": "string", "description": "User's words, unchanged." },
+    "applies_from": { "type": "string", "format": "date" },
+    "applies_to": { "type": ["string", "null"], "format": "date", "description": "Last day the note concerns; equal to applies_from for a single day; null = ongoing from applies_from." },
+    "tags": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "illness", "travel", "alcohol", "salty_or_large_meal", "supplement_change", "medication_change",
+          "sport_load", "extra_session", "session_skipped",
+          "injury", "pain", "baseline_reset",
+          "hunger_high", "hunger_low", "energy_low", "sleep_poor", "stress", "digestion",
+          "other_location", "logging_issue", "plan_change", "goal_change", "other"
+        ]
+      }
+    },
+    "exercise_id": { "type": ["string", "null"], "description": "Set for injury, pain, baseline_reset or other_location notes that concern one exercise (an other_location note without it covers every exercise that day)." },
+    "suggest_unusable": { "enum": ["yes", "maybe", "no"], "description": "Hint for the weekly decision whether this note makes the week's weight trend unreliable." },
+    "follow_up_question": { "type": ["string", "null"], "description": "One short question if the note needs clarifying (e.g. which exercise, how many days)." }
+  }
+}

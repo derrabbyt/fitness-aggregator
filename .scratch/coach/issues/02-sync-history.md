@@ -4,13 +4,26 @@
 
 **Blocked by:** 01 (Coach service skeleton)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
-- [ ] The api has REST read endpoints returning compact per-day records for a date range: food totals (kcal, protein, carbs, fat, fiber; produce grams if derivable, else null) and whether the day is logged, weight, steps, runs (kcal, distance, duration); and Hevy sessions with exercise id, title and per-set load and reps
-- [ ] The api reads Hevy in pages of 5 and reaches MFP only through its existing session; nothing new talks to MFP directly
-- [ ] The api endpoints are checked once by hand against live MFP and Hevy (noted in the ticket's comments)
-- [ ] The first `sync` loads 16 weeks; later syncs fetch only what's new or changed (recent days are re-read so late edits land)
-- [ ] A scheduler loop calls `sync` several times a day; `/sync` triggers it and replies with days and sessions synced and the last sync time
-- [ ] Weigh-in outliers are marked in code and excluded from trend inputs, without a message
-- [ ] When the last successful sync is older than the stale limit (params), the coach sends one notice and the freshness is available to later facts
-- [ ] Tests through the `Coach` seam with a fake api client cover first sync, incremental sync, outlier marking and the stale notice
+- [x] The api has REST read endpoints returning compact per-day records for a date range: food totals (kcal, protein, carbs, fat, fiber; produce grams if derivable, else null) and whether the day is logged, weight, steps, runs (kcal, distance, duration); and Hevy sessions with exercise id, title and per-set load and reps
+- [x] The api reads Hevy in pages of 5 and reaches MFP only through its existing session; nothing new talks to MFP directly
+- [x] The api endpoints are checked once by hand against live MFP and Hevy (noted in the ticket's comments)
+- [x] The first `sync` loads 16 weeks; later syncs fetch only what's new or changed (recent days are re-read so late edits land)
+- [x] A scheduler loop calls `sync` several times a day; `/sync` triggers it and replies with days and sessions synced and the last sync time
+- [x] Weigh-in outliers are marked in code and excluded from trend inputs, without a message
+- [x] When the last successful sync is older than the stale limit (params), the coach sends one notice and the freshness is available to later facts
+- [x] Tests through the `Coach` seam with a fake api client cover first sync, incremental sync, outlier marking and the stale notice
+
+## Comments
+
+- **Endpoints:** `GET /api/sync/mfp?start=&end=` (≤ 31 days) and `GET /api/sync/hevy?start=&end=` (≤ 400 days), shapes in README ("Sync endpoints"). The coach asks MFP in 4-week chunks. MFP is read per day with `client.get_date` (totals, `complete`, entry count) plus `/v2/diary` (steps, exercise entries), weights once per request with `get_measurements("Weight")`, all inside `with_session`. A day that fails has `error` set and is skipped by the coach (reported by `/sync`); an auth/session error fails the whole request so the headless refresh isn't tried once per day.
+- **"Logged"** (coach side, `history.days`): any food entry, or the day marked complete in MFP. `complete` is kept separately for the facts tickets.
+- **Runs:** the api returns every MFP exercise entry with `run` = name matches run/jog; the coach keeps all of them (`exercises`) and exposes `runs` for the counted-activity work.
+- **Produce grams:** always null (nothing in MFP to derive it from).
+- **Outliers:** new core params `data.weight_outlier_kg` (1.5) and `data.weight_outlier_window_days` (3), listed as assumptions in the coach-skills README: a weigh-in more than 1.5 kg from the median of the other weigh-ins within 3 days either side (at least two) is an outlier. Recomputed over all weigh-ins on every MFP sync.
+- **Freshness:** last successful sync = the older of the MFP and Hevy successes (`features.sync.freshness`, `history.freshness`). Stale notice: once per stale stretch (keyed by that time), never before the first sync attempt.
+- **Scheduler:** unchanged from ticket 01 (sync on start, then every 4 h).
+- **Unverified field names (hand check pending):** MFP `fiber` total (only with a Fiber diary column), the Strava `source` string and run names; Hevy `exercise_template_id`, `exercise_type`, set `indicator` values. All pass through as null when absent.
+- **Hand check against live MFP and Hevy (2026-11-09, orchestrator):** api rebuilt from `coach-v1` and called inside the container for 2026-11-03..09 (MFP) and since 2026-10-20 (Hevy). MFP: kcal/protein/carbs/fat, entry counts, weight in kg and steps all plausible and matching the diary; `complete` false on all days; `fiber_g` null (no Fiber column in this diary); exercise `source` values seen: `strava`, `healthkit`. Hevy: `exercise_id` (template id, e.g. `7EB3F7C3`), `exercise_type` (`weight_reps`) and set `type` (`normal`) are filled; the account holds one workout so far (2026-11-09 Push), same as the existing `hevy_list_workouts` tool.
+- **Found by the hand check, for counted activity (ticket 04):** MFP lists the same activity from several sources. One run arrives from Strava *and* HealthKit (2026-11-06: Strava 519 kcal 11.5 km, HealthKit 574 kcal, start 48 s apart), and lifting sessions arrive as HealthKit "Strength training" entries. Only Strava runs may count (the spec says "Strava runs"; lifting counts from Hevy); HealthKit entries must not be added on top.

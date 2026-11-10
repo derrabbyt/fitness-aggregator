@@ -1,6 +1,7 @@
-# fitness-aggregator: one image, two services (see docker-compose.yml).
-#   api  FastAPI + Angular UI (:8000) and the MFP/Hevy MCP tools (:8001, internal)
-#   bot  Telegram bot (Pydantic AI, own venv in bot/) + whisper.cpp for voice notes
+# fitness-aggregator: one image, three services (see docker-compose.yml).
+#   api    FastAPI + Angular UI (:8000) and the MFP/Hevy MCP tools (:8001, internal)
+#   bot    food bot: Telegram (Pydantic AI, own venv in bot/) + whisper.cpp for voice notes
+#   coach  the coach: Telegram + scheduler (Anthropic SDK, own venv in coach/)
 # All versions are pinned; bump them deliberately.
 
 ARG DEBIAN_IMAGE=debian:bookworm-slim
@@ -83,6 +84,14 @@ COPY --chown=app:app bot/pyproject.toml bot/uv.lock bot/.python-version bot/
 RUN cd bot && uv sync --no-install-project
 COPY --chown=app:app bot/src/ bot/src/
 RUN cd bot && uv sync
+# The coach is its own project too (coach/.venv), with its skills package
+# (skills, params, schemas) read at runtime from coach/coach-skills.
+COPY --chown=app:app coach/pyproject.toml coach/uv.lock coach/.python-version coach/
+RUN cd coach && uv sync --no-install-project
+COPY --chown=app:app coach/src/ coach/src/
+RUN cd coach && uv sync
+COPY --chown=app:app coach/coach-skills/ coach/coach-skills/
+COPY --chown=app:app coach/data/ coach/data/
 COPY --from=web --chown=app:app /web/dist web/dist
 
 ENV HOME=/home/app PATH=/app/.venv/bin:$PATH

@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "iso_week": "2027-W09",
+  "phase_id": "reverse_bulk",
+  "usable": true,
+  "unusable_reasons": [],
+  "scenario": "C",
+  "weight_assessment": "below_band",
+  "progression": "no",
+  "direction": "increase",
+  "confirmation": {
+    "consecutive_usable_weeks_same_direction": 2,
+    "required_weeks": 2,
+    "met": true
+  },
+  "adherence_gate": "pass",
+  "sport_load_applied": false,
+  "proposal": {
+    "type": "calorie_change",
+    "delta_kcal": 200,
+    "size": "large",
+    "reason": "Weight trend +0.04 kg/week, below the 0.2-0.4 band by more than the far-off margin, and only 1 of 4 tracked lifts improved; second usable week in a row pointing to an increase.",
+    "is_phase_first_change": false,
+    "returning_rejected_proposal_id": null
+  },
+  "flags": [
+    {
+      "code": "lift_stall",
+      "severity": "info",
+      "detail": "Smith squat: no progress for 3 sessions.",
+      "exercise_id": "ex_smith_squat"
+    }
+  ],
+  "rules_applied": [
+    "WD-USABLE-CODE",
+    "WD-USABLE-CONTEXT",
+    "WD-ADHERENCE",
+    "WD-TABLE",
+    "RB-C",
+    "WD-CONFIRM",
+    "WD-PROPOSE",
+    "RB-SIZE",
+    "WD-F-TRAINING"
+  ],
+  "confidence": "medium",
+  "reasoning": "Weight barely moved (+0.04 kg vs a 0.2-0.4 kg band) and only one of four tracked lifts improved, so this is scenario C. Last week pointed the same way, so the two-week confirmation is met. The trend is more than the far-off margin below the band, so the larger step applies. The pizza night was logged and doesn't change the trend.",
+  "questions_for_user": []
+}

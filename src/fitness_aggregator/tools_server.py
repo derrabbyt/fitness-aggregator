@@ -23,10 +23,15 @@ def build_app() -> Starlette:
 
     from .api import fitness_get_activity, fitness_quick_add
     from .hevy_mcp import mcp as hevy_mcp
+    from .mfp_goal import fitness_get_goal, fitness_set_goal
 
-    # Steps/synced workouts and Quick Add aren't among mfp-mcp's tools.
+    # Steps/synced workouts, Quick Add and the nutrition goal aren't among mfp-mcp's tools.
     mfp_server.mcp.tool(title="Get activity (steps, exercise)", annotations=mfp_server.READS_MFP)(fitness_get_activity)
     mfp_server.mcp.tool(title="Quick add calories", annotations=mfp_server.ADDS_TO_MFP)(fitness_quick_add)
+    mfp_server.mcp.tool(title="Get nutrition goal", annotations=mfp_server.READS_MFP)(fitness_get_goal)
+    # Coach code only (never the food bot's allowlist or the coach model). Not
+    # marked idempotent, so no client takes it as safe to resend.
+    mfp_server.mcp.tool(title="Set nutrition goal", annotations=mfp_server.CHANGES_MFP)(fitness_set_goal)
     servers = {"mfp": mfp_server.mcp, "hevy": hevy_mcp}
     for server in servers.values():
         # Stateless: the bot reconnects cleanly after either side restarts.

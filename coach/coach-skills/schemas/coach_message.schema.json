@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "coach_message.schema.json",
+  "title": "Coach message",
+  "description": "Structured output of every skill that produces a Telegram message (weekly-report, evening-recap, training-feedback, block-review, phase-review, phase-start). Code sends text to the coach chat and renders buttons. send=false means nothing is sent (the daily skills often decide this).",
+  "type": "object",
+  "required": ["send", "text", "buttons", "deferred_to_weekly"],
+  "additionalProperties": false,
+  "properties": {
+    "send": { "type": "boolean" },
+    "urgent": { "type": "boolean", "default": false, "description": "Only true for things that cannot wait for the weekly report (e.g. a proposal awaiting approval, a reset question for today's session)." },
+    "text": { "type": "string", "description": "Telegram-ready text. Empty string when send=false." },
+    "buttons": {
+      "type": "array",
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": ["label", "action"],
+        "additionalProperties": false,
+        "properties": {
+          "label": { "type": "string", "maxLength": 32 },
+          "action": {
+            "enum": ["approve_proposal", "reject_proposal", "counter_proposal", "confirm_phase_start", "edit_phase_start", "mark_reset", "not_a_reset", "session_happened", "session_skipped", "dismiss"]
+          },
+          "ref_id": { "type": ["string", "null"], "description": "Proposal id, session id or exercise id the button acts on." }
+        }
+      }
+    },
+    "deferred_to_weekly": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Non-urgent observations held back for the weekly report (message limit)."
+    },
+    "context_note_suggestions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Optional: things the user said in reply that should become context notes (handled by coach-chat)."
+    }
+  }
+}

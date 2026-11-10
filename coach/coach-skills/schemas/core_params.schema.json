@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "core_params.schema.json",
+  "title": "Core parameters",
+  "description": "Validates skills/coach-core/params.yaml. Sections and keys are fixed so a typo fails validation instead of silently using a default.",
+  "type": "object",
+  "required": ["version", "data", "adherence", "decisions", "maintenance_estimate", "training", "nutrition", "activity", "steps", "measurements", "reviews", "messaging"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "data": {
+      "type": "object", "additionalProperties": false,
+      "required": ["evaluation_period_days", "min_weighins_per_week", "sync_max_age_hours", "weight_outlier_kg", "weight_outlier_window_days", "implausible_intake_factor", "partial_day_share"],
+      "properties": {
+        "evaluation_period_days": { "const": 7 },
+        "min_weighins_per_week": { "type": "integer", "minimum": 1, "maximum": 7 },
+        "sync_max_age_hours": { "type": "number", "minimum": 1 },
+        "weight_outlier_kg": { "type": "number", "exclusiveMinimum": 0, "description": "A weigh-in further than this from the median of its neighbours is a clear typo: marked an outlier (code only, silent) and left out of trend inputs. Normal spikes stay in." },
+        "weight_outlier_window_days": { "type": "integer", "minimum": 1, "description": "Neighbours of a weigh-in: the other weigh-ins within this many days either side; at least two are needed to judge." },
+        "implausible_intake_factor": { "type": "number", "exclusiveMinimum": 1, "description": "A logged day above this many times its daily target is flagged implausible (daily facts checks.implausible_intake); code asks the user (Real / Typo) until the day is confirmed." },
+        "partial_day_share": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1, "description": "A logged day below this share of the median of the other logged days within 3 days either side (its daily target when fewer than 3 are logged) is a suspected partial day (intake_day.partial_suspected). Unless the user confirms it, it is left out of the maintenance estimate, logging completeness and adherence, and code asks." }
+      }
+    },
+    "adherence": {
+      "type": "object", "additionalProperties": false,
+      "required": ["require_all_eating_logged", "weekly_intake_tolerance_pct"],
+      "properties": {
+        "require_all_eating_logged": { "type": "boolean" },
+        "weekly_intake_tolerance_pct": { "type": "number", "minimum": 0 }
+      }
+    },
+    "decisions": {
+      "type": "object", "additionalProperties": false,
+      "required": ["confirmation_weeks", "confirmation_weeks_fast_lane", "max_change_kcal", "small_step_kcal", "large_step_kcal", "far_off_margin_kg_per_week", "rejected_return_weeks", "prediction_miss_kg"],
+      "properties": {
+        "confirmation_weeks": { "type": "integer", "minimum": 1 },
+        "confirmation_weeks_fast_lane": { "type": "integer", "minimum": 1 },
+        "max_change_kcal": { "type": "number", "minimum": 0 },
+        "small_step_kcal": { "type": "number", "minimum": 0 },
+        "large_step_kcal": { "type": "number", "minimum": 0 },
+        "far_off_margin_kg_per_week": { "type": "number", "minimum": 0 },
+        "rejected_return_weeks": { "type": "integer", "minimum": 1 },
+        "prediction_miss_kg": { "type": "number", "exclusiveMinimum": 0, "description": "weekly_facts.weight.prediction_miss is true when |prediction_error_kg| exceeds this." }
+      }
+    },
+    "maintenance_estimate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["kcal_per_kg", "min_window_weeks", "exclude_glycogen_window"],
+      "properties": {
+        "kcal_per_kg": { "type": "number" },
+        "min_window_weeks": { "type": "integer", "minimum": 1 },
+        "exclude_glycogen_window": { "type": "boolean" }
+      }
+    },
+    "training": {
+      "type": "object", "additionalProperties": false,
+      "required": ["rep_range", "e1rm_same_band_pct", "bodyweight_same_load_kg", "compare_best_of_last_sessions", "min_sessions_for_compare", "lift_recency_days", "progression_min_share", "stall_sessions", "decline_sessions_for_deload", "deload_min_lifts_declining", "big_drop_pct_ask_reset", "volume_note_max_sets_per_session", "volume_note_max_sets_per_muscle_per_session"],
+      "properties": {
+        "rep_range": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "integer", "minimum": 1 }, "description": "Working sets with reps in this range (inclusive) count for progression." },
+        "e1rm_same_band_pct": { "type": "number", "minimum": 0, "description": "When load and reps move in opposite directions, an estimated 1RM within ±this % of the reference is 'same'. More load or reps with neither less is always improved." },
+        "bodyweight_same_load_kg": { "type": "number", "minimum": 0, "description": "Bodyweight lifts: a change in effective load that comes only from bodyweight is the same load unless the trend weight moved by at least this much since the compared session." },
+        "compare_best_of_last_sessions": { "type": "integer", "minimum": 1 },
+        "min_sessions_for_compare": { "type": "integer", "minimum": 1 },
+        "lift_recency_days": { "type": "integer", "minimum": 1 },
+        "progression_min_share": { "type": "number", "minimum": 0, "maximum": 1, "description": "Share of the counted lifts (counting, judged) that must have improved." },
+        "stall_sessions": { "type": "integer", "minimum": 1 },
+        "decline_sessions_for_deload": { "type": "integer", "minimum": 1 },
+        "deload_min_lifts_declining": { "type": "integer", "minimum": 1 },
+        "big_drop_pct_ask_reset": { "type": "number", "minimum": 0 },
+        "volume_note_max_sets_per_session": { "type": "integer" },
+        "volume_note_max_sets_per_muscle_per_session": { "type": "integer" }
+      }
+    },
+    "nutrition": {
+      "type": "object", "additionalProperties": false,
+      "required": ["carbs", "fiber_g_per_kg", "produce_min_g_per_day", "macro_reference_weight"],
+      "properties": {
+        "carbs": { "const": "remainder" },
+        "fiber_g_per_kg": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } },
+        "produce_min_g_per_day": { "type": "number" },
+        "macro_reference_weight": { "enum": ["trend_7d", "phase_start"] }
+      }
+    },
+    "activity": {
+      "type": "object", "additionalProperties": false,
+      "required": ["soft_step_floor", "soft_floor_min_days", "run_kcal_discount", "wrestling_kcal_per_session", "lifting_kcal_per_session", "met_by_activity"],
+      "properties": {
+        "met_by_activity": {
+          "type": "object",
+          "description": "MET per activity type (lowercase key, underscores) for sessions reported without kcal: code estimates kcal = MET x 7-day trend weight (kg) x hours. Activities not listed get the model's own estimate, marked as such.",
+          "propertyNames": { "pattern": "^[a-z][a-z_]*$" },
+          "additionalProperties": { "type": "number", "exclusiveMinimum": 1, "maximum": 20 },
+          "minProperties": 1
+        },
+        "soft_step_floor": { "type": "integer" },
+        "soft_floor_min_days": { "type": ["integer", "null"] },
+        "run_kcal_discount": { "type": ["number", "null"], "exclusiveMinimum": 0, "maximum": 1 },
+        "wrestling_kcal_per_session": { "type": ["number", "null"] },
+        "lifting_kcal_per_session": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+    "steps": {
+      "type": "object", "additionalProperties": false,
+      "description": "Steps as live activity. k = kcal_per_step_at_70kg x trend weight / 70 x share kcal per step. Day steps = MFP steps - run distance x run_steps_per_km (floor 0). Daily target = base at the step goal + k x (day steps - step_goal) + counted sessions + surplus; base at the step goal = maintenance estimate - average counted sessions - k x (average day steps - step_goal) over the estimate's window, so the step goal moves only where 0 is shown.",
+      "required": ["step_goal", "kcal_per_step_at_70kg", "share", "not_tracked_below", "run_steps_per_km"],
+      "properties": {
+        "step_goal": { "type": "integer", "minimum": 1000, "maximum": 40000, "description": "Default; the setup value step_goal overrides it." },
+        "kcal_per_step_at_70kg": { "type": "number", "exclusiveMinimum": 0, "maximum": 0.2 },
+        "share": { "type": "number", "exclusiveMinimum": 0, "maximum": 1, "description": "Share of a step's kcal counted (the rest is already in maintenance / NEAT noise)." },
+        "not_tracked_below": { "type": "integer", "minimum": 0, "description": "A day with fewer raw MFP steps counts as not tracked: no step adjustment (counted at the average) and left out of averages." },
+        "run_steps_per_km": { "type": "number", "minimum": 0, "description": "Steps a km of a run (or a reported walk with a distance) adds to MFP's count; removed so runs don't count twice." }
+      }
+    },
+    "measurements": {
+      "type": "object", "additionalProperties": false,
+      "required": ["waist_every_weeks", "photos_every_weeks", "photos_enabled"],
+      "properties": {
+        "waist_every_weeks": { "type": "integer", "minimum": 1 },
+        "photos_every_weeks": { "type": "integer", "minimum": 1 },
+        "photos_enabled": { "type": "boolean" }
+      }
+    },
+    "reviews": {
+      "type": "object", "additionalProperties": false,
+      "required": ["block_length_weeks", "phase_review_every_weeks"],
+      "properties": {
+        "block_length_weeks": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "integer" } },
+        "phase_review_every_weeks": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "integer" } }
+      }
+    },
+    "messaging": {
+      "type": "object", "additionalProperties": false,
+      "required": ["missing_log_reminders_per_day", "max_unprompted_messages_per_day", "weekly_checkin", "evening_reminder_time"],
+      "properties": {
+        "missing_log_reminders_per_day": { "type": "integer", "minimum": 0 },
+        "max_unprompted_messages_per_day": { "type": ["integer", "null"] },
+        "weekly_checkin": { "type": ["string", "null"] },
+        "evening_reminder_time": { "type": ["string", "null"] }
+      }
+    }
+  }
+}
