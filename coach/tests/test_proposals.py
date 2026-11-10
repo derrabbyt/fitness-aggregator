@@ -12,6 +12,7 @@ daily target of 2400 kcal; macros at the W49 trend weight 82.1 kg: protein
 """
 
 from fa_coach import phases, proposals
+from fa_coach.ports import Goal
 from fakes import reply, reply_json, tool_call
 from test_weekly_checkin import at, check_in, fill_week, phase, three_weeks, verdict  # noqa: F401
 
@@ -129,7 +130,7 @@ async def test_approve_applies_once_even_on_a_double_tap(phase, api, clock, mode
 
 async def test_a_failed_goal_write_is_reported_not_retried_and_the_targets_stand(phase, api, clock, model, outbox):
     await two_c_weeks(phase, api, clock, model)
-    api.goal = {"kcal": 2300, "protein_g": 161, "carbs_g": 251, "fat_g": 72}
+    api.goal = Goal(kcal=2300, protein_g=161, carbs_g=251, fat_g=72)
     api.goal_write = "rejected"
 
     text = await approve_tap(phase, outbox, taps=2)

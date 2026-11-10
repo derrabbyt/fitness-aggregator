@@ -9,7 +9,7 @@ import itertools
 import json
 from typing import Any
 
-from fa_coach.ports import Edit, ModelReply, ModelRequest, Outgoing, Send, ToolCall, ToolResult
+from fa_coach.ports import Edit, Goal, ModelReply, ModelRequest, Outgoing, Send, ToolCall, ToolResult
 
 TZ = datetime.timezone(datetime.timedelta(hours=1))  # Europe/Vienna in winter
 
@@ -56,21 +56,25 @@ class FakeApi:
     # --- the MFP goal (`fitness_set_goal` / `fitness_get_goal`) ---
     # `goal` is what MFP stores. `goal_write` decides what a set does:
     # "ok" stores it, "rejected" (MFP said no) and "error" (api unreachable,
-    # raises) store nothing, "lost" stores it but the reply never arrives (raises).
-    goal: dict[str, Any] | None = None
+    # raises) store nothing, "lost" stores it but the reply never arrives (raises),
+    # "refused" is the api's own check failing before anything is sent.
+    goal: Goal | None = None
     goal_write: str = "ok"
 
-    async def set_mfp_goal(self, goal: dict[str, Any]) -> dict[str, Any]:
-        self.calls.append(("set_mfp_goal", {"goal": dict(goal)}))
+    async def set_mfp_goal(self, goal: Goal) -> dict[str, Any]:
+        self.calls.append(("set_mfp_goal", {"goal": goal.as_dict()}))
+        if self.goal_write == "refused":
+            return {"write": "not_sent", "stored": None, "matches": None,
+                    "error": "MFP returned no current goal to update"}
         if self.goal_write in ("ok", "lost"):
-            self.goal = dict(goal)
+            self.goal = goal
         if self.goal_write in ("error", "lost"):
             raise RuntimeError("api /mfp/mcp: timed out")
-        if self.goal_write == "rejected":
-            return {"write": "rejected", "stored": self.goal, "error": "MFP answered 500"}
-        return {"write": "sent", "stored": self.goal, "error": None}
+        write = "rejected" if self.goal_write == "rejected" else "sent"
+        return {"write": write, "stored": self.goal, "matches": self.goal == goal,
+                "error": "MFP answered 500" if write == "rejected" else None}
 
-    async def mfp_goal(self) -> dict[str, Any] | None:
+    async def mfp_goal(self) -> Goal | None:
         self._call("mfp_goal")
         return self.goal
 

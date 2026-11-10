@@ -33,7 +33,7 @@ from myfitnesspal_mcp import mfp_client
 from myfitnesspal_mcp import server as mfp_server
 from myfitnesspal_mcp.mfp_web import api_headers
 
-from .api import _LogContext
+from .log_context import LogContext
 
 GOALS_PATH = "v2/nutrient-goals"
 KJ_PER_KCAL = 4.184
@@ -56,7 +56,7 @@ def _read_item(day: datetime.date):
         items = resp.json().get("items") or []
         return items[0] if items else None
 
-    return mfp_server.with_session(_LogContext(), op)
+    return mfp_server.with_session(LogContext(), op)
 
 
 def _summary(item: dict | None) -> dict[str, Any] | None:
@@ -124,19 +124,28 @@ async def fitness_set_goal(calories: float, protein: float, carbs: float, fat: f
     protein / carbs / fat in grams, the same on every weekday. Coach code
     only. Sends one request and never retries it; read the result (write,
     stored, matches) and never call it again to "retry": an uncertain write
-    may still have landed."""
+    may still have landed. A goal refused before sending (out of range, no
+    current goal to update, no MFP session) comes back as write "not_sent"."""
+    requested = {"calories": round(calories), "protein": protein, "carbs": carbs, "fat": fat}
+
+    def not_sent(why: str) -> dict[str, Any]:
+        return {"ok": False, "write": "not_sent", "requested": requested, "stored": None, "matches": None,
+                "error": why, "note": "Nothing was sent to MFP."}
+
     if not 800 <= calories <= 8000:
-        raise ValueError("calories must be between 800 and 8000")
+        return not_sent("calories must be between 800 and 8000")
     if not all(0 <= g <= 1000 for g in (protein, carbs, fat)):
-        raise ValueError("protein, carbs and fat must be between 0 and 1000 g")
+        return not_sent("protein, carbs and fat must be between 0 and 1000 g")
     macro_kcal = 4 * protein + 4 * carbs + 9 * fat
     if macro_kcal > calories + MAX_MACRO_EXCESS_KCAL:
-        raise ValueError(f"the macros add up to {macro_kcal:.0f} kcal, more than {calories:.0f}")
+        return not_sent(f"the macros add up to {macro_kcal:.0f} kcal, more than {calories:.0f}")
     day = datetime.date.today()
-    current = await _read_item(day)
+    try:
+        current = await _read_item(day)
+    except Exception as exc:  # noqa: BLE001 - nothing went out yet
+        return not_sent(f"reading the current goal failed ({type(exc).__name__})")
     if current is None:
-        raise ValueError("MFP returned no current goal to update; nothing was sent")
-    requested = {"calories": round(calories), "protein": protein, "carbs": carbs, "fat": fat}
+        return not_sent("MFP returned no current goal to update")
 
     write, error = await asyncio.to_thread(_post_once, _payload(current, day, calories, protein, carbs, fat))
     try:

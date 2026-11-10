@@ -5,9 +5,30 @@ The core holds no Telegram or network code. Real implementations live in
 (`coach/tests/fakes.py`).
 """
 
+import dataclasses
 import datetime
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Protocol
+
+
+@dataclass(frozen=True)
+class Goal:
+    """An MFP nutrition goal: kcal and grams. The api's own spelling
+    ({calories, protein, carbs, fat}) stays in api_client.py."""
+
+    kcal: float
+    protein_g: float
+    carbs_g: float
+    fat_g: float
+
+    @classmethod
+    def of(cls, values: Mapping[str, Any]) -> "Goal":
+        """From a stored {kcal, protein_g, carbs_g, fat_g} dict (targets, proposals)."""
+        return cls(**{f.name: values[f.name] for f in dataclasses.fields(cls)})
+
+    def as_dict(self) -> dict[str, float]:
+        return dataclasses.asdict(self)
 
 
 class Clock(Protocol):
@@ -29,18 +50,19 @@ class ApiClient(Protocol):
         """`GET /api/sync/hevy`: lifting sessions in the range, newest first (README, Coach)."""
         ...
 
-    async def set_mfp_goal(self, goal: dict[str, Any]) -> dict[str, Any]:
-        """`fitness_set_goal`: send the MFP goal {kcal, protein_g, carbs_g,
-        fat_g} in exactly one request, never retried. Returns {"write":
-        "sent" | "rejected" | "uncertain" | "not_sent", "stored": the goal the api read
-        back after the write or None, "error": str | None}. Raises when the
-        reply didn't arrive (the write may or may not have happened). Only
-        `mfp_goal.set_once` calls this."""
+    async def set_mfp_goal(self, goal: Goal) -> dict[str, Any]:
+        """`fitness_set_goal`: send the MFP goal in exactly one request, never
+        retried. Returns {"write": "sent" | "rejected" | "uncertain" |
+        "not_sent" (refused before sending), "stored": the Goal the api read
+        back after the write or None, "matches": whether that is the
+        requested goal (None: not read back), "error": str | None}. Raises
+        when the reply didn't arrive (the write may or may not have
+        happened). Only `mfp_goal.set_once` calls this."""
         ...
 
-    async def mfp_goal(self) -> dict[str, Any] | None:
-        """`fitness_get_goal`: the MFP goal in force today as {kcal,
-        protein_g, carbs_g, fat_g}, None if MFP has none."""
+    async def mfp_goal(self) -> Goal | None:
+        """`fitness_get_goal`: the MFP goal in force today, None if MFP has
+        none (or one without all four values)."""
         ...
 
 

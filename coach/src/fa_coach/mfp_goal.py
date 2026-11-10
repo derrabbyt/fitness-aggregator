@@ -9,66 +9,80 @@ ticket 09's approved proposals) pass a key naming the change:
 
 `set_once` claims the key in `mfp_goal_writes` before sending, so a second
 call with the same key (double tap, restart, replayed button) sends nothing
-and returns None. It calls `api.set_mfp_goal` exactly once, then
-`api.mfp_goal` exactly once, and never raises for MFP or api failures.
+and returns None. It calls `api.set_mfp_goal` exactly once and takes the
+api's own read-back (`stored`, `matches`); only when that reply never
+arrived does it read the goal itself (`api.mfp_goal`, once). It never raises
+for MFP or api failures.
 
 Result `status`:
-- "set": MFP shows the requested goal (within a gram/kcal of rounding).
+- "set": MFP shows the requested goal (the api allows a gram/kcal of rounding).
 - "not_set": the write was answered, but MFP shows something else
-  (`stored`, None = no goal).
+  (`stored`, None = no goal), or the api refused it before sending
+  (`write` "not_sent": nothing was sent).
 - "uncertain": the goal couldn't be read back, or the write got no reply
   and MFP doesn't show it (yet): it may still land.
 """
 
 import datetime
 import json
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
+
+from . import errors
+from .ports import Goal
 
 if TYPE_CHECKING:
     from .core import Coach
 
-KEYS = ("kcal", "protein_g", "carbs_g", "fat_g")
-TOLERANCE = 1  # kcal or g: MFP may round what it stores
+TOLERANCE = 1  # kcal or g: MFP may round what it stores (as the api's `matches`)
 
 
-async def set_once(coach: "Coach", key: str, goal: dict[str, Any], now: datetime.datetime) -> dict[str, Any] | None:
-    """Set the MFP goal {kcal, protein_g, carbs_g, fat_g} for the change `key`,
-    unless that key was already used. See the module docstring."""
-    requested = {k: round(goal[k]) for k in KEYS}
+async def set_once(coach: "Coach", key: str, goal: Goal | Mapping[str, Any],
+                   now: datetime.datetime) -> dict[str, Any] | None:
+    """Set the MFP goal for the change `key`, unless that key was already
+    used. `goal` is a Goal or a stored {kcal, protein_g, carbs_g, fat_g}
+    dict. See the module docstring."""
+    goal = goal if isinstance(goal, Goal) else Goal.of(goal)
+    requested = Goal(*(round(v) for v in (goal.kcal, goal.protein_g, goal.carbs_g, goal.fat_g)))
     at = now.isoformat(timespec="seconds")
     claimed = coach.db.execute(
         "INSERT OR IGNORE INTO mfp_goal_writes (key, requested, status, created_at) VALUES (?, ?, 'sending', ?)",
-        (key, json.dumps(requested), at),
+        (key, json.dumps(requested.as_dict()), at),
     ).rowcount == 1
     if not claimed:
         return None
 
-    errors: list[str] = []
-    reply_stored = None
+    problems: list[str] = []
     try:
         reply = await coach.api.set_mfp_goal(requested)
-        write = reply.get("write") or "sent"
-        reply_stored = reply.get("stored")
-        if reply.get("error"):
-            errors.append(str(reply["error"]))
     except Exception as exc:  # noqa: BLE001 - the outcome is unknown; read back, never resend
-        write = "no_reply"
-        errors.append(_short(exc))
+        reply = None
+        problems.append(errors.brief("no reply from the api", exc))
 
-    try:
-        stored, known = await coach.api.mfp_goal(), True
-    except Exception as exc:  # noqa: BLE001
-        errors.append(f"reading it back failed: {_short(exc)}")
-        stored, known = reply_stored, reply_stored is not None  # the api's own read-back after the write
-
-    if known and matches(stored, requested):
-        status = "set"
-    elif known and write in ("sent", "rejected", "not_sent"):
-        status = "not_set"
+    if reply is not None:
+        write = reply.get("write") or "sent"
+        stored = reply.get("stored")
+        if reply.get("error"):
+            problems.append(str(reply["error"]))
+        if write == "not_sent":
+            status = "not_set"
+        elif reply.get("matches") is True:
+            status = "set"
+        elif reply.get("matches") is False and write in ("sent", "rejected"):
+            status = "not_set"
+        else:
+            status = "uncertain"  # not read back, or MFP never answered the write (it may still land)
     else:
-        status = "uncertain"  # nothing read back, or the write's fate is unknown (it may still land)
-    result = {"key": key, "status": status, "write": write, "requested": requested,
-              "stored": _clean(stored), "error": "; ".join(errors) or None}
+        write = "no_reply"
+        try:
+            stored = await coach.api.mfp_goal()
+        except Exception as exc:  # noqa: BLE001
+            stored = None
+            problems.append(errors.brief("reading it back failed", exc))
+        status = "set" if matches(stored, requested) else "uncertain"
+
+    result = {"key": key, "status": status, "write": write, "requested": requested.as_dict(),
+              "stored": stored.as_dict() if stored is not None else None, "error": "; ".join(problems) or None}
     coach.db.execute(
         "UPDATE mfp_goal_writes SET status = ?, write = ?, stored = ?, error = ?, finished_at = ? WHERE key = ?",
         (status, write, json.dumps(result["stored"]) if result["stored"] is not None else None, result["error"],
@@ -87,13 +101,11 @@ def get(coach: "Coach", key: str) -> dict[str, Any] | None:
             "stored": json.loads(row["stored"]) if row["stored"] else None, "error": row["error"]}
 
 
-def matches(stored: dict[str, Any] | None, requested: dict[str, Any]) -> bool:
-    if not stored:
+def matches(stored: Goal | None, requested: Goal) -> bool:
+    """Only for a goal the coach read back itself (the api's reply carries its own `matches`)."""
+    if stored is None:
         return False
-    try:
-        return all(abs(float(stored[k]) - requested[k]) <= TOLERANCE for k in KEYS)
-    except (KeyError, TypeError, ValueError):
-        return False
+    return all(abs(a - b) <= TOLERANCE for a, b in zip(stored.as_dict().values(), requested.as_dict().values()))
 
 
 def describe(result: dict[str, Any]) -> str:
@@ -101,6 +113,10 @@ def describe(result: dict[str, Any]) -> str:
     wanted = fmt(result["requested"])
     if result["status"] == "set":
         return f"🎯 MyFitnessPal now shows the new goal: {fmt(result['stored'])}."
+    if result["write"] == "not_sent":
+        why = f": {result['error']}" if result["error"] else ""
+        return (f"⚠️ MyFitnessPal goal not set (nothing sent{why}). Please set it by hand to {wanted}. "
+                "Your coach targets above are in force either way.")
     why = f" ({result['error']})" if result["error"] else ""
     if result["status"] == "not_set":
         shows = f"it still shows {fmt(result['stored'])}" if result["stored"] else "it shows no goal I can read"
@@ -114,17 +130,3 @@ def describe(result: dict[str, Any]) -> str:
 def fmt(goal: dict[str, Any]) -> str:
     return (f"{round(goal['kcal']):,} kcal · P {round(goal['protein_g'])} g · C {round(goal['carbs_g'])} g · "
             f"F {round(goal['fat_g'])} g")
-
-
-def _clean(stored: Any) -> dict[str, Any] | None:
-    if not isinstance(stored, dict):
-        return None
-    try:
-        return {k: stored[k] for k in KEYS}
-    except KeyError:
-        return None
-
-
-def _short(exc: Exception) -> str:
-    text = str(exc).strip().splitlines()[0] if str(exc).strip() else type(exc).__name__
-    return text[:200]

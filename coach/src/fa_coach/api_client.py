@@ -12,6 +12,8 @@ from typing import Any
 
 import httpx
 
+from .ports import Goal
+
 # The api reads MFP day by day (two requests per day), so a 4-week chunk can
 # take a few minutes.
 READ_TIMEOUT = httpx.Timeout(600.0, connect=10.0)
@@ -19,12 +21,12 @@ READ_TIMEOUT = httpx.Timeout(600.0, connect=10.0)
 TOOL_TIMEOUT = httpx.Timeout(180.0, connect=10.0)
 
 
-def _goal(stored: dict[str, Any] | None) -> dict[str, Any] | None:
-    """The api's {calories, protein, carbs, fat} as the coach's goal shape."""
+def _goal(stored: dict[str, Any] | None) -> Goal | None:
+    """The api's {calories, protein, carbs, fat} as a Goal (None if a value is missing)."""
     if not stored:
         return None
-    return {"kcal": stored.get("calories"), "protein_g": stored.get("protein"), "carbs_g": stored.get("carbs"),
-            "fat_g": stored.get("fat")}
+    values = (stored.get("calories"), stored.get("protein"), stored.get("carbs"), stored.get("fat"))
+    return None if any(v is None for v in values) else Goal(*values)
 
 
 class HttpApiClient:
@@ -38,12 +40,13 @@ class HttpApiClient:
     async def hevy_sessions(self, start: datetime.date, end: datetime.date) -> list[dict[str, Any]]:
         return (await self._get("/api/sync/hevy", start, end))["sessions"]
 
-    async def set_mfp_goal(self, goal: dict[str, Any]) -> dict[str, Any]:
-        reply = await self._tool("fitness_set_goal", {"calories": goal["kcal"], "protein": goal["protein_g"],
-                                                      "carbs": goal["carbs_g"], "fat": goal["fat_g"]})
-        return {"write": reply.get("write"), "stored": _goal(reply.get("stored")), "error": reply.get("error")}
+    async def set_mfp_goal(self, goal: Goal) -> dict[str, Any]:
+        reply = await self._tool("fitness_set_goal", {"calories": goal.kcal, "protein": goal.protein_g,
+                                                      "carbs": goal.carbs_g, "fat": goal.fat_g})
+        return {"write": reply.get("write"), "stored": _goal(reply.get("stored")), "matches": reply.get("matches"),
+                "error": reply.get("error")}
 
-    async def mfp_goal(self) -> dict[str, Any] | None:
+    async def mfp_goal(self) -> Goal | None:
         return _goal((await self._tool("fitness_get_goal", {}))["goal"])
 
     async def _tool(self, name: str, args: dict[str, Any]) -> dict[str, Any]:
