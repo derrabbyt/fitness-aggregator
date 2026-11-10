@@ -52,6 +52,8 @@ HISTORY_WEEKS = 16  # as far back as the first sync reads
 # Setup values that are calibration (changed later only through a proposal)
 # and values that only define the start (fixed for the phase).
 CALIBRATION_KEYS = ("run_kcal_discount", "wrestling_kcal_per_session", "lifting_kcal_per_session")
+# The targets row an approved calibration change adds (its targets recomputed, surplus unchanged).
+CALIBRATION_SOURCE = "calibration"
 START_KEYS = ("starting_calories_kcal", "starting_trend_weight_kg", "maintenance_estimate_kcal",
               "maintenance_includes_activity", "fat_g_per_kg_start", "week1_increase_kcal")
 
@@ -168,11 +170,15 @@ def targets(coach: "Coach", day: Date | None = None) -> dict[str, Any] | None:
 
 
 def target_history(coach: "Coach") -> list[dict[str, Any]]:
-    """Every targets row of the active phase, oldest first."""
+    """The active phase's calorie changes as targets rows, oldest first: the
+    phase start and approved calorie changes. Rows from calibration changes
+    (source CALIBRATION_SOURCE) are in force (`targets`) but left out here:
+    they don't change the surplus, so they don't restart the lockout."""
     phase = active(coach)
     if phase is None:
         return []
-    return [_targets(r) for r in coach.db.all("SELECT * FROM targets WHERE phase_row_id = ? ORDER BY id", (phase["id"],))]
+    return [_targets(r) for r in coach.db.all("SELECT * FROM targets WHERE phase_row_id = ? AND source != ? ORDER BY id",
+                                              (phase["id"], CALIBRATION_SOURCE))]
 
 
 def _targets(row) -> dict[str, Any]:

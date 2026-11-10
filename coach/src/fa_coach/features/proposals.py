@@ -14,6 +14,7 @@ and the taps decide it once. The logic lives in fa_coach/proposals.py.
 """
 
 import datetime
+import re
 from typing import Any
 
 from .. import phases, proposals, weekly_facts
@@ -111,22 +112,141 @@ async def counter(coach, ref_id: str, now: datetime.datetime) -> None:
     proposal = proposals.get(coach, ref_id)
     if proposal is None or proposal["status"] != "open":
         return
+    coach.db.execute("INSERT OR REPLACE INTO counter_taps (proposal_id, tapped_at) VALUES (?, ?)",
+                     (ref_id, now.isoformat(timespec="seconds")))
     coach.say(f"Reply with your number instead of {proposals.describe_change(proposal)} (e.g. “+50”) and I'll "
               "check it against the guardrails. Until then nothing changes.")
 
 
 @registry.state("proposals")
 def proposals_state(coach, now: datetime.datetime) -> dict[str, Any] | None:
-    """Open proposals and a rejection waiting for its optional reason, so a
-    reply can be matched to them."""
+    """Open proposals, the one a counter tap is waiting on, and a rejection
+    waiting for its optional reason, so a reply can be matched to them."""
     open_ = [{k: p[k] for k in ("id", "type", "delta_kcal", "new_values", "reason")}
              for p in proposals.open_proposals(coach)]
     rejected = proposals.listing(coach, "rejected")[:1]
     waiting = [p["id"] for p in rejected if p["user_reason"] is None and p["decided_at"]
                and now - datetime.datetime.fromisoformat(p["decided_at"]) <= REASON_WINDOW]
+    countered = _awaited_counter(coach, now)
     if not open_ and not waiting:
         return None
-    return {"open": open_, "rejected_awaiting_reason": waiting[0] if waiting else None}
+    return {"open": open_, "counter_awaited": countered["id"] if countered else None,
+            "rejected_awaiting_reason": waiting[0] if waiting else None}
+
+
+# --- counter by reply (ticket 10) ------------------------------------------------------
+
+COUNTER_WINDOW = datetime.timedelta(hours=24)
+_NUMBER = re.compile(r"[+\-−]?\s?\d+(?:[.,]\d+)?")
+# Words a counter reply may carry besides its number ("make it +50 kcal please").
+_FILLER = {"make", "it", "go", "with", "how", "what", "about", "let's", "lets", "let", "us", "do", "try", "instead",
+           "please", "ok", "okay", "then", "just", "only", "rather", "maybe", "kcal", "cal", "cals", "calories", "a",
+           "day", "per", "daily", "of", "i'd", "id", "like", "want", "say"}
+
+
+def _awaited_counter(coach, now: datetime.datetime) -> dict[str, Any] | None:
+    """The open proposal whose counter button was tapped last, within a day."""
+    since = (now - COUNTER_WINDOW).isoformat(timespec="seconds")
+    for row in coach.db.all("SELECT proposal_id FROM counter_taps WHERE tapped_at >= ? ORDER BY tapped_at DESC",
+                            (since,)):
+        proposal = proposals.get(coach, row["proposal_id"])
+        if proposal is not None and proposal["status"] == "open":
+            return proposal
+    return None
+
+
+def counter_number(text: str) -> float | None:
+    """The number of a reply that is only a number, give or take a few words
+    ("+50", "make it 80 kcal", "how about -100?"); None for anything else."""
+    numbers = _NUMBER.findall(text)
+    if len(numbers) != 1:
+        return None
+    rest = _NUMBER.sub(" ", text.lower(), count=1)
+    words = re.sub(r"[^\w'/]+", " ", rest.replace("/", " ")).split()
+    if any(w not in _FILLER for w in words):
+        return None
+    raw = numbers[0].replace(" ", "").replace("−", "-").replace(",", ".")
+    return float(raw)
+
+
+def _counter_spec(original: dict[str, Any], number: float, raw: str) -> dict[str, Any] | None:
+    if original["type"] == "calorie_change":
+        signed = raw.lstrip()[:1] in "+-−"
+        delta = number if signed else abs(number) * (1 if original["delta_kcal"] > 0 else -1)
+        return {"type": "calorie_change", "delta_kcal": delta}
+    keys = list(original["new_values"] or {})
+    if len(keys) != 1:
+        return None  # which value the number is for is the chat's question
+    return {"type": "calibration_change", "new_values": {keys[0]: number}}
+
+
+def _coach_choice(coach, original: dict[str, Any]) -> tuple[dict[str, Any] | None, bool]:
+    """The coach's own proposal at the root of a counter chain, and whether
+    the coach already said it would choose differently in that chain."""
+    said = False
+    node: dict[str, Any] | None = original
+    while node is not None and node["source"] == "user_counter":
+        said = said or bool(node["agent_disagrees"])
+        node = proposals.get(coach, node["counter_of"]) if node["counter_of"] else None
+    if node is None or node["source"] in ("user_request", "user_counter"):
+        return None, said
+    return node, said or bool(node["agent_disagrees"])
+
+
+@registry.text(order=55)  # before the waist reply: after a counter tap a bare number is the counter
+async def counter_reply(coach, text: str, now: datetime.datetime) -> bool:
+    original = _awaited_counter(coach, now)
+    if original is None:
+        return False
+    number = counter_number(text)
+    if number is None:
+        return False
+    spec = _counter_spec(original, number, _NUMBER.search(text).group(0))
+    if spec is None:
+        return False
+    choice, said = _coach_choice(coach, original)
+    disagrees = None
+    if choice is not None and not said and not _same_change(choice, spec):
+        disagrees = f"I'd have gone with {proposals.describe_change(choice)}: {choice['reason']}"
+    try:
+        result = proposals.propose(coach, {**spec, "reason": f"Your counter to {proposals.describe_change(original)}.",
+                                           "source": "user_counter", "counter_of": original["id"],
+                                           "agent_disagrees": disagrees}, now)
+    except proposals.ProposalError as exc:
+        coach.say(f"I couldn't take that counter: {exc}.")
+        return True
+    if result.get("referenced"):
+        coach.say(f"That's already the open proposal ({proposals.describe_change(result)}). Tap Approve to apply it.")
+    elif result["status"] == "open":
+        send_card(coach, result)
+    else:
+        lines = [f"{proposals.describe_change(result)} can't pass the guardrails yet, so nothing changes:"]
+        lines += [f"- {d['text']}" for d in result["guardrail"]["details"]]
+        lines.append(f"Your proposal of {proposals.describe_change(original)} is still open; reply with another "
+                     "number or use its buttons.")
+        coach.say("\n".join(lines))
+        return True
+    coach.db.execute("DELETE FROM counter_taps WHERE proposal_id = ?", (original["id"],))
+    return True
+
+
+def _same_change(p: dict[str, Any], spec: dict[str, Any]) -> bool:
+    if p["type"] != spec["type"]:
+        return False
+    if p["type"] == "calorie_change":
+        return round(p["delta_kcal"]) == round(spec["delta_kcal"])
+    return p["new_values"] == spec["new_values"]
+
+
+def send_card(coach, result: dict[str, Any]) -> None:
+    """The card of a new open proposal, with approve / reject / counter."""
+    ref = f"proposal:{result['id']}"
+    text = f"Proposal: {proposals.describe_change(result)}. {result['reason']}"
+    if result["agent_disagrees"]:
+        text += f"\nMy view: {result['agent_disagrees']}"
+    text += "\n\nNothing changes until you tap Approve."
+    coach.say(text, buttons_for(result["id"]), ref=ref)
+    proposals.add_card(coach, result["id"], ref, text)
 
 
 # --- model tools ---------------------------------------------------------------------------
@@ -166,12 +286,9 @@ async def propose_change(coach, args: dict[str, Any], now: datetime.datetime) ->
     except proposals.ProposalError as exc:
         raise ToolError(str(exc)) from exc
     if result["status"] == "open" and not result.get("referenced"):
-        ref = f"proposal:{result['id']}"
-        text = f"Proposal: {proposals.describe_change(result)}. {result['reason']}"
-        if result["agent_disagrees"]:
-            text += f"\nMy view: {result['agent_disagrees']}"
-        coach.say(text + "\n\nNothing changes until you tap Approve.", buttons_for(result["id"]), ref=ref)
-        proposals.add_card(coach, result["id"], ref, text + "\n\nNothing changes until you tap Approve.")
+        send_card(coach, result)
+        if result["counter_of"]:
+            coach.db.execute("DELETE FROM counter_taps WHERE proposal_id = ?", (result["counter_of"],))
     return result
 
 

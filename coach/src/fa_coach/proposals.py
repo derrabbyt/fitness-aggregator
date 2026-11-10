@@ -8,7 +8,9 @@ proposal, and applies it only after the user's tap. The model only asks.
   instead (`referenced: True`), not duplicated. Never applies anything.
 - `approve(coach, id, now)`: one atomic claim; the change applies exactly
   once (targets, then the MFP goal through `mfp_goal.set_once`: sent once,
-  read back, never retried). A second tap returns None.
+  read back, never retried). A second tap returns None. A calibration change
+  updates the setup and recomputes the targets (`_apply_calibration`); the
+  MFP goal is set the same way when the average daily target moved.
 - `reject(coach, id, now)`, `add_reason(coach, id, reason)`.
 - `get`, `listing`, `open_proposals`, `last_rejected`: proposal.schema.json dicts.
 - `changes_applied(coach, iso_week, now)`: approved changes not yet in a
@@ -279,7 +281,7 @@ async def approve(coach: "Coach", proposal_id: str, now: datetime.datetime) -> d
         elif proposal["type"] == "calorie_change":
             outcome = _apply_calories(coach, phase, proposal, current, today, now)
         else:
-            outcome = _apply_calibration(coach, phase, proposal)
+            outcome = _apply_calibration(coach, phase, proposal, current, today, now)
         others = []
         if outcome is not None and proposal["type"] == "calorie_change":
             others = [r["id"] for r in coach.db.all(
@@ -334,15 +336,47 @@ def _apply_calories(coach, phase, proposal, current, today: Date, now) -> dict[s
     }
 
 
-def _apply_calibration(coach, phase, proposal) -> dict[str, Any]:
-    setup = dict(phase["setup"])
-    before = {k: setup.get(k) for k in proposal["new_values"]}
-    setup.update(proposal["new_values"])
+def _apply_calibration(coach, phase, proposal, current, today: Date, now) -> dict[str, Any]:
+    """New setup values, and targets recomputed from today the way the phase
+    start computed them: the expected counted activity moves by what the new
+    values change over the last ACTIVITY_DAYS days; when maintenance includes
+    activity, base maintenance moves the other way (the average stays). The
+    surplus never changes, so this is not a calorie change (no lockout)."""
+    from .features import training_plan  # features import this module
+
+    old_setup = dict(phase["setup"])
+    setup = {**old_setup, **proposal["new_values"]}
+    before = {k: old_setup.get(k) for k in proposal["new_values"]}
     coach.db.execute("UPDATE phases SET setup = ? WHERE id = ?", (json.dumps(setup), phase["id"]))
+
+    old_p = phases.params_for(coach.skills, phase["phase_id"], old_setup)
+    new_p = phases.params_for(coach.skills, phase["phase_id"], setup)
+    window = [today - n * DAY for n in range(1, phases.ACTIVITY_DAYS + 1)]
+
+    def avg_activity(p) -> float:
+        return sum(training_plan.counted_activity_on(coach, d, p["activity"])["kcal"] for d in window) / len(window)
+
+    shift = avg_activity(new_p) - avg_activity(old_p)
+    base = current["base_maintenance_kcal"] - (shift if setup.get("maintenance_includes_activity", True) else 0)
+    activity = current["avg_activity_kcal"] + shift
+    average = base + activity + current["surplus_kcal"]
+    was, now_avg = round(current["avg_daily_target_kcal"]), round(average)
+    goal = None
+    if now_avg != was:
+        m = phases.macros(new_p, average, phases.macro_reference_weight(coach, today))
+        goal = {"kcal": now_avg, "protein_g": m["protein_g"], "carbs_g": m["carbs_g"], "fat_g": m["fat_g"]}
+    phases.set_targets(coach, phase["id"], {
+        "base_maintenance_kcal": base, "surplus_kcal": current["surplus_kcal"], "avg_activity_kcal": activity,
+        "maintenance_estimate_kcal": current["maintenance_estimate_kcal"], "avg_daily_target_kcal": average,
+        "mfp_goal": goal or current["mfp_goal"]}, valid_from=today, source=phases.CALIBRATION_SOURCE, now=now,
+        ref=proposal["id"])
     changes = ", ".join(f"{k.replace('_', ' ')} {before[k]} → {v}" for k, v in proposal["new_values"].items())
-    return {"applied_on": coach.clock.now().date().isoformat(), "before": before, "after": proposal["new_values"],
-            "mfp_goal": None, "mfp_goal_status": None,
-            "summary": f"{changes}. Days are counted with the new values from today."}
+    effect = (f"Your average daily target is now {now_avg:,} kcal (was {was:,})." if goal
+              else f"Your average daily target stays {was:,} kcal; the days' targets follow the new values.")
+    return {"applied_on": today.isoformat(), "before": before, "after": proposal["new_values"],
+            "avg_daily_target_before_kcal": was, "avg_daily_target_after_kcal": now_avg,
+            "mfp_goal": goal, "mfp_goal_status": None,
+            "summary": f"{changes}. Days are counted with the new values from today. {effect}"}
 
 
 def reject(coach: "Coach", proposal_id: str, now: datetime.datetime) -> bool:
