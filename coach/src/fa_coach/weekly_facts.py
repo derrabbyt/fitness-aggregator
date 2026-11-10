@@ -9,6 +9,8 @@ and report see, computed in code for one 7-day week of the active phase.
 - `previous_verdicts(coach, before, phase_row_id)` and
   `confirmation_streaks(...)`: the stored verdict history as the decision
   and the guardrails count it.
+- `window_start(coach, change)`: the first day of week 1 after a calorie
+  change (the lockout and confirmation window).
 """
 
 import datetime
@@ -27,6 +29,11 @@ Date = datetime.date
 DAY = datetime.timedelta(days=1)
 PREVIOUS_VERDICTS = 6
 SPORT_LOAD_TAG = "sport_load"
+
+WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+# A change from a weekly check-in starts its window with the week after the
+# verdict week, whatever day the user approves it.
+CHECKIN_SOURCES = ("weekly_decision", "user_counter")
 
 FactsHook = Callable[["Coach", dict[str, Any], datetime.datetime], None]
 facts_hooks: list[FactsHook] = []
@@ -264,6 +271,23 @@ def previous_verdicts(coach: "Coach", before: Date, phase_row_id: str) -> list[d
     return out
 
 
+def checkin_weekday(coach: "Coach") -> int | None:
+    """The weekday of the weekly check-in (0 = Monday), None if not set."""
+    setting = phases.params(coach)["messaging"].get("weekly_checkin")
+    return WEEKDAYS.index(setting.strip().lower()[:3]) if setting else None
+
+
+def window_start(coach: "Coach", change: dict[str, Any]) -> str:
+    """The first day of week 1 after `change` (a target_history row): for a
+    change from a check-in, the start of the check-in week it was approved
+    in (the week right after the verdict week); else the day it applies from."""
+    weekday = checkin_weekday(coach)
+    if change["source"] not in CHECKIN_SOURCES or weekday is None:
+        return change["valid_from"]
+    applied = Date.fromisoformat(change["valid_from"])
+    return (applied - ((applied.weekday() - weekday) % 7) * DAY).isoformat()
+
+
 def confirmation_streaks(verdicts: list[dict[str, Any]], since: str | None) -> dict[str, int]:
     """Consecutive earlier weeks (newest first in `verdicts`) pointing to an
     increase or a decrease, skipped weeks left out, counting only weeks that
@@ -284,7 +308,7 @@ def confirmation_streaks(verdicts: list[dict[str, Any]], since: str | None) -> d
 
 
 def _history(coach, phase, start: Date) -> dict[str, Any]:
-    changes = [t for t in phases.target_history(coach) if t["valid_from"] <= start.isoformat()] or \
+    changes = [t for t in phases.target_history(coach) if window_start(coach, t) <= start.isoformat()] or \
         phases.target_history(coach)[:1]
     last = changes[-1] if changes else None
     last_change = None
@@ -296,7 +320,7 @@ def _history(coach, phase, start: Date) -> dict[str, Any]:
         last_change = {"proposal_id": last["ref"], "source": last["source"], "applied_on": last["valid_from"],
                        "delta_kcal": round(delta)}
     verdicts = previous_verdicts(coach, start, phase["id"])
-    since = last["valid_from"] if last else None
+    since = window_start(coach, last) if last else None
     counted_since = [v for v in verdicts if v["counts_for_confirmation"] and (since is None or v["start_date"] >= since)]
     return {
         "weeks_since_last_change": len(counted_since) + 1 if last else None,

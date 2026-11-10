@@ -248,6 +248,19 @@ async def test_a_change_too_soon_after_the_last_one_is_locked_out(phase, api, cl
     assert lockout["earliest_checkin"] == "2026-12-07" and "Mon 07 Dec" in lockout["text"]
 
 
+async def test_the_lockout_counts_from_the_check_in_week_whatever_day_the_change_is_approved(
+        phase, api, clock, model, outbox):
+    await two_c_weeks(phase, api, clock, model)
+    await phase.on_button("approve_proposal", last_card(outbox).buttons[0][0].ref_id, at("2026-12-08", 10))
+    fill_week(api, 5, kcal=2400)  # W50 (7-13 Dec) is week 1 of the new window although approved on the 8th
+    await check_in(phase, clock, model, "2026-12-14", verdict("2026-W50", scenario="C", direction="increase"))
+    assert report_input(model)["changes_applied"][0]["recheck_on"] == "2026-12-21"
+    fill_week(api, 6, kcal=2400, avg=82.3)
+    await check_in(phase, clock, model, "2026-12-21", c_week("2026-W51"))
+
+    assert report_input(model)["proposal_result"]["status"] == "open"
+
+
 async def test_too_fast_needs_only_one_confirming_week(phase, api, clock, model, outbox):
     await three_weeks(phase, api, clock, model)
     await check_in(phase, clock, model, "2026-11-30", c_week("2026-W48", delta=-100, scenario="E"))
