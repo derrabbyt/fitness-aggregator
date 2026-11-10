@@ -17,6 +17,9 @@ registers its handlers on the shared `registry`:
                                       # model tools: (coach, args, now) -> JSON-able result;
                                       # args are validated against the schema first;
                                       # raise ask.ToolError to refuse with a message
+    @registry.tool_source("live")    # tools known only at runtime: async (coach, now) ->
+                                      # list[Tool]; they join `coach.ask(tools=None)` and can
+                                      # be named in `tools=`; a registered tool's name wins
     @registry.state("profile")        # adds a key to the state snapshot of every model
                                       # task: (coach, now) -> small JSON-able value
 
@@ -43,6 +46,7 @@ PhotoFn = Callable[["Coach", bytes, str | None, Now], Awaitable[bool]]
 JobFn = Callable[["Coach", Now], Awaitable[None]]
 ToolFn = Callable[["Coach", dict[str, Any], Now], Awaitable[Any]]
 StateFn = Callable[["Coach", Now], Any]
+ToolSourceFn = Callable[["Coach", Now], Awaitable[list["Tool"]]]
 
 
 @dataclass(frozen=True)
@@ -84,6 +88,7 @@ class Registry:
         self._jobs: dict[str, Ordered] = {}
         self._syncers: dict[str, Ordered] = {}
         self._state: dict[str, Ordered] = {}
+        self._tool_sources: dict[str, Ordered] = {}
 
     # --- registration ------------------------------------------------------
 
@@ -110,6 +115,9 @@ class Registry:
             return fn
 
         return add
+
+    def tool_source(self, name: str, order: int = 100) -> Callable[[ToolSourceFn], ToolSourceFn]:
+        return self._ordered(self._tool_sources, "tool source", order, name)
 
     def text(self, order: int = 100) -> Callable[[TextFn], TextFn]:
         return self._ordered(self._text, "text handler", order)
@@ -152,6 +160,10 @@ class Registry:
     @property
     def syncers(self) -> list[Ordered]:
         return _sorted(self._syncers)
+
+    @property
+    def tool_sources(self) -> list[Ordered]:
+        return _sorted(self._tool_sources)
 
     @property
     def state_providers(self) -> list[Ordered]:

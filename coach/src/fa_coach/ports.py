@@ -65,6 +65,16 @@ class ApiClient(Protocol):
         none (or one without all four values)."""
         ...
 
+    async def list_tools(self, server: str) -> list[dict[str, Any]]:
+        """MCP `tools/list` of the api's "mfp" or "hevy" tools: [{name,
+        description, inputSchema}]. Only `live_tools.py` calls this."""
+        ...
+
+    async def read_tool(self, server: str, name: str, args: dict[str, Any]) -> Any:
+        """One live read for the model (`live_tools.READ_TOOLS` only; anything
+        else is refused): the tool's JSON result, or its text."""
+        ...
+
 
 @dataclass(frozen=True)
 class ToolCall:

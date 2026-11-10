@@ -38,6 +38,8 @@ class FakeApi:
         self.days: dict[str, dict[str, Any]] = {}
         self.sessions: list[dict[str, Any]] = []
         self.fail: set[str] = set()
+        self.listings: dict[str, list[dict[str, Any]]] = {}  # live read tools, see list_tools
+        self.tool_results: dict[str, Any] = {}
 
     async def mfp_days(self, start: datetime.date, end: datetime.date) -> list[dict[str, Any]]:
         self._call("mfp_days", start=start, end=end)
@@ -80,6 +82,24 @@ class FakeApi:
 
     def goal_writes(self) -> list[dict[str, Any]]:
         return [a["goal"] for n, a in self.calls if n == "set_mfp_goal"]
+
+    # --- live read tools (the api's MCP `tools/list` / `tools/call`) ---
+    # `listings` maps a server ("mfp", "hevy") to its MCP tool list;
+    # `tool_results` maps a tool name to what a call returns.
+
+    async def list_tools(self, server: str) -> list[dict[str, Any]]:
+        self._call("list_tools", server=server)
+        return list(self.listings.get(server, []))
+
+    async def read_tool(self, server: str, name: str, args: dict[str, Any]) -> Any:
+        self._call("read_tool", server=server, tool=name, args=dict(args))
+        return self.tool_results.get(name, {})
+
+    def list_calls(self) -> list[tuple[str]]:
+        return [(a["server"],) for n, a in self.calls if n == "list_tools"]
+
+    def read_calls(self) -> list[tuple[str, str, dict[str, Any]]]:
+        return [(a["server"], a["tool"], a["args"]) for n, a in self.calls if n == "read_tool"]
 
     def _call(self, name: str, **args: Any) -> None:
         self.calls.append((name, args))

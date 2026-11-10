@@ -145,6 +145,15 @@ from `.env` (and `cookie.txt`) afterwards.
   skills. Context (sick, travel, camp week, creatine) is stored as a dated,
   tagged context note in your words; preferences go into the profile. Memory:
   the last 3 exchanges from the last 12 hours.
+- **Live reads:** the chat model can also read MFP and Hevy live through the
+  api's MCP tools on `:8001` (what was eaten on a day, a food search, a Hevy
+  workout), for looking things up only. The allowlist
+  (`coach/src/fa_coach/live_tools.py`, `READ_TOOLS`) is read-only and must
+  stay so: no `fitness_log_*`, `fitness_delete_*`, `fitness_modify_food`,
+  `fitness_quick_add`, `fitness_clear_food_pin`, `fitness_set_goal`, and no
+  `fitness_draft_food` or `fitness_bulk_export`. Definitions come from the
+  api's `tools/list` at start-up (retried every 10 minutes while the api is
+  down); results are cut to 20,000 characters.
 - **Code:** `coach/src/fa_coach/core.py` is the `Coach` core: no Telegram or
   network code, driven by tests with fakes. Model tasks run through
   `coach.ask(...)` (`ask.py`: prompt layout, tool loop, schema-checked JSON);

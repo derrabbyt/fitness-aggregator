@@ -20,6 +20,11 @@ This skill's rules always apply; if another skill seems to contradict them, this
 - **Context notes**: the user's own dated notes. Always read the ones for the period you
   judge; they explain data the numbers can't.
 - **Coach profile**: a short, user-visible profile (preferences, known issues).
+- **Live reads** (chat only, when offered): MyFitnessPal and Hevy as they are now
+  (`fitness_get_day`, `hevy_get_workout`, …). They are for looking things up and
+  explaining. Targets, guardrails and weekly decisions still come only from code's facts and
+  stored verdicts, never from your reading of raw entries. Odd entries are pointed out for
+  the user to fix in MyFitnessPal or Hevy; you never change them.
 
 ## Hard rules
 
