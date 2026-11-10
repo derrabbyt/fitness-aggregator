@@ -41,6 +41,8 @@ Per session of an exercise:
 Read API:
 - `session(coach, session_id)`: every exercise of one session, judged as
   above (training feedback, ticket 12).
+- `lifts(coach, until)`: every exercise with all its judged sessions up to
+  `until` (the chat's lift history).
 - `week(coach, start, end)`: the `training` section of the weekly facts.
 - `exercises(coach, since, until)`: exercises in the Hevy history with
   their settings (phase start, chat).
@@ -344,6 +346,13 @@ def _exercise_view(lift: dict[str, Any], entry: dict[str, Any]) -> dict[str, Any
         "stalled": entry["stalled"] and flags,
         "new_stall": entry["new_stall"] and flags,
     }
+
+
+def lifts(coach: "Coach", until: Date) -> dict[str, dict[str, Any]]:
+    """{exercise_id: {exercise_id, name, exercise_type, bodyweight_exercise,
+    counts, classification, paused, entries}}: every synced session of each
+    exercise up to `until`, judged, oldest first."""
+    return _Judge(coach, until).all()
 
 
 def session(coach: "Coach", session_id: str) -> dict[str, Any] | None:

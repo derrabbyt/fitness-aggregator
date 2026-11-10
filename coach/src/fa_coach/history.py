@@ -12,6 +12,12 @@ from .db import Database
 SOURCES = ("mfp", "hevy")
 
 
+def day(db: Database, date: str) -> dict[str, Any] | None:
+    """One synced MFP day as in `days`, None if it isn't synced."""
+    rows = days(db, date, date)
+    return rows[0] if rows else None
+
+
 def days(db: Database, start: str, end: str) -> list[dict[str, Any]]:
     """Synced MFP days in the range, oldest first: food totals (kcal,
     protein_g, carbs_g, fat_g, fiber_g, produce_g; null if unknown), `logged`

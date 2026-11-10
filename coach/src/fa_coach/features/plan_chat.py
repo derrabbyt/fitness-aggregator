@@ -59,8 +59,7 @@ async def get_weekly_facts(coach, args: dict[str, Any], now: datetime.datetime) 
 )
 async def get_lift_history(coach, args: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
     exercise_id = args["exercise_id"]
-    # The judge is progression's (ticket 08); this tool only reads its result.
-    lift = progression._Judge(coach, now.date()).all().get(exercise_id)
+    lift = progression.lifts(coach, now.date()).get(exercise_id)
     if lift is None:
         raise ToolError(f"no exercise {exercise_id!r} in the synced Hevy history; see get_tracked_exercises")
     entries = lift["entries"]
@@ -95,7 +94,7 @@ async def get_daily_facts(coach, args: dict[str, Any], now: datetime.datetime) -
         raise ToolError("no active phase, so there are no daily facts")
     if day > now.date() or phases.daily_target(coach, day) is None:
         raise ToolError(f"{day} is outside the active phase (it started {phase['start_date']}; today is {now.date()})")
-    record = evening._day(coach, day)
+    record = history.day(coach.db, day.isoformat())
     if record is None:
         raise ToolError(f"nothing synced for {day} yet")
     moment = now if day == now.date() else datetime.datetime.combine(day, datetime.time(23, 59), tzinfo=now.tzinfo)
