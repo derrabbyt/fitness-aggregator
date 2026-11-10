@@ -180,8 +180,10 @@ docker compose exec api curl -s 'http://127.0.0.1:8000/api/sync/hevy?start=2026-
   "fat_g", "fiber_g", "produce_g", "complete", "entries"}, "weight_kg",
   "steps", "exercises": [{"name", "source", "run", "kcal", "distance_km",
   "minutes", "start"}], "error"}]}`, oldest first. Food totals are null on a
-  day without entries; `fiber_g` is null unless the diary shows a Fiber
-  column; `produce_g` is always null (not derivable); `complete` is MFP's
+  day without entries; `fiber_g` is the sum of the food entries' fiber
+  from the same `/v2/diary` read (grams; entries without a value are
+  skipped, null when none has one; a Fiber column on the diary page is the
+  fallback); `produce_g` is always null (not derivable); `complete` is MFP's
   "Complete this entry"; `weight_kg` is that day's weigh-in in the account's
   unit (kg); `run` = the exercise name says run or jog. A day MFP fails on
   has `error` set and null data; a dead session fails the request (502).
