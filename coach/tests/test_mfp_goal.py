@@ -7,10 +7,11 @@ Uses the worked example of test_phase_start.py: the reverse starts at
 2300 kcal, P 161 g, C 251 g, F 72 g."""
 
 from fa_coach import phases
+from fa_coach.ports import Goal
 from test_phase_start import card, diet_history, start_and_collect  # noqa: F401 (fixture)
 
 GOAL = {"kcal": 2300, "protein_g": 161, "carbs_g": 251, "fat_g": 72}
-OLD = {"kcal": 2000, "protein_g": 150, "carbs_g": 220, "fat_g": 67}
+OLD = Goal(kcal=2000, protein_g=150, carbs_g=220, fat_g=67)
 
 
 async def confirm(coach, model, outbox, taps: int = 1) -> str:
@@ -34,7 +35,7 @@ async def test_confirm_sets_the_goal_once_and_says_mfp_shows_it(diet_history, mo
     text = await confirm(diet_history, model, outbox)
 
     assert api.goal_writes() == [GOAL]
-    assert [n for n, _ in api.calls if n in ("set_mfp_goal", "mfp_goal")] == ["set_mfp_goal", "mfp_goal"]
+    assert [n for n, _ in api.calls if n in ("set_mfp_goal", "mfp_goal")] == ["set_mfp_goal"]  # the api read it back
     assert "MyFitnessPal now shows" in text and "2,300 kcal" in text
     assert_phase_stands(diet_history)
 
@@ -88,11 +89,11 @@ async def test_no_reply_and_the_old_goal_read_back_is_uncertain_not_failed(diet_
     assert "couldn't check" in text and "2,000 kcal" in text and "won't retry" in text
 
 
-async def test_mfp_rounding_a_macro_by_a_gram_still_counts_as_set(diet_history, model, outbox, api):
-    async def rounded(goal):
-        api.calls.append(("set_mfp_goal", {"goal": dict(goal)}))
-        api.goal = {**goal, "carbs_g": goal["carbs_g"] + 1}
-        return {"write": "sent", "stored": api.goal, "error": None}
+async def test_the_apis_read_back_decides_whether_the_goal_is_set(diet_history, model, outbox, api):
+    async def rounded(goal):  # MFP rounded the carbs by a gram, which the api counts as a match
+        api.calls.append(("set_mfp_goal", {"goal": goal.as_dict()}))
+        api.goal = Goal(**{**goal.as_dict(), "carbs_g": goal.carbs_g + 1})
+        return {"write": "sent", "stored": api.goal, "matches": True, "error": None}
 
     api.set_mfp_goal = rounded
 
@@ -103,9 +104,9 @@ async def test_mfp_rounding_a_macro_by_a_gram_still_counts_as_set(diet_history, 
 
 async def test_a_goal_stored_differently_is_reported_with_what_mfp_shows(diet_history, model, outbox, api):
     async def macros_as_percent(goal):
-        api.calls.append(("set_mfp_goal", {"goal": dict(goal)}))
-        api.goal = {**goal, "carbs_g": 240, "fat_g": 77}
-        return {"write": "sent", "stored": api.goal, "error": None}
+        api.calls.append(("set_mfp_goal", {"goal": goal.as_dict()}))
+        api.goal = Goal(**{**goal.as_dict(), "carbs_g": 240, "fat_g": 77})
+        return {"write": "sent", "stored": api.goal, "matches": False, "error": None}
 
     api.set_mfp_goal = macros_as_percent
 
@@ -114,6 +115,17 @@ async def test_a_goal_stored_differently_is_reported_with_what_mfp_shows(diet_hi
     assert api.goal_writes() == [GOAL]
     assert "C 240 g" in text and "F 77 g" in text
     assert "MyFitnessPal now shows" not in text
+
+
+async def test_a_goal_the_api_refuses_before_sending_is_not_set_and_nothing_was_sent(diet_history, model, outbox,
+                                                                                     api):
+    api.goal = OLD
+    api.goal_write = "refused"  # e.g. no current goal in MFP: the api sends nothing
+
+    text = await confirm(diet_history, model, outbox)
+
+    assert "not set (nothing sent" in text and "couldn't check" not in text
+    assert_phase_stands(diet_history)
 
 
 def test_the_coach_model_is_never_offered_a_goal_write(coach):

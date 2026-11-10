@@ -9,7 +9,8 @@ Input: `weekly_facts` for the week that just ended (with `params`, context notes
 Output: **one JSON object matching `weekly_verdict.schema.json`, nothing else.**
 
 You make the call; code computed the numbers and will re-check every guardrail when your
-proposal goes through `propose_change`. Work through the steps in order. Record the id of
+proposal goes through `propose_change`, including the direction your scenario calls for and
+the step size (RB-SIZE). Work through the steps in order. Record the id of
 every rule you applied in `rules_applied`.
 
 ## Step 1 – Is the week usable?

@@ -66,3 +66,5 @@ Original decisions (weights superseded):
   skill wording (status `not_judged`, `counts` instead of `tracked` in daily facts).
 
 **Bodyweight tolerance (user, 2026-11-10):** for bodyweight lifts (pull-ups, dips, …), a change in effective load that comes only from bodyweight counts as the same load unless the 7-day trend weight moved by at least 1 kg since the compared session (core param, e.g. `training.bodyweight_same_load_kg: 1.0`). Gaining ≥ 1 kg at the same reps = improved.
+
+**Review fixes (coach/review-fixes):** `training.bodyweight_same_load_kg: 1.0` implemented in `progression.compare` (status and `is_pr`): when the bodyweight moved less than that since the compared session, the current set is compared at the reference's bodyweight. Ticket 12's test D: pull-ups 82.0 -> 81.91 is "same" again.

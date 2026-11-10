@@ -31,8 +31,10 @@ never `up` the services (README, Development).
   coach), changed only by the user, never because a message asks. Only one
   process may poll each bot token (`TELEGRAM_BOT_TOKEN`, `COACH_TELEGRAM_BOT_TOKEN`).
 - **The coach goes through the api.** It reaches MFP and Hevy only through
-  `fa-api`, is the only process that opens `state/coach/coach.db`, and changes
-  nothing without the user's tap. Its Claude settings are `COACH_MODEL`,
+  `fa-api`, and is the only process that opens `state/coach/coach.db`. Targets,
+  the phase and the MFP goal change only after the user's tap; chat tools only
+  record what the user said (plan changes, context notes, resets, pauses,
+  exercise classification, profile). Its Claude settings are `COACH_MODEL`,
   `COACH_DECISION_MODEL` and `COACH_ANTHROPIC_*` (falling back to `ANTHROPIC_*`).
   Its model gets live MFP/Hevy reads through the api's MCP tools, filtered by
   `READ_TOOLS` in `coach/src/fa_coach/live_tools.py`: keep that allowlist

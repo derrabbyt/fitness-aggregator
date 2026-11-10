@@ -43,3 +43,8 @@
   A user_request's week defaults to the latest stored check-in.
 - proposal.schema.json `new_values`: added `lifting_kcal_per_session`; ranges moved to the
   guardrail (phase_setup ranges) so a blocked proposal can hold out-of-range values.
+
+**Review fixes (coach/review-fixes):**
+- New guardrail `size_or_direction_mismatch`, `weekly_decision` only: direction from the scenario (reverse_bulk C increase, E decrease, all else no calorie change), size from the based-on week's stored rate vs the band edge (`far_off_margin_kg_per_week` or more beyond it: `large_step_kcal`, else `small_step_kcal`, ±25 kcal). For E the distance is measured from the band's high edge, so E is normally the large step. A phase's first change skips the size part. Phases without a table in code (cut, maintenance drafts) get no check.
+- Not done: confirmation streaks still use the stored verdict `direction`; computing it from `vs_band` needs the phase table and `progression_met` and would break many fixtures whose facts and scenarios don't match.
+- Lockout window: for `weekly_decision` / `user_counter` changes, week 1 is the check-in week the change was approved in (aligned to the check-in weekday), so approving a day late doesn't add a week; `recheck_on` follows. Other sources keep the approval day.

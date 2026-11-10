@@ -95,7 +95,7 @@ async def test_sync_command_says_which_source_failed(coach, api, outbox):
 
     assert outbox.texts == [
         "Synced 112 days from MFP (2026-07-21 to 2026-11-09).\n"
-        "Hevy failed: 502 Bad Gateway\n"
+        "Hevy failed: the sync failed (RuntimeError)\n"
         "Last sync: never."
     ]
 
@@ -163,7 +163,7 @@ async def test_stale_data_gets_one_notice_per_stale_stretch(coach, api, clock, o
     await coach.run_due_jobs(clock.advance(hours=4))
 
     assert outbox.texts == [
-        "No successful sync since Mon 9 Nov 09:00 (MFP: 502 Bad Gateway). "
+        "No successful sync since Mon 9 Nov 09:00 (MFP: the sync failed (RuntimeError)). "
         "Weeks without fresh data may not count. /sync retries."
     ]
     assert freshness(coach, clock.now())["fresh"] is False
@@ -179,7 +179,7 @@ async def test_stale_data_gets_one_notice_per_stale_stretch(coach, api, clock, o
     await coach.run_due_jobs()
 
     assert len(outbox.texts) == 2
-    assert outbox.texts[1].startswith("No successful sync since Wed 11 Nov 03:00 (Hevy: 502 Bad Gateway).")
+    assert outbox.texts[1].startswith("No successful sync since Wed 11 Nov 03:00 (Hevy: the sync failed (RuntimeError)).")
 
 
 async def test_a_day_mfp_could_not_read_is_skipped_and_reported(coach, api, outbox):
@@ -199,7 +199,7 @@ async def test_a_first_sync_that_fails_gets_a_notice(coach, api, outbox):
     await coach.run_due_jobs()
 
     assert outbox.texts == [
-        "No successful sync yet (MFP: 502 Bad Gateway; Hevy: 502 Bad Gateway). "
+        "No successful sync yet (MFP: the sync failed (RuntimeError); Hevy: the sync failed (RuntimeError)). "
         "Weeks without fresh data may not count. /sync retries."
     ]
 

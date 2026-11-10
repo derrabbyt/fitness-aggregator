@@ -12,6 +12,7 @@ daily target of 2400 kcal; macros at the W49 trend weight 82.1 kg: protein
 """
 
 from fa_coach import phases, proposals
+from fa_coach.ports import Goal
 from fakes import reply, reply_json, tool_call
 from test_weekly_checkin import at, check_in, fill_week, phase, three_weeks, verdict  # noqa: F401
 
@@ -20,7 +21,9 @@ UP = {"type": "calorie_change", "delta_kcal": 100, "size": "small", "reason": "G
 NEW_GOAL = {"kcal": 2400, "protein_g": 164, "carbs_g": 270, "fat_g": 74}
 
 
-def c_week(iso: str, *, delta: int = 100, scenario: str = "C") -> dict:
+def c_week(iso: str, *, delta: int = 100, scenario: str | None = None) -> dict:
+    """A verdict with a proposal: scenario C for an increase, E for a decrease."""
+    scenario = scenario or ("C" if delta > 0 else "E")
     return verdict(iso, scenario=scenario, direction="increase" if delta > 0 else "decrease",
                    proposal={**UP, "delta_kcal": delta})
 
@@ -127,7 +130,7 @@ async def test_approve_applies_once_even_on_a_double_tap(phase, api, clock, mode
 
 async def test_a_failed_goal_write_is_reported_not_retried_and_the_targets_stand(phase, api, clock, model, outbox):
     await two_c_weeks(phase, api, clock, model)
-    api.goal = {"kcal": 2300, "protein_g": 161, "carbs_g": 251, "fat_g": 72}
+    api.goal = Goal(kcal=2300, protein_g=161, carbs_g=251, fat_g=72)
     api.goal_write = "rejected"
 
     text = await approve_tap(phase, outbox, taps=2)
@@ -163,14 +166,14 @@ async def test_approving_one_change_retires_other_open_calorie_proposals(phase, 
     await two_c_weeks(phase, api, clock, model)
     older = last_card(outbox)
     fill_week(api, 5)
-    await check_in(phase, clock, model, "2026-12-14", c_week("2026-W50", delta=150))
+    await check_in(phase, clock, model, "2026-12-14", c_week("2026-W50", delta=120))
 
     await phase.on_button("approve_proposal", last_card(outbox).buttons[0][0].ref_id, at("2026-12-14", 10))
 
     assert [p["status"] for p in proposals.listing(phase)] == ["approved", "superseded"]
     assert "Not needed any more" in [e for e in outbox.edits if e.ref == older.ref][-1].text
     await phase.on_button("approve_proposal", older.buttons[0][0].ref_id, at("2026-12-14", 11))
-    assert [g["kcal"] for g in goal_writes(api)] == [2450]
+    assert [g["kcal"] for g in goal_writes(api)] == [2420]
 
 
 # --- reject, counter, silence ----------------------------------------------------------
@@ -233,7 +236,7 @@ async def test_a_change_above_the_max_is_blocked_and_the_report_has_no_buttons(p
     await two_c_weeks(phase, api, clock, model, delta=300)
 
     result = blocked(model)
-    assert result["guardrail"]["violations"] == ["exceeds_max_change"]
+    assert result["guardrail"]["violations"] == ["exceeds_max_change", "size_or_direction_mismatch"]
     assert "±200 kcal" in result["guardrail"]["details"][0]["text"]
     assert last_card(outbox).buttons == ()
 
@@ -246,6 +249,63 @@ async def test_a_change_too_soon_after_the_last_one_is_locked_out(phase, api, cl
     assert result["guardrail"]["violations"] == ["lockout", "confirmation_not_met"]
     lockout = result["guardrail"]["details"][0]
     assert lockout["earliest_checkin"] == "2026-12-07" and "Mon 07 Dec" in lockout["text"]
+
+
+async def c_weeks_at(coach, api, clock, model, w49_avg: float, w49: dict) -> dict:
+    """W48 points to an increase; W49 (prev average 82.0) at `w49_avg` with the verdict `w49`."""
+    await three_weeks(coach, api, clock, model)
+    await check_in(coach, clock, model, "2026-11-30", verdict("2026-W48", scenario="C", direction="increase"))
+    fill_week(api, 4, avg=w49_avg)
+    await check_in(coach, clock, model, "2026-12-07", w49)
+    return report_input(model)["proposal_result"]
+
+
+async def test_a_step_larger_than_the_trend_calls_for_is_blocked(phase, api, clock, model, outbox):
+    # rate +0.05 kg/week, 0.05 below the 0.1-0.3 band: slightly off, so about +100
+    result = await c_weeks_at(phase, api, clock, model, 82.05, c_week("2026-W49", delta=200))
+
+    assert result["status"] == "blocked_by_guardrail"
+    assert result["guardrail"]["violations"] == ["size_or_direction_mismatch"]
+    assert "+100" in result["guardrail"]["details"][0]["text"]
+    assert last_card(outbox).buttons == ()
+
+
+async def test_far_below_the_band_the_large_step_passes(phase, api, clock, model, outbox):
+    # rate -0.05 kg/week, 0.15 below the band (more than 0.1): far off, so about +200
+    result = await c_weeks_at(phase, api, clock, model, 81.95, c_week("2026-W49", delta=200))
+
+    assert result["status"] == "open"
+
+
+async def test_a_change_the_scenario_doesnt_call_for_is_blocked(phase, api, clock, model, outbox):
+    # scenario C calls for an increase; scenario A for no calorie change
+    down = await c_weeks_at(phase, api, clock, model, 82.05,
+                            verdict("2026-W49", scenario="C", direction="increase", proposal={**UP, "delta_kcal": -100}))
+    fill_week(api, 5)
+    await check_in(phase, clock, model, "2026-12-14", verdict("2026-W50", scenario="A", proposal=UP))
+    hold = report_input(model)["proposal_result"]
+
+    assert down["guardrail"]["violations"] == ["confirmation_not_met", "size_or_direction_mismatch"]
+    assert "an increase of about +100" in mismatch(down)
+    assert hold["guardrail"]["violations"] == ["confirmation_not_met", "size_or_direction_mismatch"]
+    assert "no calorie change" in mismatch(hold)
+
+
+def mismatch(result: dict) -> str:
+    return next(d["text"] for d in result["guardrail"]["details"] if d["violation"] == "size_or_direction_mismatch")
+
+
+async def test_the_lockout_counts_from_the_check_in_week_whatever_day_the_change_is_approved(
+        phase, api, clock, model, outbox):
+    await two_c_weeks(phase, api, clock, model)
+    await phase.on_button("approve_proposal", last_card(outbox).buttons[0][0].ref_id, at("2026-12-08", 10))
+    fill_week(api, 5, kcal=2400)  # W50 (7-13 Dec) is week 1 of the new window although approved on the 8th
+    await check_in(phase, clock, model, "2026-12-14", verdict("2026-W50", scenario="C", direction="increase"))
+    assert report_input(model)["changes_applied"][0]["recheck_on"] == "2026-12-21"
+    fill_week(api, 6, kcal=2400, avg=82.3)
+    await check_in(phase, clock, model, "2026-12-21", c_week("2026-W51"))
+
+    assert report_input(model)["proposal_result"]["status"] == "open"
 
 
 async def test_too_fast_needs_only_one_confirming_week(phase, api, clock, model, outbox):
@@ -314,6 +374,16 @@ async def test_a_request_based_on_a_failed_adherence_week_is_blocked(phase, api,
     result = await request(phase, clock, model, type="calorie_change", delta_kcal=100)
 
     assert "adherence_gate" in result["guardrail"]["violations"]
+
+
+async def test_a_phase_review_proposal_is_not_accepted(phase, api, clock, model, outbox):
+    clock.current = at("2026-12-08", 12)
+    model.script(tool_call("propose_change", type="calibration_change", new_values={"run_kcal_discount": 0.8},
+                           reason="Drifted.", source="phase_review"), reply("OK."))
+    await phase.on_message("review my phase")
+
+    assert model.results(len(model.requests) - 2)[0].is_error
+    assert proposals.listing(phase) == []
 
 
 async def test_calibration_values_out_of_range_are_blocked(phase, api, clock, model, outbox):

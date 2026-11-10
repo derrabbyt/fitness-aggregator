@@ -10,7 +10,7 @@
     "id": { "type": "string" },
     "type": { "enum": ["calorie_change", "calibration_change"] },
     "source": {
-      "enum": ["weekly_decision", "user_counter", "user_request", "phase_start", "phase_review"],
+      "enum": ["weekly_decision", "user_counter", "user_request", "phase_start"],
       "description": "user_counter: user replied to a proposal with their own number. user_request: user asked for a change unprompted."
     },
     "status": { "enum": ["open", "approved", "rejected", "superseded", "blocked_by_guardrail"] },
@@ -45,7 +45,7 @@
         "passed": { "type": "boolean" },
         "violations": {
           "type": "array",
-          "items": { "enum": ["exceeds_max_change", "lockout", "confirmation_not_met", "rejected_return_too_early", "week_unusable", "adherence_gate", "invalid_values"] }
+          "items": { "enum": ["exceeds_max_change", "lockout", "confirmation_not_met", "rejected_return_too_early", "week_unusable", "adherence_gate", "invalid_values", "size_or_direction_mismatch"] }
         },
         "details": {
           "type": "array",

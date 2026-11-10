@@ -476,6 +476,7 @@
     "training": {
       "rep_range": [4, 20],
       "e1rm_same_band_pct": 1,
+      "bodyweight_same_load_kg": 1.0,
       "compare_best_of_last_sessions": 3,
       "min_sessions_for_compare": 2,
       "lift_recency_days": 14,

@@ -33,6 +33,9 @@ Guardrails (coach-skills/schemas/TOOLS.md):
    still pointing that way.
 5. week_unusable / adherence_gate: the week the proposal is based on.
 6. invalid_values: calibration values outside phase_setup's ranges.
+7. size_or_direction_mismatch (weekly_decision only): the direction the
+   scenario calls for and the step size the trend calls for
+   (`_size_or_direction`).
 `phase_start` skips 2-4; a calibration change is checked only by 6.
 """
 
@@ -48,9 +51,12 @@ if TYPE_CHECKING:
 
 Date = datetime.date
 DAY = datetime.timedelta(days=1)
-WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
 # The phase decision table's "too fast" scenario: one confirming week is enough.
 FAST_LANE_SCENARIO = {"reverse_bulk": "E", "cut": "too_fast"}
+# The phase decision table's scenarios that change calories (all others: no
+# calorie change). Phases not listed (drafts) get no size/direction check.
+SCENARIO_DIRECTION = {"reverse_bulk": {"C": "increase", "E": "decrease"}}
+STEP_TOLERANCE_KCAL = 25
 CALIBRATION_KEYS = phases.CALIBRATION_KEYS
 DECIDED = ("approved", "rejected", "superseded")
 
@@ -156,13 +162,14 @@ def _guardrails(coach, phase, spec, based_on: str | None, original, now) -> tupl
     based = next((v for v in verdicts if v["iso_week"] == based_on), None)
     if spec["source"] != "phase_start":
         history = phases.target_history(coach)
-        since = history[-1]["valid_from"] if history else None
+        since = weekly_facts.window_start(coach, history[-1]) if history else None
         fast = based is not None and based["scenario"] == FAST_LANE_SCENARIO.get(phase["phase_id"])
         need = d["confirmation_weeks_fast_lane"] if fast else d["confirmation_weeks"]
         counted = [v for v in verdicts if v["counts_for_confirmation"] and (since is None or v["start_date"] >= since)]
         if len(counted) < need:
             missing = need - len(counted)
-            found.append(("lockout", f"Only {_weeks(len(counted))} counted since the last change on {since}; "
+            found.append(("lockout", f"Only {_weeks(len(counted))} counted since the last change on "
+                          f"{history[-1]['valid_from']}; "
                           f"a change needs {need}.", _earliest(coach, now, missing)))
         inherits = (spec["source"] == "user_counter" and original is not None and original["type"] == "calorie_change"
                     and (original["delta_kcal"] > 0) == (delta > 0))
@@ -184,7 +191,44 @@ def _guardrails(coach, phase, spec, based_on: str | None, original, now) -> tupl
     if based is not None and based["skip_reason"] == "adherence_gate":
         found.append(("adherence_gate", f"Week {based_on} failed the adherence gate (intake off target or "
                       "incomplete logs), so no change can be based on it.", _earliest(coach, now, 1)))
+    if spec["source"] == "weekly_decision" and based is not None:
+        wrong = _size_or_direction(coach, phase, based, delta, first, d)
+        if wrong:
+            found.append(("size_or_direction_mismatch", wrong, None))
     return _pack(found)
+
+
+def _size_or_direction(coach, phase, based: dict[str, Any], delta: int, first: bool, d) -> str | None:
+    """What a verdict's calorie change should be, by code: the direction from
+    the scenario, the size from how far the trend is outside the band
+    (`decisions.far_off_margin_kg_per_week` or more: the large step, else the
+    small one, ±STEP_TOLERANCE_KCAL). A phase's first change keeps its start
+    range (exceeds_max_change). None if it matches, else what code expected."""
+    table = SCENARIO_DIRECTION.get(phase["phase_id"])
+    if table is None:
+        return None  # no decision table in code for this phase yet
+    want = table.get(based["scenario"])
+    week = f"week {based['iso_week']} (scenario {based['scenario']})"
+    if want is None:
+        return f"For {week} code expected no calorie change; this is {delta:+} kcal a day."
+    sign = 1 if want == "increase" else -1
+    expected, why = f"an {want}", ""
+    step = None
+    if not first:  # a phase's first change keeps its start range (exceeds_max_change)
+        facts = coach.db.value("SELECT facts FROM weekly_checkins WHERE status = 'ok' AND phase_row_id = ?"
+                               " AND iso_week = ? ORDER BY id DESC LIMIT 1", (phase["id"], based["iso_week"]))
+        weight = json.loads(facts)["weight"] if facts else {}
+        rate, band = weight.get("weekly_rate_kg"), weight.get("band")
+        if rate is not None and band is not None:
+            beyond = round(band["low"] - rate if want == "increase" else rate - band["high"], 2)
+            far = beyond >= d["far_off_margin_kg_per_week"]
+            step = d["large_step_kcal"] if far else d["small_step_kcal"]
+            expected += f" of about {sign * step:+g} kcal a day"
+            why = (f": the trend ({rate:+.2f} kg/week) is {max(beyond, 0):.2f} kg/week outside the band "
+                   f"({'at least' if far else 'less than'} {d['far_off_margin_kg_per_week']:g})")
+    if delta * sign > 0 and (step is None or abs(abs(delta) - step) <= STEP_TOLERANCE_KCAL):
+        return None
+    return f"For {week} code expected {expected}{why}; this is {delta:+} kcal a day."
 
 
 def _pack(found) -> tuple[list[str], list[dict[str, Any]]]:
@@ -229,15 +273,10 @@ def _invalid_values(coach, values: dict[str, Any]) -> list[str]:
 # --- check-in dates ----------------------------------------------------------------------
 
 
-def _checkin_day(coach) -> int | None:
-    setting = phases.params(coach)["messaging"].get("weekly_checkin")
-    return WEEKDAYS.index(setting.strip().lower()[:3]) if setting else None
-
-
 def _earliest(coach, now: datetime.datetime, weeks: int) -> Date | None:
     """The check-in that has seen `weeks` more weeks: the next one after
     `now`, plus `weeks - 1` weeks."""
-    weekday = _checkin_day(coach)
+    weekday = weekly_facts.checkin_weekday(coach)
     if weekday is None:
         return None
     return checkin_on_or_after(now.date() + DAY, weekday) + (max(weeks, 1) - 1) * 7 * DAY
@@ -247,14 +286,17 @@ def checkin_on_or_after(day: Date, weekday: int) -> Date:
     return day + ((weekday - day.weekday()) % 7) * DAY
 
 
-def recheck_on(coach, applied_on: Date) -> Date | None:
+def recheck_on(coach, applied_on: Date, source: str) -> Date | None:
     """The first check-in that can confirm the next change after one applied
-    on `applied_on`: its weeks must start on or after that day."""
-    weekday = _checkin_day(coach)
+    on `applied_on`: its weeks start on or after the change's window start
+    (`weekly_facts.window_start`)."""
+    weekday = weekly_facts.checkin_weekday(coach)
     if weekday is None:
         return None
     need = phases.params(coach)["decisions"]["confirmation_weeks"]
-    return checkin_on_or_after(applied_on + 7 * DAY, weekday) + (need - 1) * 7 * DAY
+    start = Date.fromisoformat(weekly_facts.window_start(coach, {"source": source,
+                                                                 "valid_from": applied_on.isoformat()}))
+    return checkin_on_or_after(start + 7 * DAY, weekday) + (need - 1) * 7 * DAY
 
 
 # --- decide ------------------------------------------------------------------------------
@@ -469,7 +511,7 @@ def changes_applied(coach: "Coach", iso_week: str, now: datetime.datetime) -> li
     for row in rows:
         p, outcome = _proposal(row), json.loads(row["outcome"])
         applied = Date.fromisoformat(outcome["applied_on"])
-        recheck = recheck_on(coach, applied)
+        recheck = recheck_on(coach, applied, p["source"])
         item = {"proposal_id": p["id"], "type": p["type"], "source": p["source"], "approved_on": applied.isoformat(),
                 "why": p["reason"], "what": outcome["summary"], "recheck_on": recheck.isoformat() if recheck else None}
         if p["type"] == "calorie_change":
