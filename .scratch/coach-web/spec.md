@@ -85,6 +85,7 @@ The page reads the coach's stored data and opens instantly. A refresh button syn
 34. As the user, I want planned wrestling listed like any other activity, without a "planned" tag, so that the block stays clean.
 35. As the user, I want one trend line ("5 of 7 lifts progressing · 1 stall · 2 PRs this week") without jargon like "counting lifts", so that I know if training is moving.
 36. As the user, I want to tap training to open the Training tab, so that detail lives in one place.
+36a. As the user, I want a 4-week strength trend line (average % change of my counting lifts' estimated 1RM) with one number like "+3.2 % in 4 weeks", on Home's Gym block and at the top of the Training tab, so that I see at a glance whether I'm improving or stalling overall.
 
 ### Home: sleep
 
