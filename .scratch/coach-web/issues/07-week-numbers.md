@@ -8,3 +8,7 @@
 
 - [ ] Read model and schema extended; tests cover each block for a finished and an in-progress week, partial days marked, flags present / absent
 - [ ] UI blocks; build + screenshots in Comments; tests green
+
+## Decisions
+
+- **Default week (orchestrator, 2026-11-11):** on the check-in day and the day after, the Week tab opens on the week just judged (so the new decision is the first thing seen); otherwise on the week in progress. Change the `week` default in ticket 06's read model accordingly and test it.
