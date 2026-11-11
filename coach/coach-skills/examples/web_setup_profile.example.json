@@ -1,0 +1,10 @@
+{
+  "entries": [
+    { "key": "quiet hours", "value": "no messages before 7:00 or after 22:00" },
+    { "key": "sport", "value": "freestyle wrestling, 2–3 sessions a week" },
+    { "key": "units", "value": "kg and cm" }
+  ],
+  "max_key": 40,
+  "max_value": 200,
+  "max_entries": 30
+}

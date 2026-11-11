@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_setup_context_notes.schema.json",
+  "title": "Web: Setup, Context notes",
+  "description": "GET /api/coach/setup/context-notes. Every context note, newest first (by applies_from). POST /api/coach/setup/context-notes/add {text, applies_from, applies_to?, tags, suggest_unusable? ('no' by default), exercise_id?} runs chat's add_context_note with `text` as the user's words; POST /api/coach/setup/context-notes/delete {id} runs chat's delete_context_note. Both return this view.",
+  "type": "object",
+  "required": ["today", "tag_options", "notes"],
+  "additionalProperties": false,
+  "properties": {
+    "today": { "type": "string", "format": "date" },
+    "tag_options": {
+      "type": "array",
+      "description": "Every tag a note can carry (context_note.schema.json).",
+      "items": { "type": "string" }
+    },
+    "notes": { "type": "array", "items": { "$ref": "context_note.schema.json" } }
+  }
+}

@@ -60,7 +60,8 @@ docker compose run --rm test        # tests on the working tree, no rebuild need
   passes `/api/coach/*` through unchanged (`FA_COACH_URL`). `GET
   /api/coach/<view>?day=…` returns a read model, `POST
   /api/coach/refresh/<view>` syncs first, `POST /api/coach/<command>` is an
-  edit. Read models are views registered in `coach/src/fa_coach/views.py`'s
+  edit, and `GET /api/coach/photos/<date>/<n>` serves one progress photo
+  read-only. Read models are views registered in `coach/src/fa_coach/views.py`'s
   pattern (`@registry.view`, `@registry.view_part`, `@registry.web_command`),
   each with a schema `coach/coach-skills/schemas/web_*.schema.json`, tested
   through the Coach core like everything else.

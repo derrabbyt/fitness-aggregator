@@ -1,0 +1,34 @@
+/* Shared by the Setup pages that list records (exercises, notes, profile, measurements):
+   buttons outside app-edit-row, inline forms, record rows, chips, inline messages. */
+.btn { height: 36px; padding: 0 14px; border-radius: var(--radius-inner); font-weight: 500;
+  background: var(--inset); color: var(--text); }
+.btn.primary { background: var(--fill); color: var(--container); }
+.btn.danger { background: var(--destructive); color: #fff; }
+.btn[disabled] { opacity: .5; cursor: default; }
+.link { padding: 6px 10px; border-radius: var(--radius-inner); color: var(--info); font-weight: 500; }
+.link.danger { color: var(--destructive); }
+.link[disabled] { opacity: .5; cursor: default; }
+@media (hover: hover) { .link:not([disabled]):hover { background: var(--inset); } }
+@media (pointer: coarse) { .btn { height: 44px; } .link { padding: 10px 12px; } }
+.btns { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.msg { margin: 8px 0 0; }
+.rows { list-style: none; margin: 0; padding: 0; }
+.rows > li { padding: 12px 0; border-top: 1px solid var(--divider); }
+.rows > li:first-child { border-top: 0; padding-top: 0; }
+.rows > li:last-child { padding-bottom: 0; }
+.form { display: grid; gap: 12px; }
+.field { display: grid; gap: 6px; min-width: 0; }
+.field > span { font-size: 13px; color: var(--text-2); }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.form input[type="text"], .form textarea, .form input[type="date"] { width: 100%; }
+textarea { font: inherit; color: var(--text); background: var(--container); padding: 10px 12px; min-height: 76px;
+  border-radius: var(--radius-inner); border: 0; resize: vertical;
+  box-shadow: inset 0 0 0 1px var(--divider), 0 1px 2px rgba(11, 11, 11, .04); }
+textarea:focus-visible { outline: 2px solid var(--info); outline-offset: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; height: 26px; padding: 0 10px; border-radius: 13px;
+  font-size: 13px; background: var(--inset); color: var(--text-2); }
+button.chip { height: 32px; }
+button.chip[aria-pressed="true"] { background: var(--fill); color: var(--container); }
+@media (pointer: coarse) { button.chip { height: 36px; } }
+.empty { margin: 0; }

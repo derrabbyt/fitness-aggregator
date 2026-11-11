@@ -1,7 +1,7 @@
 """The Coach core: the one seam tests drive (spec, "Coach core").
 
 Inputs: `sync`, `run_due_jobs`, `on_message`, `on_photo`, `on_button`, and
-for the web page `view`, `refresh` and `command` (views.py).
+for the web page `view`, `refresh`, `command` (views.py) and `photo`.
 Outputs: `Send` / `Edit` items in the outbox, plus state in the database.
 Dependencies are injected: api client, model client, clock, outbox.
 Model tasks run through `coach.ask(...)` (ask.py): the prompt layout, the
@@ -134,6 +134,17 @@ class Coach:
                       now: datetime.datetime | None = None) -> Any:
         """An edit from the web page (a registered web command)."""
         return await views.command(self, name, body or {}, now or self.clock.now())
+
+    def photo(self, set_date: str, number: int) -> bytes:
+        """Photo `number` (1-based) of the `set_date` set, read-only, for the
+        web page (`photos/<date>/<n>` in setup/measurements). Raises
+        `views.WebError` 404 when there is no such photo."""
+        from .features import measurements  # the photo store belongs to the measurements feature
+
+        path = measurements.photo_file(self, set_date, number)
+        if path is None:
+            raise views.WebError(404, "There is no such photo.")
+        return path.read_bytes()
 
     # --- model ---------------------------------------------------------------
 

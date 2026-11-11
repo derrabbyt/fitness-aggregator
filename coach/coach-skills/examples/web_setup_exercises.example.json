@@ -1,0 +1,10 @@
+{
+  "since": "2026-07-22",
+  "exercises": [
+    { "exercise_id": "79D0BB3A", "title": "Bench Press (Barbell)", "counts": true, "classified": true, "paused": false, "paused_reason": null, "bodyweight": false, "sessions": 14, "last_date": "2026-11-10" },
+    { "exercise_id": "C6272009", "title": "Copenhagen Plank", "counts": false, "classified": true, "paused": false, "paused_reason": null, "bodyweight": true, "sessions": 9, "last_date": "2026-11-09" },
+    { "exercise_id": "1B2B1E7C", "title": "Pull Up (Weighted)", "counts": true, "classified": true, "paused": false, "paused_reason": null, "bodyweight": true, "sessions": 12, "last_date": "2026-11-10" },
+    { "exercise_id": "D04AC939", "title": "Squat (Barbell)", "counts": true, "classified": true, "paused": true, "paused_reason": "left knee", "bodyweight": false, "sessions": 11, "last_date": "2026-11-06" },
+    { "exercise_id": "06745E58", "title": "Tibialis Raise", "counts": true, "classified": false, "paused": false, "paused_reason": null, "bodyweight": false, "sessions": 1, "last_date": "2026-11-10" }
+  ]
+}

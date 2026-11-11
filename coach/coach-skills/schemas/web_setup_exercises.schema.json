@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_setup_exercises.schema.json",
+  "title": "Web: Setup, Exercises",
+  "description": "GET /api/coach/setup/exercises. Every exercise in the synced Hevy history since `since` (16 weeks), alphabetically, as counting or not counted for weekly progression. POST /api/coach/setup/exercises/classify {exercise_id, classification: 'counts'|'excluded'} runs chat's classify_exercises; POST /api/coach/setup/exercises/pause {exercise_id, paused, reason?} runs chat's set_exercise_paused. Both return this view.",
+  "type": "object",
+  "required": ["since", "exercises"],
+  "additionalProperties": false,
+  "properties": {
+    "since": { "type": "string", "format": "date" },
+    "exercises": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["exercise_id", "title", "counts", "classified", "paused", "paused_reason", "bodyweight", "sessions", "last_date"],
+        "additionalProperties": false,
+        "properties": {
+          "exercise_id": { "type": "string", "minLength": 1 },
+          "title": { "type": "string", "minLength": 1 },
+          "counts": { "type": "boolean", "description": "Counts for weekly progression (false: excluded, still logged)." },
+          "classified": { "type": "boolean", "description": "false: not classified yet, so it counts by default." },
+          "paused": { "type": "boolean", "description": "Logged but not judged (e.g. around an injury)." },
+          "paused_reason": { "type": ["string", "null"] },
+          "bodyweight": { "type": "boolean" },
+          "sessions": { "type": "integer", "minimum": 1 },
+          "last_date": { "type": "string", "format": "date" }
+        }
+      }
+    }
+  }
+}

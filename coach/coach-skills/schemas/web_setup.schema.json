@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "web_setup.schema.json",
   "title": "Web: Setup",
-  "description": "GET /api/coach/setup. The Setup tab's section list. This schema is the envelope; each section is a view part with a one-line summary (web_setup_summary.schema.json, checked by fa_coach.views.errors) and its own detail view GET /api/coach/setup/<section>. Sections so far: phase_targets, activity, messaging; later tickets add parts. The page shows a section without a part as coming soon.",
+  "description": "GET /api/coach/setup. The Setup tab's section list. This schema is the envelope; each section is a view part with a one-line summary (web_setup_summary.schema.json, checked by fa_coach.views.errors) and its own detail view GET /api/coach/setup/<section>. Sections so far: phase_targets, activity, messaging, exercises, context_notes, profile, measurements; later tickets add parts. The page shows a section without a part as coming soon.",
   "type": "object",
   "required": ["phase_active", "setup_open"],
   "properties": {
