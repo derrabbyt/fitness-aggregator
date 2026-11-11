@@ -10,8 +10,9 @@ Schema: coach-skills/schemas/web_strength_trend.schema.json.
 - Each day D of the series looks back over the `training.strength_trend_days`
   (28) days ending on D. Every counting lift trained in that window gives
   its latest value as % of its first value in the window (its latest
-  baseline reset inside the window starts it instead). A lift trained once
-  is at 100 %. D's point is the mean over those lifts (null without any), so
+  baseline reset inside the window starts it instead). A lift needs at least
+  2 sessions there (since its last reset) to count, so a new lift doesn't pull
+  the line toward 100 %. D's point is the mean over those lifts (null without any), so
   the line steps when sessions happen and when old sessions leave the window.
 - The rate is the last point's change over the window in % per week
   ((point - 100) / (window days / 7)): within ±`training.e1rm_same_band_pct`
@@ -60,11 +61,12 @@ def _values(entries: list[dict[str, Any]]) -> list[tuple[str, float, bool]]:
 
 
 def _pct(history: list[tuple[str, float, bool]], start: Date, end: Date) -> float | None:
-    """The lift's latest value in start..end as % of its first one there (after a reset), None if untrained."""
+    """The lift's latest value in start..end as % of its first one there (after a reset); None with fewer
+    than 2 sessions."""
     window = [v for v in history if start.isoformat() <= v[0] <= end.isoformat()]
     resets = [n for n, v in enumerate(window) if v[2]]
     if resets:
         window = window[resets[-1]:]
-    if not window:
+    if len(window) < 2:  # a lift needs two sessions in the window to show a change
         return None
     return window[-1][1] / window[0][1] * 100
