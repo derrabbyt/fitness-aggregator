@@ -1,0 +1,7 @@
+{
+  "editable": true,
+  "weekly_checkin": { "day": "mon", "time": "09:00" },
+  "evening_reminder_time": "20:30",
+  "max_unprompted_messages_per_day": 2,
+  "soft_floor_min_days": 5
+}
