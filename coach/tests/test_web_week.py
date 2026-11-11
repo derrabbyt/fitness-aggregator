@@ -66,12 +66,13 @@ async def test_the_week_in_progress_has_no_decision_and_carries_the_open_proposa
     await two_c_weeks(phase, api, clock, model)  # now Mon 7 Dec 09:00
     api.days["2026-12-07"] = {"weight_kg": 82.2, "steps": 9000}
     await phase.sync()
+    clock.current = at("2026-12-09")  # Wednesday: the default is the week in progress again
 
     w = week(phase)
 
     assert (w["iso_week"], w["start"], w["end"]) == ("2026-W50", "2026-12-07", "2026-12-13")
     assert (w["state"], w["is_current"], w["decision"], w["report"]) == ("in_progress", True, None, None)
-    assert w["so_far"] == {"days": 1, "weigh_ins": 1, "food_days_logged": 0}
+    assert w["so_far"] == {"days": 3, "weigh_ins": 1, "food_days_logged": 0}
     assert w["checkin_at"] == "2026-12-14T09:00:00+01:00"
     assert (w["prev_week"], w["next_week"]) == ("2026-W49", None)
     assert [(p["status"], p["based_on_week"]) for p in w["proposals"]] == [("open", "2026-W49")]
@@ -86,7 +87,7 @@ async def test_an_approved_change_shows_when_it_applied(phase, api, clock, model
     assert (p["status"], p["applied_on"]) == ("approved", "2026-12-07")
     assert p["avg_daily_target_kcal"] == {"before": 2300, "after": 2400}
     assert p["mfp_goal_after_kcal"] is None
-    assert week(phase)["proposals"] == []  # nothing open any more
+    assert week(phase, "2026-W50")["proposals"] == []  # nothing open any more
 
 
 async def test_a_blocked_proposal_is_a_hold_with_the_guardrails_reasons(phase, api, clock, model):
@@ -198,3 +199,28 @@ async def test_weeks_go_back_to_the_phase_start_and_not_into_the_future(phase, a
             assert (exc.status, exc.message) == (400, reason)
         else:
             raise AssertionError(bad)
+
+
+# --- the default week (ticket 07's decision) ----------------------------------------------
+
+
+async def test_on_the_check_in_day_and_the_day_after_the_default_is_the_week_just_judged(phase, api, clock, model):
+    await three_weeks(phase, api, clock, model)
+    await check_in(phase, clock, model, "2026-11-30", verdict("2026-W48"))
+
+    for now, expected in ((at("2026-11-30", 10), "2026-W48"), (at("2026-12-01", 23), "2026-W48"),
+                          (at("2026-12-02", 0), "2026-W49")):
+        clock.current = now
+        w = week(phase)
+        assert w["iso_week"] == expected, now
+        assert w["state"] == ("decided" if expected == "2026-W48" else "in_progress")
+    clock.current = at("2026-12-01")
+    assert week(phase)["next_week"] == "2026-W49"
+
+
+async def test_before_the_check_in_has_run_the_default_is_the_week_in_progress(phase, api, clock, model):
+    fill_week(api, 1)
+    clock.current = at("2026-11-16", 8)  # the check-in runs at 09:00
+    await phase.sync()
+
+    assert week(phase)["iso_week"] == "2026-W47"

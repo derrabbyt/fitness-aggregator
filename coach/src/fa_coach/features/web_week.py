@@ -31,6 +31,7 @@ from .web_home import check_in_week_start
 Date = datetime.date
 DAY = datetime.timedelta(days=1)
 ISO_WEEK = re.compile(r"^(\d{4})-W(\d{2})$")
+JUST_JUDGED_DAYS = 1  # the default week stays on the judged one through the day after the check-in
 
 UNUSABLE_WORDS = {
     "stale_sync": "the data wasn't synced in time",
@@ -54,12 +55,17 @@ class Week:
 
 
 def resolve(coach, query: dict[str, str], now: datetime.datetime) -> Week:
-    """The check-in week of `?week=YYYY-Www` (default: the one holding today).
-    A week that hasn't started is refused."""
+    """The check-in week of `?week=YYYY-Www`. By default the one holding
+    today, except on the check-in day and the day after, when it is the week
+    just judged (once its check-in has run), so the new decision is seen
+    first. A week that hasn't started is refused."""
     today = now.date()
     raw = query.get("week")
     if not raw:
         start = check_in_week_start(coach, today)
+        if (today - start).days <= JUST_JUDGED_DAYS and weekly_facts.checkin_weekday(coach) is not None \
+                and _checked_in(coach, weekly_facts.iso_week(start - DAY)):
+            start -= 7 * DAY
     else:
         match = ISO_WEEK.match(raw)
         try:
@@ -78,6 +84,11 @@ def resolve(coach, query: dict[str, str], now: datetime.datetime) -> Week:
     if stored is not None:
         start = Date.fromisoformat(stored["start_date"])
     return Week(iso, start, start + 6 * DAY, today, stored)
+
+
+def _checked_in(coach, iso_week: str) -> bool:
+    """The check-in for `iso_week` ran (it may have failed)."""
+    return bool(coach.db.value("SELECT COUNT(*) FROM weekly_checkins WHERE iso_week = ?", (iso_week,)))
 
 
 @registry.view("week", schema="web_week")
