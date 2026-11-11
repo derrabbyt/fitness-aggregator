@@ -1,0 +1,127 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_week.schema.json",
+  "title": "Web: Week",
+  "description": "GET /api/coach/week?week=YYYY-Www (default: the check-in week holding today). The check-in week: the 7 days the weekly check-in judges (start..end, Monday-Sunday without a check-in day), named by the ISO week of its last day. A judged week comes from the stored check-in (its facts, verdict and report); a week in progress shows what is known so far, without a decision. Proposals are shown read-only: approving, rejecting and countering stay in Telegram. This schema is the envelope; the number blocks are view parts with their own schemas (web_week_<key>.schema.json, checked by fa_coach.views.errors).",
+  "type": "object",
+  "required": ["iso_week", "start", "end", "is_current", "state", "phase_week", "prev_week", "next_week", "checkin_at", "note", "decision", "so_far", "proposals", "report", "freshness"],
+  "$defs": {
+    "iso_week": { "type": "string", "pattern": "^[0-9]{4}-W[0-9]{2}$" },
+    "proposal": {
+      "type": "object",
+      "description": "A proposal, read-only. change: what it changes in plain words. guardrail.details: one line per failed guardrail, written by code, with the first check-in that could pass it (null when waiting doesn't help). applied_on: the day an approved change applied. mfp_goal_after_kcal: the MyFitnessPal goal approving an open proposal would set. avg_daily_target_kcal: the average daily target before and after (an open calorie change: now and if approved today; an approved one: as applied).",
+      "required": ["id", "type", "source", "status", "based_on_week", "change", "delta_kcal", "new_values", "reason", "agent_disagrees", "user_reason", "created_at", "decided_at", "guardrail", "applied_on", "mfp_goal_after_kcal", "avg_daily_target_kcal"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "enum": ["calorie_change", "calibration_change"] },
+        "source": { "enum": ["weekly_decision", "user_counter", "user_request", "phase_start"] },
+        "status": { "enum": ["open", "approved", "rejected", "superseded", "blocked_by_guardrail"] },
+        "based_on_week": { "type": ["string", "null"], "pattern": "^[0-9]{4}-W[0-9]{2}$" },
+        "change": { "type": "string" },
+        "delta_kcal": { "type": ["integer", "null"] },
+        "new_values": { "type": ["object", "null"], "additionalProperties": { "type": "number" } },
+        "reason": { "type": "string" },
+        "agent_disagrees": { "type": ["string", "null"] },
+        "user_reason": { "type": ["string", "null"] },
+        "created_at": { "type": "string", "format": "date-time" },
+        "decided_at": { "type": ["string", "null"], "format": "date-time" },
+        "guardrail": {
+          "type": "object",
+          "required": ["passed", "details"],
+          "additionalProperties": false,
+          "properties": {
+            "passed": { "type": "boolean" },
+            "details": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["violation", "text", "earliest_checkin"],
+                "additionalProperties": false,
+                "properties": {
+                  "violation": { "type": "string" },
+                  "text": { "type": "string" },
+                  "earliest_checkin": { "type": ["string", "null"], "format": "date" }
+                }
+              }
+            }
+          }
+        },
+        "applied_on": { "type": ["string", "null"], "format": "date" },
+        "mfp_goal_after_kcal": { "type": ["integer", "null"] },
+        "avg_daily_target_kcal": {
+          "type": ["object", "null"],
+          "required": ["before", "after"],
+          "additionalProperties": false,
+          "properties": { "before": { "type": "integer" }, "after": { "type": "integer" } }
+        }
+      }
+    }
+  },
+  "properties": {
+    "iso_week": { "$ref": "#/$defs/iso_week" },
+    "start": { "type": "string", "format": "date" },
+    "end": { "type": "string", "format": "date" },
+    "is_current": { "type": "boolean", "description": "The week holding today." },
+    "state": {
+      "enum": ["in_progress", "decided", "awaiting", "failed", "none"],
+      "description": "in_progress: the week holding today (no decision yet). decided: a stored check-in. awaiting: over, its check-in hasn't run yet. failed: its check-in failed and nothing changed. none: no check-in judges this week (no phase, the phase started mid-week)."
+    },
+    "phase_week": { "type": ["integer", "null"], "description": "The phase week of the week's last day; null without a phase." },
+    "prev_week": { "anyOf": [{ "$ref": "#/$defs/iso_week" }, { "type": "null" }], "description": "The week before, back to the first phase's start; null at the start." },
+    "next_week": { "anyOf": [{ "$ref": "#/$defs/iso_week" }, { "type": "null" }], "description": "The week after; null for the week in progress." },
+    "checkin_at": { "type": ["string", "null"], "format": "date-time", "description": "When the check-in judges (or judged) this week; null without a check-in time." },
+    "note": { "type": ["string", "null"], "description": "One plain line for a week without a decision (awaiting, failed, none); null otherwise." },
+    "decision": {
+      "type": ["object", "null"],
+      "description": "The stored check-in's decision (state decided), else null. outcome: change when the week's calorie change got past the guardrails (open, approved or decided otherwise in Telegram), else hold. direction: where the week's data points, counted towards confirmation. skip: why the week didn't count (it neither counts nor breaks a streak), in one line by code.",
+      "required": ["outcome", "change_kcal", "direction", "why", "counts", "skip", "confirmation", "decided_at"],
+      "additionalProperties": false,
+      "properties": {
+        "outcome": { "enum": ["hold", "change"] },
+        "change_kcal": { "type": ["integer", "null"] },
+        "direction": { "enum": ["increase", "decrease", "hold"] },
+        "why": { "type": "string" },
+        "counts": { "type": "boolean" },
+        "skip": {
+          "type": ["object", "null"],
+          "required": ["reason", "text"],
+          "additionalProperties": false,
+          "properties": {
+            "reason": { "enum": ["unusable", "glycogen_window", "adherence_gate", "sport_load"] },
+            "text": { "type": "string" }
+          }
+        },
+        "confirmation": {
+          "type": "object",
+          "required": ["weeks", "required", "met"],
+          "additionalProperties": false,
+          "properties": {
+            "weeks": { "type": "integer", "minimum": 0 },
+            "required": { "type": "integer", "minimum": 1 },
+            "met": { "type": "boolean" }
+          }
+        },
+        "decided_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "so_far": {
+      "type": ["object", "null"],
+      "description": "A week in progress: the days so far (start..today), the weigh-ins and the days with food logged. Null otherwise.",
+      "required": ["days", "weigh_ins", "food_days_logged"],
+      "additionalProperties": false,
+      "properties": {
+        "days": { "type": "integer", "minimum": 1, "maximum": 7 },
+        "weigh_ins": { "type": "integer", "minimum": 0 },
+        "food_days_logged": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "proposals": {
+      "type": "array",
+      "description": "The proposals based on this week, plus, for the week in progress, every open proposal. Oldest first.",
+      "items": { "$ref": "#/$defs/proposal" }
+    },
+    "report": { "type": ["string", "null"], "description": "The weekly report as sent to Telegram (state decided); null otherwise." },
+    "freshness": { "$ref": "web_freshness.schema.json" }
+  }
+}
