@@ -19,7 +19,8 @@
         "minutes",
         "distance_km",
         "pace_s_per_km",
-        "skipped"
+        "skipped",
+        "kcal_counted"
       ],
       "additionalProperties": false,
       "properties": {
@@ -68,6 +69,14 @@
         },
         "skipped": {
           "type": "boolean"
+        },
+        "kcal_counted": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "The kcal this session adds to the day's target (counted activity, as in the food build-up): Strava run kcal x run discount, lifting and wrestling their per-session values, reported or estimated kcal for extras and planned sessions reported done (runs discounted). Null when it adds nothing: skipped, not counted, or no target that day (before a phase)."
         }
       }
     },
@@ -81,7 +90,8 @@
         "distance_km",
         "pace_s_per_km",
         "skipped",
-        "prs"
+        "prs",
+        "kcal_counted"
       ],
       "additionalProperties": false,
       "properties": {
@@ -138,6 +148,14 @@
           ],
           "minimum": 0,
           "description": "PRs set in this Hevy session (exercises not paused, as in the weekly facts); null for a lift reported done without a Hevy session."
+        },
+        "kcal_counted": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "The kcal this session adds to the day's target (counted activity, as in the food build-up): Strava run kcal x run discount, lifting and wrestling their per-session values, reported or estimated kcal for extras and planned sessions reported done (runs discounted). Null when it adds nothing: skipped, not counted, or no target that day (before a phase)."
         }
       }
     }

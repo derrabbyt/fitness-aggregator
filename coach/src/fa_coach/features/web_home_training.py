@@ -11,6 +11,11 @@ blocks, as they stood that day.
   phase's start on, as counted activity counts it, or reported), planned
   "other" sessions reported done, and extras.
 
+Each line carries `kcal_counted` (ticket 15): the kcal it adds to the day's
+target, from counted activity (`training_plan.counted_activity_on`), so the
+lines agree with the food target line; null when it adds nothing (skipped,
+not counted, or no target: before a phase).
+
 A planned session reported skipped stays listed, marked skipped. Unreported
 runs, lifts and optional sessions are not listed: they show once they sync.
 HealthKit copies in MFP never show (as in counted activity).
@@ -32,9 +37,12 @@ def training(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, 
     day = views.day(query, now)
     lifts = progression.lifts(coach, day)
     prs = _prs_per_session(lifts)
+    kcal = _kcal_per_line(coach, day)
     workouts, other = [], []
     for item in sessions(coach, day, now):
         session_id = item.pop("session_id")
+        counted = kcal.get(item.pop("ref"))
+        item["kcal_counted"] = round(counted) if counted and not item["skipped"] else None
         if item["type"] == "lift":
             workouts.append({**item, "prs": prs.get(session_id, 0) if session_id else None})
         else:
@@ -44,6 +52,14 @@ def training(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, 
                      "summary": summary(coach, day)},
         "other_activities": {"sessions": other},
     }
+
+
+def _kcal_per_line(coach, day: Date) -> dict[tuple, float]:
+    """Counted kcal per line ref ({} without a target that day)."""
+    if phases.daily_target(coach, day) is None:
+        return {}
+    activity = training_plan.counted_activity_on(coach, day, phases.params(coach)["activity"], refs=True)
+    return {s["ref"]: s["kcal_counted"] for s in activity["sessions"] if s["status"] != "skipped"}
 
 
 def _prs_per_session(lifts: dict[str, dict[str, Any]]) -> dict[str, int]:
@@ -63,14 +79,14 @@ def sessions(coach, day: Date, now: datetime.datetime) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     lifts = history.sessions(coach.db, iso, iso)
     for s in lifts:
-        out.append({**_line("lift", s["name"] or "Workout", _clock(s["start"], now), s["minutes"]),
-                    "session_id": s["id"]})
+        out.append({**_line("lift", s["name"] or "Workout", _clock(s["start"], now), s["minutes"],
+                            ref=("hevy", s["id"])), "session_id": s["id"]})
     record = history.day(coach.db, iso)
     strava = [e for e in (record["exercises"] if record else [])
               if e["run"] and (e["source"] or "").lower() == "strava"]
-    for e in strava:
+    for n, e in enumerate(strava):
         out.append(_line("run", e["name"] or "Run", _clock(e.get("start_at"), now), e["minutes"],
-                         distance_km=e["distance_km"]))
+                         distance_km=e["distance_km"], ref=("strava", n)))
     reported = training_plan.statuses(coach, day)
     by_session = {s["session_id"]: s for s in reported if s["session_id"]}
     phase = phases.active(coach)
@@ -79,17 +95,18 @@ def sessions(coach, day: Date, now: datetime.datetime) -> list[dict[str, Any]]:
     for planned in plan["days"][training_plan.WEEKDAYS[day.weekday()]] if plan else []:
         report = by_session.get(planned["id"])
         status = report["status"] if report else None
-        kind, name, time = planned["type"], planned["name"], planned["time"]
+        kind, name, time, ref = planned["type"], planned["name"], planned["time"], ("plan", planned["id"])
         if status == "skipped":
-            out.append(_line(kind, name, time, None, skipped=True))
+            out.append(_line(kind, name, time, None, skipped=True, ref=ref))
         elif kind == "wrestling" and (status == "done" or planned_counts):
-            out.append(_reported_line(kind, name, time, report))
+            out.append(_reported_line(kind, name, time, report, ref))
         elif status != "done":
             continue
         elif (kind == "lift" and not lifts) or (kind == "run" and not strava) or kind == "other":
-            out.append(_reported_line(kind, name, time, report))
+            out.append(_reported_line(kind, name, time, report, ref))
     for extra in (s for s in reported if s["status"] == "extra"):
-        out.append(_reported_line(extra["type"], extra["name"] or extra["type"].capitalize(), None, extra))
+        out.append(_reported_line(extra["type"], extra["name"] or extra["type"].capitalize(), None, extra,
+                                   ("extra", extra["id"])))
     return sorted(out, key=lambda s: (s["time"] is None, TIME_LABELS.get(s["time"], s["time"] or "")))
 
 
@@ -105,18 +122,19 @@ def summary(coach, day: Date) -> dict[str, int] | None:
             "prs": len(week["prs"])}
 
 
-def _reported_line(kind: str, name: str, time: str | None, report: dict[str, Any] | None) -> dict[str, Any]:
+def _reported_line(kind: str, name: str, time: str | None, report: dict[str, Any] | None,
+                   ref: tuple) -> dict[str, Any]:
     minutes = report["duration_min"] if report else None
     distance = report["distance_km"] if report else None
-    return _line(kind, name, time, minutes, distance_km=distance)
+    return _line(kind, name, time, minutes, distance_km=distance, ref=ref)
 
 
 def _line(kind: str, name: str, time: str | None, minutes: float | None, *, distance_km: float | None = None,
-          skipped: bool = False) -> dict[str, Any]:
+          skipped: bool = False, ref: tuple | None = None) -> dict[str, Any]:
     pace = round(minutes * 60 / distance_km) if kind == "run" and minutes and distance_km else None
     return {"type": kind, "name": name, "time": time, "minutes": round(minutes) if minutes is not None else None,
             "distance_km": round(distance_km, 2) if distance_km is not None else None,
-            "pace_s_per_km": pace, "skipped": skipped, "session_id": None}
+            "pace_s_per_km": pace, "skipped": skipped, "session_id": None, "ref": ref}
 
 
 def _clock(start: str | None, now: datetime.datetime) -> str | None:

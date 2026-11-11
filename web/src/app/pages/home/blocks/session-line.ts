@@ -54,6 +54,7 @@ export class SessionLine {
       if (s.distance_km != null) parts.push(`${fmt(s.distance_km, 1)} km`);
       if (s.minutes != null) parts.push(`${fmt(s.minutes)} min`);
       parts.push(pace(s.pace_s_per_km));
+      if (s.kcal_counted) parts.push(`${fmt(s.kcal_counted)} kcal`);
     }
     return parts.filter(Boolean).join(' · ');
   });
