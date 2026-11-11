@@ -26,5 +26,5 @@ export class ActivitiesBlock {
   readonly view = input.required<HomeView>();
   readonly dayQuery = input<Record<string, string | null>>({});
 
-  protected readonly sessions = computed(() => this.view().training?.other.sessions ?? []);
+  protected readonly sessions = computed(() => this.view().training?.other_activities.sessions ?? []);
 }

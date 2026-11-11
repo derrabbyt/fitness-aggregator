@@ -3,23 +3,36 @@ import { LineChart } from './line-chart';
 import { signed } from './format';
 import { Tone } from './tone';
 
-/** web_strength_trend.schema.json: the 4-week strength trend (fa_coach/strength_trend.py). */
+/**
+ * web_strength_trend.schema.json (fa_coach/strength_trend.py): one point per
+ * day, each the mean of the counting lifts' latest e1RM as % of their value
+ * at the start of the 28 days before it; the rate in % per week over those 28 days.
+ */
 export interface StrengthTrend {
-  days: number;
+  window_days: number;
   start: string;
   end: string;
-  weeks: { iso_week: string; change_pct: number | null }[];
-  change_pct: number | null;
+  points: { date: string; pct: number | null }[];
+  rate_pct_per_week: number | null;
   direction: 'rising' | 'flat' | 'falling' | null;
   lifts: number;
 }
 
+/** Rising green, within the ±1 % band neutral, falling red. */
+export function strengthTone(trend: StrengthTrend | null | undefined): Tone {
+  const d = trend?.direction;
+  return d === 'rising' ? 'ok' : d === 'falling' ? 'bad' : 'muted';
+}
+
+/** 0.8 → "+0.8 %/wk". */
+export function strengthRate(trend: StrengthTrend | null | undefined): string {
+  return trend?.rate_pct_per_week == null ? '–' : `${signed(trend.rate_pct_per_week, 1)} %/wk`;
+}
+
 /**
- * The strength trend as one graph: a thin line and its number, green when
- * rising, gray within the band, red when falling. `size="small"` (Home's Gym
- * block): the line and "+3.2 %" only, no axes, legend or text. `size="large"`
- * (Training tab): the number big with "in 4 weeks", the line below.
- * Renders nothing without a value.
+ * The strength trend, large (the Training tab, ticket 08): the rate big, the
+ * daily line below. Home's Workouts card draws the same data like the weight
+ * card. Renders nothing without a value.
  */
 @Component({
   selector: 'app-strength-trend',
@@ -27,39 +40,24 @@ export interface StrengthTrend {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (trend(); as t) {
-      @if (t.change_pct != null) {
-        @if (size() === 'small') {
-          <div class="small" role="img" [attr.aria-label]="'Strength ' + text() + ' in ' + weeks() + ' weeks'">
-            <app-line-chart class="line" [points]="points()" [tone]="tone()" [height]="26" aria-hidden="true" />
-            <span class="v num m" [class.ok]="tone() === 'ok'" [class.bad]="tone() === 'bad'">{{ text() }}</span>
-          </div>
-        } @else {
-          <div class="large">
-            <div><span class="big num" [class.ok]="tone() === 'ok'" [class.bad]="tone() === 'bad'">{{ text() }}</span>
-              <span class="t2"> in {{ weeks() }} weeks</span></div>
-            <app-line-chart [points]="points()" [tone]="tone()" [height]="64" [label]="'Strength ' + text()" />
-          </div>
-        }
+      @if (t.rate_pct_per_week != null) {
+        <div class="large">
+          <div><span class="big num" [class.ok]="tone() === 'ok'" [class.bad]="tone() === 'bad'">{{ rate() }}</span>
+            <span class="t2"> over {{ t.window_days }} days</span></div>
+          <app-line-chart [points]="points()" [tone]="tone()" [height]="64" [label]="'Strength ' + rate()" />
+        </div>
       }
     }
   `,
   styles: `
     :host { display: block; }
-    .small { display: flex; align-items: center; gap: 8px; }
-    .line { width: 64px; flex: none; }
-    .v { font-size: 13px; white-space: nowrap; }
     .large { display: grid; gap: 8px; }
   `,
 })
 export class StrengthTrendChart {
   readonly trend = input<StrengthTrend | null | undefined>(null);
-  readonly size = input<'small' | 'large'>('small');
 
-  protected readonly points = computed(() => (this.trend()?.weeks ?? []).map((w) => w.change_pct));
-  protected readonly weeks = computed(() => Math.round((this.trend()?.days ?? 28) / 7));
-  protected readonly text = computed(() => `${signed(this.trend()?.change_pct, 1)} %`);
-  protected readonly tone = computed<Tone>(() => {
-    const d = this.trend()?.direction;
-    return d === 'rising' ? 'ok' : d === 'falling' ? 'bad' : 'muted';
-  });
+  protected readonly points = computed(() => (this.trend()?.points ?? []).map((p) => p.pct));
+  protected readonly rate = computed(() => strengthRate(this.trend()));
+  protected readonly tone = computed(() => strengthTone(this.trend()));
 }

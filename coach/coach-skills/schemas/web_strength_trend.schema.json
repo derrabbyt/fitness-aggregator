@@ -2,32 +2,79 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "web_strength_trend.schema.json",
   "title": "Web: strength trend",
-  "description": "Whether lifting is improving overall over the `training.strength_trend_days` (28) days ending on the day (fa_coach.strength_trend). For each counting lift with at least 2 sessions in the window (after its latest baseline reset, if any), each session's heaviest working set as estimated 1RM (effective load for bodyweight lifts); per ISO week, the lift's best value as % change from its first session in the window. A week's value is the mean over the lifts trained up to that week, each carrying its last value forward (null before any). Shown on Home's Gym block (small) and at the top of the Training tab (larger).",
+  "description": "Whether lifting is improving overall (fa_coach.strength_trend), as a daily series ending on the day. Each day's point looks back over the training.strength_trend_days (28) days ending that day: every counting lift trained in them gives its latest estimated 1RM (heaviest working set; effective load for bodyweight lifts) as % of its first one in that window (after its latest baseline reset there, if any; a lift trained once is at 100); the point is the mean over those lifts. The rate is the last point's change in % per week over the window. Shown on Home's Workouts card (14 days) and at the top of the Training tab.",
   "type": "object",
-  "required": ["days", "start", "end", "weeks", "change_pct", "direction", "lifts"],
+  "required": [
+    "window_days",
+    "start",
+    "end",
+    "points",
+    "rate_pct_per_week",
+    "direction",
+    "lifts"
+  ],
   "additionalProperties": false,
   "properties": {
-    "days": { "type": "integer", "minimum": 1 },
-    "start": { "type": "string", "format": "date" },
-    "end": { "type": "string", "format": "date" },
-    "weeks": {
+    "window_days": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "training.strength_trend_days: the look-back of each point and of the rate."
+    },
+    "start": {
+      "type": "string",
+      "format": "date",
+      "description": "The first point's day."
+    },
+    "end": {
+      "type": "string",
+      "format": "date",
+      "description": "The last point's day: the shown day."
+    },
+    "points": {
       "type": "array",
-      "description": "The ISO weeks the window touches, oldest first.",
+      "description": "One per day, oldest first.",
       "items": {
         "type": "object",
-        "required": ["iso_week", "change_pct"],
+        "required": [
+          "date",
+          "pct"
+        ],
         "additionalProperties": false,
         "properties": {
-          "iso_week": { "type": "string", "pattern": "^[0-9]{4}-W[0-9]{2}$" },
-          "change_pct": { "type": ["number", "null"] }
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "pct": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Mean % of the window-start value (100 = unchanged), 1 decimal; null without a counting lift trained in the window."
+          }
         }
       }
     },
-    "change_pct": { "type": ["number", "null"], "description": "The last week's value: the change over the window, 1 decimal. Null without a lift that qualifies." },
-    "direction": {
-      "enum": ["rising", "flat", "falling", null],
-      "description": "rising above +training.e1rm_same_band_pct, falling below its negative, flat within; null with change_pct null."
+    "rate_pct_per_week": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "(last point - 100) / (window_days / 7), 1 decimal; null with the last point null."
     },
-    "lifts": { "type": "integer", "minimum": 0, "description": "Lifts that count toward the trend." }
+    "direction": {
+      "enum": [
+        "rising",
+        "flat",
+        "falling",
+        null
+      ],
+      "description": "rising above +training.e1rm_same_band_pct (% per week), falling below its negative, flat within; null with the rate null."
+    },
+    "lifts": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Counting lifts in the last point."
+    }
   }
 }

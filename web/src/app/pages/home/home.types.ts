@@ -31,14 +31,20 @@ export interface TrainingSession {
   skipped: boolean;
 }
 
-/** web_home_training.schema.json: the `training` part (Gym and Other activities blocks). */
+/** A lifting session: also its PR count (null when reported done without a Hevy session). */
+export interface LiftSession extends TrainingSession {
+  prs: number | null;
+}
+
+/** web_home_training.schema.json: the `training` part (Workouts and Other activities cards). */
 export interface HomeTraining {
-  gym: {
-    sessions: TrainingSession[];
-    trend: { progressing: number; counted: number; stalls: number; prs: number } | null;
+  workouts: {
+    sessions: LiftSession[];
     strength_trend: StrengthTrend;
+    /** The last 14 days (lift_recency_days); null before any lift was trained. */
+    summary: { progressing: number; counted: number; stalls: number; prs: number } | null;
   };
-  other: { sessions: TrainingSession[] };
+  other_activities: { sessions: TrainingSession[] };
 }
 
 /** web_home_banner.schema.json: only on today, null when nothing waits. */
@@ -57,6 +63,15 @@ export interface MacroValue {
 /** web_home_food.schema.json: the `food` part. Targets are null before a phase. */
 export interface HomeFood {
   kcal: { eaten: number | null; target: number | null; left: number | null };
+  /** How the target is built; the parts add up to total_kcal. Null before a phase. */
+  build_up: {
+    base_kcal: number;
+    steps_kcal: number;
+    workouts_kcal: number;
+    activities_kcal: number;
+    surplus_kcal: number;
+    total_kcal: number;
+  } | null;
   logged: Logged;
   macros: {
     protein: MacroValue;

@@ -1,11 +1,11 @@
 """Home's training part (coach-web ticket 05): the day's sessions in two
 blocks, as they stood that day.
 
-- Gym: Hevy sessions (name, time of day, duration), a planned lift reported
-  done without a Hevy session, lifting extras; under them the lift trend line
-  (`progression.week` as of the day: counted lifts progressing, stalls, PRs
-  in the check-in week so far) and the 4-week strength trend
-  (`strength_trend.compute`).
+- Workouts (ticket 14): Hevy sessions (name, PRs set in it, time of day,
+  duration), a planned lift reported done without a Hevy session, lifting
+  extras; the 14-day strength trend with its rate (`strength_trend.compute`)
+  and the summary over the last `training.lift_recency_days` (14) days
+  (`progression.week`: counted lifts progressing, stalls, PRs).
 - Other activities: Strava runs (distance, duration, pace), a planned run
   reported done when Strava has none, wrestling (planned from the active
   phase's start on, as counted activity counts it, or reported), planned
@@ -22,7 +22,6 @@ from typing import Any
 from .. import history, phases, progression, strength_trend, views
 from ..registry import registry
 from . import training_plan
-from .web_home import check_in_week_start
 
 Date = datetime.date
 TIME_LABELS = {"morning": "08:00", "midday": "12:00", "afternoon": "15:00", "evening": "19:00"}  # sort order only
@@ -31,13 +30,31 @@ TIME_LABELS = {"morning": "08:00", "midday": "12:00", "afternoon": "15:00", "eve
 @registry.view_part("home", "training", schema="web_home_training", order=40)
 def training(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any]:
     day = views.day(query, now)
-    gym, other = [], []
+    lifts = progression.lifts(coach, day)
+    prs = _prs_per_session(lifts)
+    workouts, other = [], []
     for item in sessions(coach, day, now):
-        (gym if item["type"] == "lift" else other).append(item)
+        session_id = item.pop("session_id")
+        if item["type"] == "lift":
+            workouts.append({**item, "prs": prs.get(session_id, 0) if session_id else None})
+        else:
+            other.append(item)
     return {
-        "gym": {"sessions": gym, "trend": trend_line(coach, day), "strength_trend": strength_trend.compute(coach, day)},
-        "other": {"sessions": other},
+        "workouts": {"sessions": workouts, "strength_trend": strength_trend.compute(coach, day, lifts=lifts),
+                     "summary": summary(coach, day)},
+        "other_activities": {"sessions": other},
     }
+
+
+def _prs_per_session(lifts: dict[str, dict[str, Any]]) -> dict[str, int]:
+    """PRs per Hevy session (paused exercises set none, as in progression.week)."""
+    out: dict[str, int] = {}
+    for lift in lifts.values():
+        if not lift["paused"]:
+            for e in lift["entries"]:
+                if e["is_pr"]:
+                    out[e["session_id"]] = out.get(e["session_id"], 0) + 1
+    return out
 
 
 def sessions(coach, day: Date, now: datetime.datetime) -> list[dict[str, Any]]:
@@ -46,7 +63,8 @@ def sessions(coach, day: Date, now: datetime.datetime) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     lifts = history.sessions(coach.db, iso, iso)
     for s in lifts:
-        out.append(_line("lift", s["name"] or "Workout", _clock(s["start"], now), s["minutes"]))
+        out.append({**_line("lift", s["name"] or "Workout", _clock(s["start"], now), s["minutes"]),
+                    "session_id": s["id"]})
     record = history.day(coach.db, iso)
     strava = [e for e in (record["exercises"] if record else [])
               if e["run"] and (e["source"] or "").lower() == "strava"]
@@ -75,10 +93,12 @@ def sessions(coach, day: Date, now: datetime.datetime) -> list[dict[str, Any]]:
     return sorted(out, key=lambda s: (s["time"] is None, TIME_LABELS.get(s["time"], s["time"] or "")))
 
 
-def trend_line(coach, day: Date) -> dict[str, int] | None:
-    """Counted lifts progressing of counted, stalls, and PRs from the start of
-    the check-in week to `day`; None before any lift was trained."""
-    week = progression.week(coach, check_in_week_start(coach, day), day)
+def summary(coach, day: Date) -> dict[str, int] | None:
+    """Counted lifts progressing of counted, stalls, and PRs over the
+    `lift_recency_days` (14) days up to `day` (the lift status's recency
+    window); None before any lift was trained."""
+    recency = phases.params(coach)["training"]["lift_recency_days"]
+    week = progression.week(coach, day - (recency - 1) * datetime.timedelta(days=1), day)
     if not week["tracked_lifts"]:
         return None
     return {"progressing": week["improved_lifts"], "counted": week["counted_lifts"], "stalls": len(week["stalls"]),
@@ -96,7 +116,7 @@ def _line(kind: str, name: str, time: str | None, minutes: float | None, *, dist
     pace = round(minutes * 60 / distance_km) if kind == "run" and minutes and distance_km else None
     return {"type": kind, "name": name, "time": time, "minutes": round(minutes) if minutes is not None else None,
             "distance_km": round(distance_km, 2) if distance_km is not None else None,
-            "pace_s_per_km": pace, "skipped": skipped}
+            "pace_s_per_km": pace, "skipped": skipped, "session_id": None}
 
 
 def _clock(start: str | None, now: datetime.datetime) -> str | None:

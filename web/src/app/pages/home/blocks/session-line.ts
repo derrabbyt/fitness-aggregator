@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { fmt } from '../../../ui/format';
-import { TrainingSession } from '../home.types';
+import { LiftSession, TrainingSession } from '../home.types';
 
 /** "06:32", "morning" → "Morning". */
 export function timeOfDay(time: string | null): string | null {
@@ -23,7 +23,7 @@ export function pace(seconds: number | null): string | null {
   selector: 'app-session-line',
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <span class="name" [class.skipped]="s().skipped">{{ s().name }}</span>
+    <span class="name" [class.skipped]="s().skipped">{{ s().name }}@if (prs()) {<span class="prs"> ({{ prs() }} {{ prs() === 1 ? 'PR' : 'PRs' }})</span>}</span>
     <span class="meta num t2">{{ meta() }}</span>
   `,
   styles: `
@@ -31,12 +31,19 @@ export function pace(seconds: number | null): string | null {
       padding: 9px 0; }
     :host + :host { border-top: 1px solid var(--divider); }
     .name { font-weight: 500; min-width: 0; }
+    .prs { font-weight: 400; color: var(--text-2); }
     .skipped { text-decoration: line-through; color: var(--text-2); font-weight: 400; }
     .meta { font-size: 13px; margin-left: auto; text-align: right; }
   `,
 })
 export class SessionLine {
-  readonly s = input.required<TrainingSession>({ alias: 'session' });
+  readonly s = input.required<TrainingSession | LiftSession>({ alias: 'session' });
+
+  /** A lifting session's PRs ("Push (2 PRs)"); 0 or unknown shows nothing. */
+  protected readonly prs = computed(() => {
+    const s = this.s();
+    return 'prs' in s ? s.prs : null;
+  });
 
   protected readonly meta = computed(() => {
     const s = this.s();
