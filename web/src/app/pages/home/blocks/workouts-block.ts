@@ -8,10 +8,10 @@ import { SessionLine } from './session-line';
 
 /**
  * Home's Workouts card (tickets 05 and 14), always shown: the day's lifting
- * sessions, one line each with their PRs ("No workout" without one), then
- * the 14-day strength trend styled like the weight card (rate in % per week
- * top right, coloured rising / within the band / falling), and under it the
- * lift summary over the last 14 days. Taps open Training.
+ * sessions, one line each with their PRs and kcal ("No workout" without
+ * one), then the 14-day strength trend full width with its rate in % per
+ * week under it (coloured rising / within the band / falling), then the
+ * lift summary over the last 14 days (ticket 15's stacked layout). Taps open Training.
  */
 @Component({
   selector: 'app-workouts-block',
@@ -20,22 +20,20 @@ import { SessionLine } from './session-line';
   template: `
     @if (workouts(); as w) {
       <app-card label="Workouts" link="/training">
-        <div class="top">
-          <div class="sessions">
-            @for (s of w.sessions; track $index) {
-              <app-session-line [session]="s" />
-            } @empty {
-              <div class="none t2">No workout</div>
-            }
-          </div>
-          @if (w.strength_trend.rate_pct_per_week != null) {
-            <div class="rate num m" [class]="toneClass(tone())">{{ rate() }}</div>
+        <div class="sessions">
+          @for (s of w.sessions; track $index) {
+            <app-session-line [session]="s" />
+          } @empty {
+            <div class="none t2">No workout</div>
           }
         </div>
         <app-line-chart class="spark" [points]="points()" [tone]="tone()" [height]="56"
                         startLabel="14 days" [endLabel]="view().is_today ? 'today' : ''"
                         emptyText="No lifts in the last 4 weeks"
                         [label]="'Strength trend, last 14 days, ' + rate()" />
+        @if (w.strength_trend.rate_pct_per_week != null) {
+          <div class="rate num m" [class]="toneClass(tone())">{{ rate() }}</div>
+        }
         @if (summaryParts().length) {
           <div class="summary small t2">@for (part of summaryParts(); track $index) {@if ($index) { · }<span class="part">{{ part }}</span>}</div>
         }
@@ -43,10 +41,8 @@ import { SessionLine } from './session-line';
     }
   `,
   styles: `
-    .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
-    .sessions { flex: 1; min-width: 0; }
     .none { padding: 9px 0; }
-    .rate { font-size: 15px; padding-top: 9px; white-space: nowrap; }
+    .rate { font-size: 15px; margin-top: 6px; white-space: nowrap; }
     .rate:not(.ok):not(.bad):not(.warn) { color: var(--text-2); }
     .spark { margin-top: 12px; }
     .summary { margin-top: 10px; }

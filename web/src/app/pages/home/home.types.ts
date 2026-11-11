@@ -29,6 +29,8 @@ export interface TrainingSession {
   distance_km: number | null;
   pace_s_per_km: number | null;
   skipped: boolean;
+  /** kcal this session adds to the day's target; null when it adds nothing. */
+  kcal_counted: number | null;
 }
 
 /** A lifting session: also its PR count (null when reported done without a Hevy session). */
@@ -66,9 +68,9 @@ export interface HomeFood {
   /** How the target is built; the parts add up to total_kcal. Null before a phase. */
   build_up: {
     base_kcal: number;
-    steps_kcal: number;
-    workouts_kcal: number;
-    activities_kcal: number;
+    /** Counted sessions and the step kcal ± together. */
+    activity_kcal: number;
+    /** Signed: negative is a deficit. */
     surplus_kcal: number;
     total_kcal: number;
   } | null;

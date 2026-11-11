@@ -27,15 +27,13 @@
       }
     },
     "build_up": {
-      "description": "How the day's target is built (phases.daily_target, as of the day): base at the step goal + step kcal + workouts (counted lifting sessions, fixed per-session values included) + activities (runs, wrestling, other and extra sessions) + surplus = total_kcal, exactly (rounding goes to steps_kcal, or to base_kcal without a step model; steps_kcal is 0 then). Null without a target (before a phase).",
+      "description": "How the day's target is built (phases.daily_target, as of the day): base at the step goal + activity (the counted sessions, workouts and other activities, plus the step kcal, which are negative below the step goal; one number) + surplus (signed: negative is a deficit, 0 maintenance) = total_kcal, exactly (rounding goes to activity_kcal). Null without a target (before a phase).",
       "type": ["object", "null"],
-      "required": ["base_kcal", "steps_kcal", "workouts_kcal", "activities_kcal", "surplus_kcal", "total_kcal"],
+      "required": ["base_kcal", "activity_kcal", "surplus_kcal", "total_kcal"],
       "additionalProperties": false,
       "properties": {
         "base_kcal": { "type": "integer" },
-        "steps_kcal": { "type": "integer" },
-        "workouts_kcal": { "type": "integer", "minimum": 0 },
-        "activities_kcal": { "type": "integer", "minimum": 0 },
+        "activity_kcal": { "type": "integer" },
         "surplus_kcal": { "type": "integer" },
         "total_kcal": { "type": "integer" }
       }
