@@ -4,6 +4,7 @@
  * block adds its optional key to HomeView and its type below.
  */
 import { Freshness } from '../../api/types';
+import { HomeWeight } from './weight.types';
 
 /** web_home.schema.json (GET /api/coach/home?day=). */
 export interface HomeView {
@@ -11,6 +12,7 @@ export interface HomeView {
   is_today: boolean;
   freshness: Freshness;
   food?: HomeFood;
+  weight?: HomeWeight;
 }
 
 export type Logged = 'complete' | 'partial' | 'missing';
