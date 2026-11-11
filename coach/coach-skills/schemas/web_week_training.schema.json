@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_week_training.schema.json",
+  "title": "Web: Week training",
+  "description": "The `training` part of GET /api/coach/week (null when no phase was active during the week). lifts (null before any lift was trained in the lift recency window or the phase): counting lifts progressing of those judged, stalled counting lifts, PRs set in the week (with the PR's estimated 1RM), the deload signal; as the check-in stored them (source check_in) or so far (source so_far). sessions: done = sessions counted for the week so far (synced, reported, extras, planned wrestling), planned = the week's sessions in the training plan that aren't optional (all 7 days), skipped = planned sessions reported skipped. steps: each day so far (steps null when not tracked: under steps.not_tracked_below), the average over tracked days and the days at the step goal.",
+  "type": ["object", "null"],
+  "required": ["source", "lifts", "sessions", "steps"],
+  "additionalProperties": false,
+  "properties": {
+    "source": { "enum": ["check_in", "so_far"] },
+    "lifts": {
+      "type": ["object", "null"],
+      "required": ["progressing", "counted", "stalls", "prs", "deload_signal"],
+      "additionalProperties": false,
+      "properties": {
+        "progressing": { "type": "integer", "minimum": 0 },
+        "counted": { "type": "integer", "minimum": 0 },
+        "stalls": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["exercise_id", "name"],
+            "additionalProperties": false,
+            "properties": { "exercise_id": { "type": "string" }, "name": { "type": "string" } }
+          }
+        },
+        "prs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["exercise_id", "name", "date", "e1rm_kg"],
+            "additionalProperties": false,
+            "properties": {
+              "exercise_id": { "type": "string" },
+              "name": { "type": "string" },
+              "date": { "type": "string", "format": "date" },
+              "e1rm_kg": { "type": ["number", "null"] }
+            }
+          }
+        },
+        "deload_signal": { "type": "boolean" }
+      }
+    },
+    "sessions": {
+      "type": "object",
+      "required": ["done", "planned", "skipped"],
+      "additionalProperties": false,
+      "properties": {
+        "done": { "type": "integer", "minimum": 0 },
+        "planned": { "type": "integer", "minimum": 0 },
+        "skipped": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "steps": {
+      "type": "object",
+      "required": ["goal", "average", "days_at_goal", "days"],
+      "additionalProperties": false,
+      "properties": {
+        "goal": { "type": "integer", "minimum": 0 },
+        "average": { "type": ["integer", "null"], "minimum": 0 },
+        "days_at_goal": { "type": "integer", "minimum": 0, "maximum": 7 },
+        "days": {
+          "type": "array",
+          "maxItems": 7,
+          "items": {
+            "type": "object",
+            "required": ["date", "tracked", "steps"],
+            "additionalProperties": false,
+            "properties": {
+              "date": { "type": "string", "format": "date" },
+              "tracked": { "type": "boolean" },
+              "steps": { "type": ["integer", "null"], "minimum": 0 }
+            }
+          }
+        }
+      }
+    }
+  }
+}

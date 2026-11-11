@@ -12,7 +12,11 @@ fat 73.6 g, carbs the rest (245.75 g a day, 395.75 g on Friday: 267 g on
 average), fiber 25-41 g.
 """
 
-from fakes import food
+import datetime
+
+from fa_coach import messaging, progression
+from fakes import exercise, food, reply, session, tool_call
+from test_web_home_training import TWO_WEEKS
 from test_web_week import week
 from test_weekly_checkin import at, check_in, fill_week, phase, three_weeks, verdict  # noqa: F401
 
@@ -110,3 +114,116 @@ async def test_the_week_in_progress_shows_intake_so_far_with_today_never_partial
     assert i["average"] == {"eaten_kcal": 1450, "target_kcal": 2300, "days": 2}
     assert i["adherence"] == {"result": "not_judged", "deviation_pct": None, "tolerance_pct": 5, "days_logged": 2,
                               "days": 3}
+
+
+# --- training ------------------------------------------------------------------------------
+# The lifts of test_web_home_training (TWO_WEEKS, 10-18 Nov): in W47 (16-22 Nov) Bench and Row
+# improved, Squat stalled (its third session without progress); PRs: Bench and Row on 16 Nov,
+# Bench on 18 Nov. The seeded plan has 8 sessions a week that aren't optional (Mon Pull, Tue
+# Push and a workout run, Wed Legs, Thu Upper, Fri Wrestling, Sat Legs, Sun long run).
+
+
+def lifts_known(coach, clock) -> None:
+    """Classified up front, so no new-exercise message asks the model."""
+    for exercise_id in ("bench-press", "squat", "row"):
+        progression.classify(coach, exercise_id, "counts", None, clock.current)
+
+
+async def test_a_judged_weeks_training_is_lifts_progressing_stalls_prs_sessions_and_steps(phase, api, clock, model):
+    lifts_known(phase, clock)
+    api.sessions += TWO_WEEKS
+    await three_weeks(phase, api, clock, model)
+
+    t = week(phase, "2026-W47")["training"]
+
+    assert t["source"] == "check_in"
+    lifts = t["lifts"]
+    assert (lifts["progressing"], lifts["counted"], lifts["deload_signal"]) == (2, 3, False)
+    assert lifts["stalls"] == [{"exercise_id": "squat", "name": "Squat"}]
+    assert [(pr["name"], pr["date"]) for pr in lifts["prs"]] == [
+        ("Bench Press", "2026-11-16"), ("Row", "2026-11-16"), ("Bench Press", "2026-11-18")]
+    # Done: the Hevy sessions on Mon 16 and Wed 18 and Friday's wrestling (counted as planned).
+    assert t["sessions"] == {"done": 3, "planned": 8, "skipped": 0}
+    s = t["steps"]
+    assert (s["goal"], s["average"], s["days_at_goal"]) == (10000, 9000, 0)
+    assert [d["steps"] for d in s["days"]] == [9000] * 7
+
+
+async def test_the_week_in_progress_shows_training_so_far(phase, api, clock, model):
+    lifts_known(phase, clock)
+    api.sessions += [*TWO_WEEKS, session("s6", "2026-12-01", exercise("Bench Press", (107.5, 10)))]
+    await week_4_so_far(phase, api, clock, model)
+
+    t = week(phase, "2026-W49")["training"]
+
+    # Squat and Row weren't trained in the last 14 days: stale, not counted.
+    assert t["source"] == "so_far"
+    assert (t["lifts"]["progressing"], t["lifts"]["counted"], t["lifts"]["stalls"]) == (1, 1, [])
+    assert [(pr["name"], pr["date"]) for pr in t["lifts"]["prs"]] == [("Bench Press", "2026-12-01")]
+    assert t["sessions"] == {"done": 1, "planned": 8, "skipped": 0}
+    assert len(t["steps"]["days"]) == 3
+
+
+async def test_a_week_without_lifts_has_no_lift_numbers(phase, api, clock, model):
+    clock.current = at("2026-11-11")
+
+    t = week(phase, "2026-W46")["training"]
+
+    assert t["lifts"] is None and t["sessions"]["done"] == 0
+
+
+# --- notes and flags -----------------------------------------------------------------------
+# Waist every 2 weeks after the start and photos at the start and every 2 weeks: both are due
+# on Mon 23 Nov, the first day after W47 (16-22 Nov).
+
+FIBER = {"code": "fiber_off", "severity": "watch", "detail": "Fiber under target on 3 days.", "exercise_id": None}
+
+
+async def notes_week(phase, api, clock, model) -> None:
+    """W47 with a context note (Thu 19 Nov) and a deferred item (Wed 18 Nov), judged on 23 Nov with a flag."""
+    fill_week(api, 1)
+    fill_week(api, 2)
+    await check_in(phase, clock, model, "2026-11-16", verdict("2026-W46", scenario="glycogen_window"))
+    clock.current = at("2026-11-19", 20)
+    model.script(tool_call("add_context_note", applies_from="2026-11-19", applies_to="2026-11-19",
+                           tags=["sleep_poor"], suggest_unusable="no"), reply("Noted."))
+    await phase.on_message("slept badly")
+    messaging.defer(phase, datetime.date(2026, 11, 18), "Protein was low on Wednesday.", "evening-recap",
+                    at("2026-11-18", 21))
+
+
+async def test_a_judged_weeks_notes_are_its_context_notes_flags_deferred_items_and_whats_due(
+        phase, api, clock, model):
+    await notes_week(phase, api, clock, model)
+    await check_in(phase, clock, model, "2026-11-23", verdict("2026-W47", scenario="glycogen_window", flags=[FIBER]))
+
+    n = week(phase, "2026-W47")["notes"]
+
+    assert [(c["text"], c["applies_from"], c["applies_to"], c["tags"]) for c in n["context_notes"]] == [
+        ("slept badly", "2026-11-19", "2026-11-19", ["sleep_poor"])]
+    assert n["flags"] == [{"code": "fiber_off", "severity": "watch", "detail": "Fiber under target on 3 days."}]
+    assert n["deferred"] == [{"date": "2026-11-18", "text": "Protein was low on Wednesday."}]
+    assert n["due_next_week"] == [{"date": "2026-11-23", "kind": "waist"}, {"date": "2026-11-23", "kind": "photos"}]
+
+
+async def test_a_judged_week_without_flags_has_none_and_a_week_in_progress_isnt_flagged_yet(
+        phase, api, clock, model):
+    await notes_week(phase, api, clock, model)
+
+    in_progress = week(phase, "2026-W47")["notes"]
+    await check_in(phase, clock, model, "2026-11-23", verdict("2026-W47", scenario="glycogen_window"))
+    judged = week(phase, "2026-W47")["notes"]
+
+    assert in_progress["flags"] is None
+    assert [c["text"] for c in in_progress["context_notes"]] == ["slept badly"]
+    assert in_progress["deferred"] == [{"date": "2026-11-18", "text": "Protein was low on Wednesday."}]
+    assert len(in_progress["due_next_week"]) == 2
+    assert judged["flags"] == []
+
+
+async def test_a_week_before_any_phase_has_no_number_blocks(phase, api, clock, model):
+    clock.current = at("2026-11-11")
+
+    w = week(phase, "2026-W45")
+
+    assert (w["weight"], w["intake"], w["training"], w["notes"]) == (None, None, None, None)

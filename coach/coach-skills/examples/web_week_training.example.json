@@ -1,0 +1,75 @@
+{
+  "source": "check_in",
+  "lifts": {
+    "progressing": 5,
+    "counted": 7,
+    "stalls": [
+      {
+        "exercise_id": "ohp",
+        "name": "Overhead Press"
+      }
+    ],
+    "prs": [
+      {
+        "exercise_id": "bench",
+        "name": "Bench Press",
+        "date": "2026-12-01",
+        "e1rm_kg": 117.5
+      },
+      {
+        "exercise_id": "squat",
+        "name": "Squat",
+        "date": "2026-12-02",
+        "e1rm_kg": 141.7
+      }
+    ],
+    "deload_signal": false
+  },
+  "sessions": {
+    "done": 7,
+    "planned": 8,
+    "skipped": 1
+  },
+  "steps": {
+    "goal": 10000,
+    "average": 9614,
+    "days_at_goal": 3,
+    "days": [
+      {
+        "date": "2026-11-30",
+        "tracked": true,
+        "steps": 11240
+      },
+      {
+        "date": "2026-12-01",
+        "tracked": true,
+        "steps": 8320
+      },
+      {
+        "date": "2026-12-02",
+        "tracked": true,
+        "steps": 10050
+      },
+      {
+        "date": "2026-12-03",
+        "tracked": true,
+        "steps": 7410
+      },
+      {
+        "date": "2026-12-04",
+        "tracked": true,
+        "steps": 12880
+      },
+      {
+        "date": "2026-12-05",
+        "tracked": false,
+        "steps": null
+      },
+      {
+        "date": "2026-12-06",
+        "tracked": true,
+        "steps": 7790
+      }
+    ]
+  }
+}

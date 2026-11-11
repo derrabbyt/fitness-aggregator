@@ -16,9 +16,9 @@ deferred items about the week, and the measurements due the week after.
 import datetime
 from typing import Any
 
-from .. import history, phases, weekdata, weekly_facts
+from .. import history, messaging, phases, progression, weekdata, weekly_facts
 from ..registry import registry
-from . import web_week, web_weight
+from . import context_notes, measurements, training_plan, web_home_steps, web_week, web_weight
 
 Date = datetime.date
 DAY = datetime.timedelta(days=1)
@@ -130,6 +130,81 @@ def intake(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, An
             "fiber": {"eaten_g": avg("fiber_g"), "target_g": round(low * weight) if weight else None,
                       "target_max_g": round(high * weight) if weight else None},
         },
+    }
+
+
+# --- training ------------------------------------------------------------------------------
+
+
+@registry.view_part("week", "training", schema="web_week_training", order=30)
+def training(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any] | None:
+    w = _week(coach, query, now)
+    if w is None:
+        return None
+    last = _last(w)
+    if w.stored is not None:
+        facts = w.stored["facts"]
+        section, sessions, source = facts["training"], facts["activity"]["sessions"], "check_in"
+    else:
+        phase = web_week.phase_during(coach, w)
+        section = progression.week(coach, w.start, last, Date.fromisoformat(phase["start_date"]))
+        sessions, source = weekdata.intake(coach, w.start, last)["sessions"], "so_far"
+    names = {lift["exercise_id"]: lift["name"] for lift in section["tracked_lifts"]}
+    lifts = None
+    if section["tracked_lifts"]:
+        lifts = {
+            "progressing": section["improved_lifts"],
+            "counted": section["counted_lifts"],
+            "stalls": [{"exercise_id": i, "name": names[i]} for i in section["stalls"]],
+            "prs": [{"exercise_id": pr["exercise_id"], "name": pr["name"], "date": pr["date"],
+                     "e1rm_kg": pr["top_set"]["e1rm_kg"] if pr["top_set"] else None} for pr in section["prs"]],
+            "deload_signal": section["deload_signal"],
+        }
+    p = phases.params(coach)
+    steps = [web_home_steps._day(coach, d, p) for d in weekdata.dates(w.start, last)]
+    tracked = [d["steps"] for d in steps if d["tracked"]]
+    goal = p["steps"]["step_goal"]
+    return {
+        "source": source,
+        "lifts": lifts,
+        "sessions": {"done": sum(1 for s in sessions if s["status"] != "skipped"),
+                     "planned": _planned(coach, w),
+                     "skipped": sum(1 for s in sessions if s["status"] == "skipped")},
+        "steps": {"goal": goal, "average": round(sum(tracked) / len(tracked)) if tracked else None,
+                  "days_at_goal": sum(1 for s in tracked if s >= goal),
+                  "days": [{"date": d["date"], "tracked": d["tracked"], "steps": d["steps"] if d["tracked"] else None}
+                           for d in steps]},
+    }
+
+
+def _planned(coach, w: web_week.Week) -> int:
+    """The week's sessions in the plan in force each day, optional ones left out."""
+    count = 0
+    for day in weekdata.dates(w.start, w.end):
+        plan = training_plan.plan_for(coach, day)
+        count += sum(1 for s in plan["days"][training_plan.WEEKDAYS[day.weekday()]] if not s["optional"]) if plan else 0
+    return count
+
+
+# --- notes and flags -----------------------------------------------------------------------
+
+
+@registry.view_part("week", "notes", schema="web_week_notes", order=40)
+def notes(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any] | None:
+    """The week's context notes, the check-in's flags (null before it ran),
+    the items held back for its report and the measurements due the week after."""
+    w = _week(coach, query, now)
+    if w is None:
+        return None
+    flags = None
+    if w.stored is not None:
+        flags = [{k: f[k] for k in ("code", "severity", "detail")} for f in w.stored["verdict"]["flags"]]
+    return {
+        "context_notes": [{k: n[k] for k in ("id", "text", "applies_from", "applies_to", "tags")}
+                          for n in context_notes.between(coach, w.start, w.end)],
+        "flags": flags,
+        "deferred": [{"date": d["day"], "text": d["text"]} for d in messaging.deferred(coach, w.start, w.end)],
+        "due_next_week": measurements.measurements_due(coach, w.end + DAY, w.end + 7 * DAY),
     }
 
 
