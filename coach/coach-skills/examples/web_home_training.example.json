@@ -9,7 +9,8 @@
         "distance_km": null,
         "pace_s_per_km": null,
         "skipped": false,
-        "prs": 2
+        "prs": 2,
+        "kcal_counted": 300
       }
     ],
     "strength_trend": {
@@ -94,7 +95,8 @@
         "minutes": null,
         "distance_km": null,
         "pace_s_per_km": null,
-        "skipped": false
+        "skipped": false,
+        "kcal_counted": 600
       },
       {
         "type": "run",
@@ -103,7 +105,8 @@
         "minutes": 62,
         "distance_km": 11.5,
         "pace_s_per_km": 323,
-        "skipped": false
+        "skipped": false,
+        "kcal_counted": 390
       },
       {
         "type": "other",
@@ -112,7 +115,8 @@
         "minutes": 90,
         "distance_km": null,
         "pace_s_per_km": null,
-        "skipped": false
+        "skipped": false,
+        "kcal_counted": 720
       }
     ]
   }

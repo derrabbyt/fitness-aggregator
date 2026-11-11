@@ -10,6 +10,7 @@ and an evening workout run, Fri 12:00 Wrestling, optional easy runs.
 """
 
 import datetime
+from unittest.mock import ANY
 
 from fa_coach import progression, views
 from fakes import exercise, reply, run, session, tool_calls
@@ -24,10 +25,11 @@ def home(coach, day: str | None = None) -> dict:
 
 def line(type_: str, name: str, time: str | None = None, minutes: int | None = None, *,
          distance_km: float | None = None, pace_s_per_km: int | None = None, skipped: bool = False,
-         prs: int | None = 0) -> dict:
-    """A session line; lifts also carry their PR count (null when reported without Hevy)."""
+         prs: int | None = 0, kcal: int | None = None) -> dict:
+    """A session line with the kcal it adds to the target; lifts also carry their PR count (null
+    when reported without Hevy)."""
     out = {"type": type_, "name": name, "time": time, "minutes": minutes, "distance_km": distance_km,
-           "pace_s_per_km": pace_s_per_km, "skipped": skipped}
+           "pace_s_per_km": pace_s_per_km, "skipped": skipped, "kcal_counted": kcal}
     return {**out, "prs": prs} if type_ == "lift" else out
 
 
@@ -45,7 +47,7 @@ async def test_a_lifting_day_lists_the_hevy_session_in_the_workouts_card(phase, 
 
     t = home(phase)["training"]
 
-    assert t["workouts"]["sessions"] == [line("lift", "Pull", "06:30", 60)]
+    assert t["workouts"]["sessions"] == [line("lift", "Pull", "06:30", 60, kcal=300)]
     assert t["other_activities"]["sessions"] == []
 
 
@@ -64,14 +66,14 @@ async def test_a_run_day_lists_the_strava_run_with_distance_duration_and_pace(ph
     t = home(phase)["training"]
 
     assert t["other_activities"]["sessions"] == [line("run", "Running (jogging)", "18:05", 62, distance_km=11.5,
-                                           pace_s_per_km=323)]  # 62 min / 11.5 km = 5:23 per km
+                                           pace_s_per_km=323, kcal=389)]  # 62 min / 11.5 km = 5:23 per km
     assert t["workouts"]["sessions"] == []  # Push is planned but not in Hevy: not listed
 
 
 async def test_planned_wrestling_is_listed_like_any_other_activity(phase, api, clock):
     await synced(phase, api, clock, "2026-11-13", hour=8)  # Fri 12:00 Wrestling, not reported
 
-    assert home(phase)["training"]["other_activities"]["sessions"] == [line("wrestling", "Wrestling", "12:00")]
+    assert home(phase)["training"]["other_activities"]["sessions"] == [line("wrestling", "Wrestling", "12:00", kcal=600)]
 
 
 async def test_skipped_wrestling_stays_listed_as_skipped(phase, api, clock, model):
@@ -89,8 +91,8 @@ async def test_an_extra_session_is_listed_with_its_duration(phase, api, clock, m
 
     t = home(phase)["training"]
 
-    assert t["workouts"]["sessions"] == [line("lift", "Pull", "17:30", 60)]
-    assert t["other_activities"]["sessions"] == [line("other", "Football", None, 90)]
+    assert t["workouts"]["sessions"] == [line("lift", "Pull", "17:30", 60, kcal=300)]
+    assert t["other_activities"]["sessions"] == [line("other", "Football", None, 90, kcal=ANY)]
 
 
 async def test_only_runs_get_a_pace(phase, api, clock, model):
@@ -98,7 +100,7 @@ async def test_only_runs_get_a_pace(phase, api, clock, model):
     await report(phase, model, date="2026-11-11", status="extra", type="other", name="Hike", activity="hiking",
                  duration_min=150, distance_km=9.4)
 
-    assert home(phase)["training"]["other_activities"]["sessions"] == [line("other", "Hike", None, 150, distance_km=9.4)]
+    assert home(phase)["training"]["other_activities"]["sessions"] == [line("other", "Hike", None, 150, distance_km=9.4, kcal=ANY)]
 
 
 async def test_a_day_without_a_workout_has_no_session_lines(phase, api, clock):
@@ -109,6 +111,48 @@ async def test_a_day_without_a_workout_has_no_session_lines(phase, api, clock):
 
     assert (rest["workouts"]["sessions"], rest["other_activities"]["sessions"]) == ([], [])
     assert (before["workouts"]["sessions"], before["other_activities"]["sessions"]) == ([], [])
+
+
+# --- kcal per session (ticket 15): what each adds to the day's target ------------------------
+# A lifting session counts 300, planned wrestling 600, a run 0.75 x its kcal.
+
+
+async def test_each_line_carries_the_kcal_it_adds_and_they_sum_to_the_activity(phase, api, clock, model):
+    # Fri: a Hevy session, planned wrestling, a 400 kcal Strava run and an extra with its kcal.
+    api.sessions.append(session("s1", "2026-11-13", exercise("Squat", (100, 5)), hour=7))
+    api.days["2026-11-13"] = {"steps": 15000, "exercises": [{**run(400, 5, 30), "start": "2026-11-13T18:00:00+01:00"}]}
+    await synced(phase, api, clock, "2026-11-13")
+    await report(phase, model, date="2026-11-13", status="extra", type="other", name="Climbing", kcal=350)
+
+    data = home(phase)
+    t = data["training"]
+
+    assert [s["kcal_counted"] for s in t["workouts"]["sessions"]] == [300]
+    assert [(s["name"], s["kcal_counted"]) for s in t["other_activities"]["sessions"]] == [
+        ("Wrestling", 600), ("Running (jogging)", 300), ("Climbing", 350)]
+    b = data["food"]["build_up"]
+    assert b["activity_kcal"] - 1550 in (-34, -35)  # the sessions plus the step kcal (1,000 under the goal)
+
+
+async def test_a_skipped_session_adds_no_kcal(phase, api, clock, model):
+    await synced(phase, api, clock, "2026-11-13")
+    await report(phase, model, date="2026-11-13", status="skipped", session_id="fri-1")
+
+    assert home(phase)["training"]["other_activities"]["sessions"][0]["kcal_counted"] is None
+
+
+async def test_a_run_reported_done_counts_its_kcal_discounted(phase, api, clock, model):
+    await synced(phase, api, clock, "2026-11-10")  # Tue: the evening run, not in Strava
+    await report(phase, model, date="2026-11-10", status="done", session_id="tue-2", kcal=500)
+    done = home(phase)["training"]["other_activities"]["sessions"]
+
+    assert [(s["type"], s["kcal_counted"]) for s in done] == [("run", 375)]  # reported kcal, discounted
+
+
+async def test_before_a_phase_no_line_adds_kcal(phase, api, clock):
+    await synced(phase, api, clock, "2026-11-11")  # the fixture's Hevy session on Sat 10 Oct, before the phase
+
+    assert [s["kcal_counted"] for s in home(phase, "2026-10-10")["training"]["workouts"]["sessions"]] == [None]
 
 
 # --- the summary line and PRs per session --------------------------------------------------
@@ -153,8 +197,8 @@ async def test_each_session_line_counts_its_prs(phase, api, clock, model):
     await synced(phase, api, clock, "2026-11-19")
 
     assert home(phase, "2026-11-16")["training"]["workouts"]["sessions"] == [
-        line("lift", "Pull", "06:30", 60, prs=2)]  # Bench and Row
-    assert home(phase, "2026-11-10")["training"]["workouts"]["sessions"] == [line("lift", "Pull", "06:30", 60)]
+        line("lift", "Pull", "06:30", 60, prs=2, kcal=300)]  # Bench and Row
+    assert home(phase, "2026-11-10")["training"]["workouts"]["sessions"] == [line("lift", "Pull", "06:30", 60, kcal=300)]
 
 
 # --- the strength trend ------------------------------------------------------------------

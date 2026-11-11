@@ -11,9 +11,11 @@ macros at the starting trend weight 80.5 kg: protein 2.0 g/kg = 161 g, fat
 rest day 2400 kcal from then on.
 """
 
+import datetime
+
 import pytest
 
-from fa_coach import views
+from fa_coach import phases, views
 from fakes import exercise, food, run, session
 from test_proposals import approve_tap, two_c_weeks
 from test_weekly_checkin import at, phase  # noqa: F401
@@ -94,9 +96,10 @@ async def test_a_day_before_the_phase_started_has_no_target(phase, api, clock):
     assert f["build_up"] is None
 
 
-# --- the target build-up (ticket 14) ------------------------------------------------------
+# --- the target build-up (tickets 14, 15) ---------------------------------------------------
 # Base at the 10,000-step goal is 2570 or 2571 (2536 at the 9,000 average + 34.5); a lifting
-# session counts 300, planned wrestling 600, a Strava run 0.75 x its kcal.
+# session counts 300, planned wrestling 600, a Strava run 0.75 x its kcal. Activity is one
+# number: the sessions and the step kcal (about -34.5 at the 9,000 average).
 
 
 async def build_up(coach, api, clock, day: str, **values) -> dict:
@@ -104,46 +107,69 @@ async def build_up(coach, api, clock, day: str, **values) -> dict:
     clock.current = at(day, 20)
     await coach.sync()
     b = home(coach)["food"]["build_up"]
-    parts = ("base_kcal", "steps_kcal", "workouts_kcal", "activities_kcal", "surplus_kcal")
-    assert sum(b[k] for k in parts) == b["total_kcal"] == home(coach)["food"]["kcal"]["target"]
-    assert b["base_kcal"] in (2570, 2571) and b["surplus_kcal"] == -236
+    assert set(b) == {"base_kcal", "activity_kcal", "surplus_kcal", "total_kcal"}
+    assert b["base_kcal"] + b["activity_kcal"] + b["surplus_kcal"] == b["total_kcal"] == home(coach)["food"]["kcal"]["target"]
+    assert b["base_kcal"] in (2570, 2571)
     return b
 
 
-async def test_a_rest_day_is_base_steps_and_surplus(phase, api, clock):
+def surplus(coach, kcal: float, day: str) -> None:
+    """A new targets row from `day` on with the same base and another surplus."""
+    current = phases.targets(coach, datetime.date.fromisoformat(day))
+    with coach.db.transaction():
+        phases.set_targets(coach, phases.active(coach)["id"], {**current, "surplus_kcal": kcal},
+                           valid_from=datetime.date.fromisoformat(day), source="test", now=at(day, 7))
+
+
+async def test_a_rest_day_is_base_steps_and_a_deficit(phase, api, clock):
     b = await build_up(phase, api, clock, "2026-11-11")  # Wed: Legs not in Hevy
 
-    assert (b["workouts_kcal"], b["activities_kcal"], b["total_kcal"]) == (0, 0, 2300)
-    assert b["steps_kcal"] in (-34, -35)  # 1,000 under the goal
+    assert (b["surplus_kcal"], b["total_kcal"]) == (-236, 2300)  # the reverse starts below maintenance
+    assert b["activity_kcal"] in (-34, -35)  # only the steps: 1,000 under the goal
 
 
-async def test_a_lifting_day_adds_the_workout(phase, api, clock):
+async def test_a_lifting_day_adds_the_workout_to_activity(phase, api, clock):
     api.sessions.append(session("s1", "2026-11-10", exercise("Bench Press", (80, 8))))
 
     b = await build_up(phase, api, clock, "2026-11-10")
 
-    assert (b["workouts_kcal"], b["activities_kcal"], b["total_kcal"]) == (300, 0, 2600)
+    assert b["total_kcal"] == 2600 and b["activity_kcal"] - 300 in (-34, -35)
 
 
-async def test_a_run_and_wrestling_day_adds_both_as_activities(phase, api, clock):
+async def test_a_run_and_wrestling_day_adds_both_to_activity(phase, api, clock):
     # Fri: planned wrestling (600) and a 5 km Strava run of 400 kcal (300); its 6,000 steps are left out.
     b = await build_up(phase, api, clock, "2026-11-13", steps=15000, exercises=[run(400, 5, 30)])
 
-    assert (b["workouts_kcal"], b["activities_kcal"], b["total_kcal"]) == (0, 900, 3200)
-    assert b["steps_kcal"] in (-34, -35)
+    assert b["total_kcal"] == 3200 and b["activity_kcal"] - 900 in (-34, -35)
 
 
-async def test_a_day_below_the_step_goal_takes_step_kcal_off(phase, api, clock):
-    b = await build_up(phase, api, clock, "2026-11-12", steps=7000)  # Thu
+async def test_a_day_below_the_step_goal_takes_its_step_kcal_off_activity(phase, api, clock):
+    b = await build_up(phase, api, clock, "2026-11-12", steps=7000)  # Thu, no session
 
     assert b["total_kcal"] == 2231  # 2300 - 0.0345 x 2,000
-    assert b["steps_kcal"] in (-103, -104, -105)  # 0.0345 x -3,000 vs the goal
+    assert b["activity_kcal"] in (-103, -104, -105)  # 0.0345 x -3,000 vs the goal
 
 
 async def test_a_day_with_untracked_steps_counts_the_average(phase, api, clock):
     b = await build_up(phase, api, clock, "2026-11-12", steps=1800)  # under the tracking threshold
 
-    assert b["total_kcal"] == 2300 and b["steps_kcal"] in (-34, -35)  # counted at the 9,000 average
+    assert b["total_kcal"] == 2300 and b["activity_kcal"] in (-34, -35)  # counted at the 9,000 average
+
+
+async def test_a_surplus_is_positive(phase, api, clock):
+    surplus(phase, 250, "2026-11-12")
+
+    b = await build_up(phase, api, clock, "2026-11-12")
+
+    assert (b["surplus_kcal"], b["total_kcal"]) == (250, 2786)  # 2300 + 486
+
+
+async def test_maintenance_has_a_zero_surplus(phase, api, clock):
+    surplus(phase, 0, "2026-11-12")
+
+    b = await build_up(phase, api, clock, "2026-11-12")
+
+    assert (b["surplus_kcal"], b["total_kcal"]) == (0, 2536)
 
 
 # --- freshness ---------------------------------------------------------------------------

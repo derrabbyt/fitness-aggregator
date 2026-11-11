@@ -224,6 +224,7 @@ def counted_activity(
     params: dict[str, Any],
     *,
     count_planned: bool = True,
+    refs: bool = False,
 ) -> dict[str, Any]:
     """The kcal that `day`'s sessions add to its daily target.
 
@@ -250,7 +251,10 @@ def counted_activity(
     Returns {date, kcal, sessions, types}: `sessions` in the weekly-facts
     session shape (type, source, status done/planned/skipped, kcal_counted,
     note), skipped planned sessions included at 0; `types` = the counted
-    session types (empty on a rest day).
+    session types (empty on a rest day). With `refs`, each session also
+    carries `ref`, the line it comes from: ("strava", n) for the n-th Strava
+    run, ("hevy", session id), ("plan", planned session id), ("extra", report
+    id) (the Home view's kcal per line; not in the weekly-facts shape).
     """
 
     def param(key: str) -> float:
@@ -259,42 +263,43 @@ def counted_activity(
             raise ValueError(f"{key} is not set")
         return value
 
-    def add(type_: str, source: str, status: str, kcal: float, note: str | None) -> None:
+    def add(type_: str, source: str, status: str, kcal: float, note: str | None, ref: tuple) -> None:
         sessions.append({"date": day.isoformat(), "type": type_, "source": source, "status": status,
-                         "kcal_counted": round(kcal, 2), "note": note})
+                         "kcal_counted": round(kcal, 2), "note": note, **({"ref": ref} if refs else {})})
 
     sessions: list[dict[str, Any]] = []
     strava = [e for e in synced.get("exercises", []) if e.get("run") and (e.get("source") or "").lower() == "strava"]
     lifts = synced.get("lift_sessions", [])
-    for entry in strava:
-        add("run", "strava", "done", (entry.get("kcal") or 0) * param("run_kcal_discount"), entry.get("name"))
+    for n, entry in enumerate(strava):
+        add("run", "strava", "done", (entry.get("kcal") or 0) * param("run_kcal_discount"), entry.get("name"),
+            ("strava", n))
     for lift in lifts:
-        add("lift", "training_log", "done", param("lifting_kcal_per_session"), lift.get("name"))
+        add("lift", "training_log", "done", param("lifting_kcal_per_session"), lift.get("name"), ("hevy", lift.get("id")))
     reported = {s["session_id"]: s for s in statuses if s.get("session_id")}
     for planned in plan["days"][WEEKDAYS[day.weekday()]] if plan else []:
         report = reported.get(planned["id"])
         status = report["status"] if report else None
-        kind, name = planned["type"], planned["name"]
+        kind, name, ref = planned["type"], planned["name"], ("plan", planned["id"])
         if status == "skipped":
-            add(kind, "plan", "skipped", 0, name)
+            add(kind, "plan", "skipped", 0, name, ref)
         elif kind == "wrestling" and (status == "done" or count_planned):
-            add(kind, "plan", "done" if status == "done" else "planned", param("wrestling_kcal_per_session"), name)
+            add(kind, "plan", "done" if status == "done" else "planned", param("wrestling_kcal_per_session"), name, ref)
         elif kind == "wrestling":
             continue  # before the phase start only synced and reported sessions count
         elif status != "done":
             continue  # runs and lifts count when they sync; optional ones that didn't happen count nothing
         elif kind == "lift" and not lifts:
-            add(kind, "manual", "done", param("lifting_kcal_per_session"), name)
+            add(kind, "manual", "done", param("lifting_kcal_per_session"), name, ref)
         elif kind == "run" and not strava and report["kcal"] is not None:
-            add(kind, "manual", "done", report["kcal"] * param("run_kcal_discount"), name)
+            add(kind, "manual", "done", report["kcal"] * param("run_kcal_discount"), name, ref)
         elif kind == "other" and report["kcal"] is not None:
-            add(kind, "manual", "done", report["kcal"], name)
+            add(kind, "manual", "done", report["kcal"], name, ref)
     for extra in (s for s in statuses if s["status"] == "extra"):
         if extra["kcal"] is None and extra["type"] in SETUP_KCAL:
             kcal = param(SETUP_KCAL[extra["type"]])
         else:
             kcal = (extra["kcal"] or 0) * (param("run_kcal_discount") if extra["type"] == "run" else 1)
-        add(extra["type"], "manual", "done", kcal, extra.get("name"))
+        add(extra["type"], "manual", "done", kcal, extra.get("name"), ("extra", extra.get("id")))
     counted = [s for s in sessions if s["status"] != "skipped"]
     total = round(sum(s["kcal_counted"] for s in counted), 2)
     return {"date": day.isoformat(), "kcal": total, "sessions": sessions,
@@ -305,7 +310,7 @@ _PHASE_START = object()
 
 
 def counted_activity_on(coach, day: Date, params: dict[str, Any], *,
-                        planned_from: Any = _PHASE_START) -> dict[str, Any]:
+                        planned_from: Any = _PHASE_START, refs: bool = False) -> dict[str, Any]:
     """`counted_activity` for `day` with the plan, synced data and reports
     from the database. Planned (unreported) wrestling counts only on days
     from `planned_from` on: by default the active phase's start date; None
@@ -318,7 +323,7 @@ def counted_activity_on(coach, day: Date, params: dict[str, Any], *,
     mfp = history.days(coach.db, iso, iso)
     synced = {"exercises": mfp[0]["exercises"] if mfp else [], "lift_sessions": history.sessions(coach.db, iso, iso)}
     return counted_activity(day, plan_for(coach, day), synced, statuses(coach, day), params,
-                            count_planned=planned_from is not None and day >= planned_from)
+                            count_planned=planned_from is not None and day >= planned_from, refs=refs)
 
 
 @registry.job("training-plan-seed", order=0)

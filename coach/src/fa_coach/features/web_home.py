@@ -46,21 +46,15 @@ def food(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any]
 
 
 def build_up(target: dict[str, Any] | None) -> dict[str, int] | None:
-    """How the daily target is built (ticket 14): base at the step goal, step
-    kcal, workouts (counted lifting sessions), activities (runs, wrestling,
-    other and extra sessions), surplus; they add up exactly to the target
-    (rounding goes to the step kcal, or to the base without a step model).
-    None without a target."""
+    """How the daily target is built (ticket 15): base at the step goal +
+    activity (counted sessions and the step kcal ±, one number) + surplus
+    (signed; negative is a deficit) = the target, exactly (rounding goes to
+    activity). None without a target."""
     if target is None:
         return None
-    counted = [s for s in target["activity"]["sessions"] if s["status"] != "skipped"]
-    workouts = round(sum(s["kcal_counted"] for s in counted if s["type"] == "lift"))
-    activities = round(sum(s["kcal_counted"] for s in counted if s["type"] != "lift"))
-    parts = {"base_kcal": target["base_at_step_goal_kcal"], "steps_kcal": 0, "workouts_kcal": workouts,
-             "activities_kcal": activities, "surplus_kcal": target["surplus_kcal"]}
-    rest = "steps_kcal" if target["steps"] else "base_kcal"
-    parts[rest] += target["kcal"] - sum(parts.values())
-    return {**parts, "total_kcal": target["kcal"]}
+    base, surplus = target["base_at_step_goal_kcal"], target["surplus_kcal"]
+    return {"base_kcal": base, "activity_kcal": target["kcal"] - base - surplus, "surplus_kcal": surplus,
+            "total_kcal": target["kcal"]}
 
 
 @registry.view("home/food", schema="web_home_food_detail")
