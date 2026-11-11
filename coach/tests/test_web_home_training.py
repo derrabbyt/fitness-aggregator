@@ -89,6 +89,14 @@ async def test_an_extra_session_is_listed_with_its_duration(phase, api, clock, m
     assert t["other"]["sessions"] == [line("other", "Football", None, 90)]
 
 
+async def test_only_runs_get_a_pace(phase, api, clock, model):
+    await synced(phase, api, clock, "2026-11-11")
+    await report(phase, model, date="2026-11-11", status="extra", type="other", name="Hike", activity="hiking",
+                 duration_min=150, distance_km=9.4)
+
+    assert home(phase)["training"]["other"]["sessions"] == [line("other", "Hike", None, 150, distance_km=9.4)]
+
+
 async def test_a_day_without_sessions_has_empty_blocks(phase, api, clock):
     await synced(phase, api, clock, "2026-11-11")
 

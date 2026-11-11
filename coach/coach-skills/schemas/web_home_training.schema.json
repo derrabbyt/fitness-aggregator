@@ -21,7 +21,7 @@
         },
         "minutes": { "type": ["integer", "null"], "minimum": 0 },
         "distance_km": { "type": ["number", "null"], "minimum": 0, "description": "Runs only (and reported sessions with a distance)." },
-        "pace_s_per_km": { "type": ["integer", "null"], "minimum": 0, "description": "Seconds per km, when both distance and duration are known." },
+        "pace_s_per_km": { "type": ["integer", "null"], "minimum": 0, "description": "Runs only: seconds per km, when both distance and duration are known." },
         "skipped": { "type": "boolean" }
       }
     }

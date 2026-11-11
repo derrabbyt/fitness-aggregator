@@ -93,7 +93,7 @@ def _reported_line(kind: str, name: str, time: str | None, report: dict[str, Any
 
 def _line(kind: str, name: str, time: str | None, minutes: float | None, *, distance_km: float | None = None,
           skipped: bool = False) -> dict[str, Any]:
-    pace = round(minutes * 60 / distance_km) if minutes and distance_km else None
+    pace = round(minutes * 60 / distance_km) if kind == "run" and minutes and distance_km else None
     return {"type": kind, "name": name, "time": time, "minutes": round(minutes) if minutes is not None else None,
             "distance_km": round(distance_km, 2) if distance_km is not None else None,
             "pace_s_per_km": pace, "skipped": skipped}
