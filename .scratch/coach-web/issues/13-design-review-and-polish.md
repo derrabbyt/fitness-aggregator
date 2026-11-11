@@ -16,3 +16,4 @@
 - Ticket 02: freshness is measured as of now, not as of the shown day; fiber target is a range and Home shows its low end — check these read sensibly in the review.
 - Ticket 05: skipped planned sessions currently show with a "skipped" flag on Home; hide them instead (they did not happen, and the user wants no status tags).
 - Ticket 05: sync re-checks only the last 7 days, so a Hevy session added more than 7 days after its date is never picked up (pre-existing; consider a periodic deeper re-check).
+- Ticket 10: the run-discount refusal names the 0–1 share ("run_kcal_discount = 1.5 is outside 0–1") while the web takes a percentage; reword for the web.
