@@ -176,3 +176,18 @@ def test_settings_prefer_the_coachs_own_endpoint_and_key():
 
     assert (shared.anthropic_api_key, shared.anthropic_base_url, shared.model) == ("shared", "http://proxy", "claude-sonnet-5-5")
     assert (own.anthropic_api_key, own.anthropic_base_url, own.model) == ("own", "http://coach-proxy", "claude-haiku-5-5")
+
+
+def test_every_tool_schema_is_one_the_messages_api_accepts():
+    """The Messages API rejects a tool whose input_schema isn't an object or has oneOf / allOf /
+    anyOf at its top level (HTTP 400 for the whole call). The fake model can't notice, so check
+    every registered tool here."""
+    from fa_coach.registry import default_registry
+
+    bad = {
+        tool.name: sorted(k for k in ("oneOf", "allOf", "anyOf") if k in tool.input_schema)
+        or ["type is not object"]
+        for tool in default_registry().tools.values()
+        if tool.input_schema.get("type") != "object" or {"oneOf", "allOf", "anyOf"} & tool.input_schema.keys()
+    }
+    assert bad == {}

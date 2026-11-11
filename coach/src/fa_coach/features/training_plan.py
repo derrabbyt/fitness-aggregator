@@ -395,11 +395,14 @@ _SESSION_SCHEMA = {
             },
             "from": {"type": "string", "format": "date"},
         },
-        "anyOf": [{"required": ["days"]}, {"required": ["exercise_lists"]}],
+        # No top-level anyOf: the Messages API rejects oneOf/allOf/anyOf at the top of a tool's
+        # input_schema, so "days or exercise_lists" is checked below.
         "additionalProperties": False,
     },
 )
 async def update_training_plan(coach, args: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
+    if "days" not in args and "exercise_lists" not in args:
+        raise ToolError("give days or exercise_lists (or both)")
     _require_plan(coach, now)
     today = now.date()
     start = Date.fromisoformat(args["from"]) if "from" in args else today

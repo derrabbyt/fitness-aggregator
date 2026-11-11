@@ -1,0 +1,23 @@
+{
+  "date": "2026-11-12",
+  "goal": 10000,
+  "days": [
+    { "date": "2026-10-30", "tracked": true, "steps": 9000, "kcal": -35, "run_steps_removed": 0 },
+    { "date": "2026-10-31", "tracked": true, "steps": 11200, "kcal": 41, "run_steps_removed": 0 },
+    { "date": "2026-11-01", "tracked": false, "steps": null, "kcal": null, "run_steps_removed": 0 },
+    { "date": "2026-11-02", "tracked": true, "steps": 8400, "kcal": -55, "run_steps_removed": 0 },
+    { "date": "2026-11-03", "tracked": true, "steps": 9000, "kcal": -35, "run_steps_removed": 6000 },
+    { "date": "2026-11-04", "tracked": true, "steps": 10050, "kcal": 2, "run_steps_removed": 0 },
+    { "date": "2026-11-05", "tracked": true, "steps": 7600, "kcal": -83, "run_steps_removed": 0 },
+    { "date": "2026-11-06", "tracked": true, "steps": 9900, "kcal": -3, "run_steps_removed": 0 },
+    { "date": "2026-11-07", "tracked": true, "steps": 12400, "kcal": 83, "run_steps_removed": 0 },
+    { "date": "2026-11-08", "tracked": false, "steps": null, "kcal": null, "run_steps_removed": 0 },
+    { "date": "2026-11-09", "tracked": true, "steps": 6800, "kcal": -110, "run_steps_removed": 0 },
+    { "date": "2026-11-10", "tracked": true, "steps": 10300, "kcal": 10, "run_steps_removed": 0 },
+    { "date": "2026-11-11", "tracked": true, "steps": 9100, "kcal": -31, "run_steps_removed": 0 },
+    { "date": "2026-11-12", "tracked": true, "steps": 6000, "kcal": -138, "run_steps_removed": 0 }
+  ],
+  "average_steps": 9146,
+  "days_tracked": 12,
+  "days_at_goal": 4
+}
