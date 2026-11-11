@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_setup_summary.schema.json",
+  "title": "Web: Setup section summary",
+  "description": "One part of web_setup: a section's one-line summary.",
+  "type": "object",
+  "required": ["summary"],
+  "additionalProperties": false,
+  "properties": { "summary": { "type": "string", "minLength": 1 } }
+}

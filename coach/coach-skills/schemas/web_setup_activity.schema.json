@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_setup_activity.schema.json",
+  "title": "Web: Setup, Activity values",
+  "description": "GET /api/coach/setup/activity. The calibration values. POST /api/coach/setup/activity {values: {key: number}} turns the changed values into one calibration_change proposal (chat's propose_change): its card goes to Telegram and nothing changes until it is approved there. Returns {proposal: {id, new_values, created_at, change, referenced}, section: this view}; a value out of range is refused (400) with the guardrail's reason.",
+  "type": "object",
+  "required": ["editable", "values", "pending"],
+  "additionalProperties": false,
+  "$defs": {
+    "value": {
+      "type": "object",
+      "required": ["value", "min", "max"],
+      "additionalProperties": false,
+      "properties": {
+        "value": { "type": ["number", "null"] },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "min_exclusive": { "type": "boolean" }
+      }
+    }
+  },
+  "properties": {
+    "editable": { "type": "boolean", "description": "A phase is active and no phase setup is open." },
+    "values": {
+      "type": "object",
+      "required": ["run_kcal_discount", "wrestling_kcal_per_session", "lifting_kcal_per_session"],
+      "additionalProperties": false,
+      "properties": {
+        "run_kcal_discount": { "$ref": "#/$defs/value", "description": "Share of a run's kcal counted (0..1]." },
+        "wrestling_kcal_per_session": { "$ref": "#/$defs/value" },
+        "lifting_kcal_per_session": { "$ref": "#/$defs/value" }
+      }
+    },
+    "pending": {
+      "type": "array",
+      "description": "Open calibration proposals waiting for a tap in Telegram.",
+      "items": {
+        "type": "object",
+        "required": ["id", "new_values", "created_at", "change"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "new_values": { "type": "object", "additionalProperties": { "type": "number" } },
+          "created_at": { "type": "string" },
+          "change": { "type": "string" }
+        }
+      }
+    }
+  }
+}

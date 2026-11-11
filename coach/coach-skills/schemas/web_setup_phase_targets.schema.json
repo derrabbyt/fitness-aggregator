@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_setup_phase_targets.schema.json",
+  "title": "Web: Setup, Phase & targets",
+  "description": "GET /api/coach/setup/phase-targets. The active phase, the targets in force today and the step goal. POST /api/coach/setup/step-goal {step_goal} records a new step goal (chat's record_setup_value) and returns this view; nothing else here is editable from the web: targets change through proposals approved in Telegram and a phase starts there.",
+  "type": "object",
+  "required": ["phase", "targets", "step_goal"],
+  "additionalProperties": false,
+  "$defs": { "kcal": { "type": "integer" } },
+  "properties": {
+    "phase": {
+      "type": ["object", "null"],
+      "description": "null without an active phase.",
+      "required": ["phase_id", "name", "start_date", "week"],
+      "additionalProperties": false,
+      "properties": {
+        "phase_id": { "type": "string" },
+        "name": { "type": "string" },
+        "start_date": { "type": "string", "format": "date" },
+        "week": { "type": ["integer", "null"], "minimum": 1, "description": "Phase week today; null before the start date." }
+      }
+    },
+    "targets": {
+      "type": ["object", "null"],
+      "description": "The targets row in force today; null without an active phase or before its first targets apply.",
+      "required": ["valid_from", "base_maintenance_kcal", "avg_day_steps", "base_at_step_goal_kcal", "surplus_kcal", "avg_daily_target_kcal", "mfp_goal_kcal", "at_step_goal", "today"],
+      "additionalProperties": false,
+      "properties": {
+        "valid_from": { "type": "string", "format": "date" },
+        "base_maintenance_kcal": { "$ref": "#/$defs/kcal", "description": "At the average day steps (avg_day_steps)." },
+        "avg_day_steps": { "type": ["integer", "null"] },
+        "base_at_step_goal_kcal": { "$ref": "#/$defs/kcal" },
+        "surplus_kcal": { "$ref": "#/$defs/kcal", "description": "Negative: a deficit." },
+        "avg_daily_target_kcal": { "$ref": "#/$defs/kcal" },
+        "mfp_goal_kcal": { "$ref": "#/$defs/kcal", "description": "What MyFitnessPal's goal is set to (base + surplus)." },
+        "at_step_goal": {
+          "type": "object",
+          "description": "Daily targets on a day at the step goal: rest, one lifting session, one wrestling session.",
+          "required": ["rest", "lifting", "wrestling"],
+          "additionalProperties": false,
+          "properties": { "rest": { "$ref": "#/$defs/kcal" }, "lifting": { "$ref": "#/$defs/kcal" }, "wrestling": { "$ref": "#/$defs/kcal" } }
+        },
+        "today": {
+          "type": ["object", "null"],
+          "description": "Today's daily target so far (steps and sessions as synced); null before the phase start.",
+          "required": ["kcal", "protein_g", "carbs_g", "fat_g"],
+          "additionalProperties": false,
+          "properties": { "kcal": { "$ref": "#/$defs/kcal" }, "protein_g": { "type": "integer" }, "carbs_g": { "type": "integer" }, "fat_g": { "type": "integer" } }
+        }
+      }
+    },
+    "step_goal": {
+      "type": "object",
+      "required": ["value", "default", "min", "max", "editable"],
+      "additionalProperties": false,
+      "properties": {
+        "value": { "type": "integer" },
+        "default": { "type": "integer" },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "min_exclusive": { "type": "boolean" },
+        "editable": { "type": "boolean", "description": "A phase is active and no phase setup is open." }
+      }
+    }
+  }
+}
