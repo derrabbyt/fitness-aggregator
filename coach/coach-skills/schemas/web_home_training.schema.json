@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_home_training.schema.json",
+  "title": "Web: Home training",
+  "description": "The `training` part of web_home: the day's sessions as they stood that day, split into the Gym block (lifting: Hevy sessions, a planned lift reported done, lifting extras) and the Other activities block (Strava runs and runs reported done, wrestling (planned from the phase start on, or reported), other sessions and extras). One line per session, no per-exercise detail and no PRs. A planned session reported skipped stays listed with skipped = true; there is no 'planned' state. The Gym block also carries the lift trend line (the lifts' latest statuses as of the day, PRs in the check-in week up to the day) and the 4-week strength trend.",
+  "type": "object",
+  "required": ["gym", "other"],
+  "additionalProperties": false,
+  "$defs": {
+    "session": {
+      "type": "object",
+      "required": ["type", "name", "time", "minutes", "distance_km", "pace_s_per_km", "skipped"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "enum": ["lift", "run", "wrestling", "other"] },
+        "name": { "type": "string", "description": "Hevy's or the plan's session name, the user's name for an extra, or the MFP entry's name for a Strava run." },
+        "time": {
+          "type": ["string", "null"],
+          "pattern": "^(([01][0-9]|2[0-3]):[0-5][0-9]|morning|midday|afternoon|evening)$",
+          "description": "Time of day: HH:MM (local) when the session has a start time (Hevy, Strava, the plan), else the plan's label, or null."
+        },
+        "minutes": { "type": ["integer", "null"], "minimum": 0 },
+        "distance_km": { "type": ["number", "null"], "minimum": 0, "description": "Runs only (and reported sessions with a distance)." },
+        "pace_s_per_km": { "type": ["integer", "null"], "minimum": 0, "description": "Seconds per km, when both distance and duration are known." },
+        "skipped": { "type": "boolean" }
+      }
+    }
+  },
+  "properties": {
+    "gym": {
+      "type": "object",
+      "required": ["sessions", "trend", "strength_trend"],
+      "additionalProperties": false,
+      "properties": {
+        "sessions": { "type": "array", "items": { "$ref": "#/$defs/session" } },
+        "trend": {
+          "description": "The one-line lift trend as of the day: of the counted lifts (counting, judged at their latest session within the recency window), how many are progressing; stalled counting lifts; PRs from the start of the check-in week to the day. Null when no lift has been trained yet.",
+          "type": ["object", "null"],
+          "required": ["progressing", "counted", "stalls", "prs"],
+          "additionalProperties": false,
+          "properties": {
+            "progressing": { "type": "integer", "minimum": 0 },
+            "counted": { "type": "integer", "minimum": 0 },
+            "stalls": { "type": "integer", "minimum": 0 },
+            "prs": { "type": "integer", "minimum": 0 }
+          }
+        },
+        "strength_trend": { "$ref": "web_strength_trend.schema.json" }
+      }
+    },
+    "other": {
+      "type": "object",
+      "required": ["sessions"],
+      "additionalProperties": false,
+      "properties": {
+        "sessions": { "type": "array", "items": { "$ref": "#/$defs/session" } }
+      }
+    }
+  }
+}
