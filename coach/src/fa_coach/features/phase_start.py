@@ -248,7 +248,8 @@ def _change_active_phase(coach, key: str, value: Any, now: datetime.datetime) ->
         raise ToolError(f"{key} defines the phase start and is fixed for this phase")
     problems = validate_value(coach, phase["phase_id"], key, value)
     setup = _with(phase["setup"], key, value)
-    problems += coach.skills.errors(setup, "phase_setup")
+    if not problems:  # the value's own problems already say it; don't repeat them for the whole setup
+        problems = coach.skills.errors(setup, "phase_setup")
     if problems:
         raise ToolError(f"{key}: " + "; ".join(problems))
     coach.db.execute("UPDATE phases SET setup = ? WHERE id = ?", (json.dumps(setup), phase["id"]))
