@@ -1,0 +1,74 @@
+{
+  "date": "2026-11-29",
+  "weeks": 4,
+  "weigh_in": {
+    "date": "2026-11-29",
+    "kg": 82.0,
+    "outlier": false
+  },
+  "trend_kg": 82.0,
+  "weekly_rate_kg": 0.2,
+  "vs_band": "in_band",
+  "band": {
+    "low": 0.1,
+    "high": 0.3,
+    "lower_limit": null,
+    "upper_limit": 0.5
+  },
+  "series": [
+    {
+      "date": "2026-11-27",
+      "kg": 92.0,
+      "outlier": true,
+      "trend_kg": 81.94,
+      "band_low_kg": 81.86,
+      "band_high_kg": 81.92
+    },
+    {
+      "date": "2026-11-28",
+      "kg": 82.0,
+      "outlier": false,
+      "trend_kg": 81.97,
+      "band_low_kg": 81.89,
+      "band_high_kg": 82.0
+    },
+    {
+      "date": "2026-11-29",
+      "kg": null,
+      "outlier": false,
+      "trend_kg": 82.0,
+      "band_low_kg": 81.92,
+      "band_high_kg": 82.09
+    }
+  ],
+  "recent": [
+    {
+      "date": "2026-11-28",
+      "kg": 82.0,
+      "outlier": false
+    },
+    {
+      "date": "2026-11-27",
+      "kg": 92.0,
+      "outlier": true
+    }
+  ],
+  "waist": [
+    {
+      "date": "2026-11-23",
+      "cm": 84.0
+    },
+    {
+      "date": "2026-11-09",
+      "cm": 84.5
+    }
+  ],
+  "prediction": {
+    "start": "2026-11-23",
+    "end": "2026-11-29",
+    "predicted_kg": 81.58,
+    "actual_kg": 82.0,
+    "difference_kg": 0.42,
+    "complete": true
+  }
+}

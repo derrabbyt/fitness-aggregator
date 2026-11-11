@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_home_weight.schema.json",
+  "title": "Web: Home weight",
+  "description": "The `weight` part of web_home, as it stood that day: the latest weigh-in on or before the day (the main number when its date is the day), the weekly rate (7-day trend minus the trend 7 days earlier) judged against the active phase's band for that phase week, and the 7-day trend over the 14 days ending the day. The trend value and the band itself are in the weight detail only.",
+  "type": "object",
+  "required": ["weigh_in", "weekly_rate_kg", "vs_band", "series"],
+  "additionalProperties": false,
+  "properties": {
+    "weigh_in": {
+      "description": "The most recent weigh-in on or before the day; null when there is none. outlier: marked by the sync (left out of the trend).",
+      "type": ["object", "null"],
+      "required": ["date", "kg", "outlier"],
+      "additionalProperties": false,
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "kg": { "type": "number" },
+        "outlier": { "type": "boolean" }
+      }
+    },
+    "weekly_rate_kg": { "type": ["number", "null"], "description": "kg per week; null with too few weigh-ins." },
+    "vs_band": {
+      "enum": ["in_band", "below_band", "above_band", "below_limit", "above_limit", "not_evaluated", null],
+      "description": "As the weekly check-in judges a week: not_evaluated while any of the 7 days is in the glycogen window; null without a rate, before a phase or without a band."
+    },
+    "series": {
+      "description": "The 14 days ending the day, oldest first: the 7-day trend each day (null with too few weigh-ins).",
+      "type": "array",
+      "minItems": 14,
+      "maxItems": 14,
+      "items": {
+        "type": "object",
+        "required": ["date", "trend_kg"],
+        "additionalProperties": false,
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "trend_kg": { "type": ["number", "null"] }
+        }
+      }
+    }
+  }
+}
