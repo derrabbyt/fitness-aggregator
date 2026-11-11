@@ -1,7 +1,6 @@
 import { Routes } from '@angular/router';
 
-/** The Week tab and its detail views (a placeholder until its ticket builds the page). */
+/** The Week tab (?week=YYYY-Www, default the week in progress) and its detail views. */
 export const WEEK_ROUTES: Routes = [
-  { path: '', title: 'Week · Coach', data: { title: 'Week' },
-    loadComponent: () => import('../../shell/placeholder-page').then((m) => m.PlaceholderPage) },
+  { path: '', title: 'Week · Coach', loadComponent: () => import('./week-page').then((m) => m.WeekPage) },
 ];
