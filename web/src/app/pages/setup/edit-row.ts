@@ -104,9 +104,7 @@ export class EditState {
     @if (notice()) { <p class="msg ok small" role="status">{{ notice() }}</p> }
   `,
   styles: `
-    :host { display: block; padding: 12px 0; border-top: 1px solid var(--divider); }
-    :host(:first-child) { border-top: 0; padding-top: 0; }
-    :host(:last-child) { padding-bottom: 0; }
+    :host { display: block; }
     .row { display: flex; align-items: center; gap: 12px; min-height: 32px; }
     .txt { flex: 1; min-width: 0; }
     .val { text-align: right; }
@@ -115,6 +113,11 @@ export class EditState {
     .editor { margin-top: 10px; display: grid; gap: 10px; }
     .fields { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .btns { display: flex; justify-content: flex-end; gap: 8px; }
+    .btn { height: 36px; padding: 0 14px; border-radius: var(--radius-inner); font-weight: 500;
+      background: var(--inset); color: var(--text); }
+    .btn.primary { background: var(--fill); color: var(--container); }
+    .btn[disabled] { opacity: .5; cursor: default; }
+    @media (pointer: coarse) { .btn { height: 44px; } }
     .msg { margin: 8px 0 0; }
   `,
 })
