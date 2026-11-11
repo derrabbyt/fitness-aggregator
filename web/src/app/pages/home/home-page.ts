@@ -6,6 +6,7 @@ import { injectDay } from '../../shell/day-param';
 import { RefreshButton } from '../../shell/refresh-button';
 import { StaleLine } from '../../shell/stale-line';
 import { State } from '../../ui/state';
+import { HomeBannerComponent } from './home-banner';
 import { HOME_BLOCKS } from './home-blocks';
 import { HomeView } from './home.types';
 
@@ -16,7 +17,7 @@ import { HomeView } from './home.types';
  */
 @Component({
   selector: 'app-home-page',
-  imports: [DayNav, RefreshButton, StaleLine, State, NgComponentOutlet],
+  imports: [DayNav, RefreshButton, StaleLine, State, NgComponentOutlet, HomeBannerComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -25,6 +26,7 @@ import { HomeView } from './home.types';
       </app-day-nav>
       <app-stale-line [freshness]="home.data()?.freshness" [refreshError]="home.refreshError()" />
       @if (home.data(); as view) {
+        <app-home-banner [view]="view" />
         <main class="grid">
           @for (block of blocks; track $index) {
             <ng-container *ngComponentOutlet="block; inputs: { view, dayQuery: day.query() }" />

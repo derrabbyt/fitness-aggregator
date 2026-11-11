@@ -1,27 +1,28 @@
-"""The strength trend: is lifting improving overall? (coach-web tickets 05
-and 08, decision of 2026-11-10). Shown on Home's Gym block and at the top of
-the Training tab; both call `compute`.
+"""The strength trend (coach-web tickets 05, 08 and 14): whether lifting is
+improving overall, as of a day. Shown as a 14-day line on Home's Workouts
+card and (ticket 08, paused) larger on the Training tab; both call `compute`.
+Schema: coach-skills/schemas/web_strength_trend.schema.json.
 
-As of a day, over the `training.strength_trend_days` (28) days ending that
-day:
-- each counting lift (not excluded, not paused) with at least 2 sessions in
-  the window, counted from its latest baseline reset if one falls inside;
-- a session's value is the estimated 1RM of its heaviest working set, the
-  same value the lift status uses (`progression.lifts`; effective load for
-  bodyweight lifts); sessions progression ignores (no working set in the rep
-  range, another location) are left out;
-- per ISO week touching the window, each lift's best value as % change from
-  its first session in the window;
-- the week's point is the mean over the lifts trained by then, each carrying
-  its last value forward (null before any lift was trained).
-`change_pct` is the last point; `direction` is flat within
-±`training.e1rm_same_band_pct` %, else rising or falling.
+- A lift's value per session is the heaviest working set as estimated 1RM,
+  the value the lift status uses (progression.py; effective load for
+  bodyweight lifts). Ignored sessions (no working set, other location) are
+  left out; excluded lifts never count.
+- Each day D of the series looks back over the `training.strength_trend_days`
+  (28) days ending on D. Every counting lift trained in that window gives
+  its latest value as % of its first value in the window (its latest
+  baseline reset inside the window starts it instead). A lift needs at least
+  2 sessions there (since its last reset) to count, so a new lift doesn't pull
+  the line toward 100 %. D's point is the mean over those lifts (null without any), so
+  the line steps when sessions happen and when old sessions leave the window.
+- The rate is the last point's change over the window in % per week
+  ((point - 100) / (window days / 7)): within ±`training.e1rm_same_band_pct`
+  it is flat, above rising, below falling.
 """
 
 import datetime
 from typing import TYPE_CHECKING, Any
 
-from . import phases, progression, weekly_facts
+from . import phases, progression
 
 if TYPE_CHECKING:
     from .core import Coach
@@ -29,61 +30,43 @@ if TYPE_CHECKING:
 Date = datetime.date
 DAY = datetime.timedelta(days=1)
 IGNORED = ("no_working_sets", "other_location")
+SERIES_DAYS = 14
 
 
-def compute(coach: "Coach", day: Date, lifts: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:
-    """{days, band_pct, change_pct, direction, lifts, points: [{week, start,
-    change_pct}]}. `lifts` is `progression.lifts(coach, day)` when the caller
-    already has it."""
+def compute(coach: "Coach", day: Date, *, days: int = SERIES_DAYS,
+            lifts: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:
+    """The `days`-day series ending on `day` and the rate as of `day`.
+    `lifts`: `progression.lifts(coach, day)` when the caller has it."""
     p = phases.params(coach)["training"]
-    days, band = p["strength_trend_days"], p["e1rm_same_band_pct"]
-    start = day - (days - 1) * DAY
-    if lifts is None:
-        lifts = progression.lifts(coach, day)
-    weeks = _weeks(start, day)
-    per_lift = [s for s in (_lift_series(lift, start, day, weeks) for lift in lifts.values()) if s is not None]
-    points = []
-    for k, (week, monday) in enumerate(weeks):
-        values = [s[k] for s in per_lift if s[k] is not None]
-        mean = round(sum(values) / len(values), 1) if values else None
-        points.append({"week": week, "start": monday.isoformat(), "change_pct": mean})
-    change = points[-1]["change_pct"] if per_lift else None
-    direction = None if change is None else "rising" if change > band else "falling" if change < -band else "flat"
-    return {"days": days, "band_pct": band, "change_pct": change, "direction": direction,
-            "lifts": len(per_lift), "points": points}
+    window, band = p["strength_trend_days"], p["e1rm_same_band_pct"]
+    histories = [_values(lift["entries"]) for lift in (lifts or progression.lifts(coach, day)).values()
+                 if lift["counts"]]
+    points, trained = [], 0
+    for n in range(days - 1, -1, -1):
+        d = day - n * DAY
+        pcts = [pct for pct in (_pct(h, d - (window - 1) * DAY, d) for h in histories) if pct is not None]
+        points.append({"date": d.isoformat(), "pct": round(sum(pcts) / len(pcts), 1) if pcts else None})
+        trained = len(pcts)
+    last = points[-1]["pct"]
+    rate = None if last is None else round((last - 100) / (window / 7), 1)
+    direction = None if rate is None else "rising" if rate > band else "falling" if rate < -band else "flat"
+    return {"window_days": window, "start": points[0]["date"], "end": day.isoformat(), "points": points,
+            "rate_pct_per_week": rate, "direction": direction, "lifts": trained}
 
 
-def _weeks(start: Date, end: Date) -> list[tuple[str, Date]]:
-    monday = start - start.weekday() * DAY
-    out = []
-    while monday <= end:
-        out.append((weekly_facts.iso_week(monday), monday))
-        monday += 7 * DAY
-    return out
+def _values(entries: list[dict[str, Any]]) -> list[tuple[str, float, bool]]:
+    """(date, e1RM, starts a baseline) per usable session, oldest first."""
+    return [(e["date"], e["top"]["e1rm_kg"], e["not_judged_reason"] == "baseline_reset") for e in entries
+            if e["top"] is not None and e["top"]["e1rm_kg"] and e["not_judged_reason"] not in IGNORED]
 
 
-def _lift_series(lift: dict[str, Any], start: Date, end: Date,
-                 weeks: list[tuple[str, Date]]) -> list[float | None] | None:
-    """The lift's % change per week (carried forward), None when it doesn't count."""
-    if not lift["counts"] or lift["paused"]:
-        return None
-    entries = [e for e in lift["entries"]
-               if start.isoformat() <= e["date"] <= end.isoformat() and e["top"] is not None
-               and e["not_judged_reason"] not in IGNORED]
-    resets = [k for k, e in enumerate(entries) if e["not_judged_reason"] == "baseline_reset"]
+def _pct(history: list[tuple[str, float, bool]], start: Date, end: Date) -> float | None:
+    """The lift's latest value in start..end as % of its first one there (after a reset); None with fewer
+    than 2 sessions."""
+    window = [v for v in history if start.isoformat() <= v[0] <= end.isoformat()]
+    resets = [n for n, v in enumerate(window) if v[2]]
     if resets:
-        entries = entries[resets[-1]:]
-    if len(entries) < 2:
+        window = window[resets[-1]:]
+    if len(window) < 2:  # a lift needs two sessions in the window to show a change
         return None
-    base = entries[0]["top"]["e1rm_kg"]
-    if not base:
-        return None
-    series: list[float | None] = []
-    last = None
-    for _, monday in weeks:
-        sunday = (monday + 6 * DAY).isoformat()
-        in_week = [e["top"]["e1rm_kg"] for e in entries if monday.isoformat() <= e["date"] <= sunday]
-        if in_week:
-            last = (max(in_week) / base - 1) * 100
-        series.append(last)
-    return series
+    return window[-1][1] / window[0][1] * 100

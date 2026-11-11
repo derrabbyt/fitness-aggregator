@@ -1,4 +1,5 @@
-import { ChangeDetectionStrategy, Component, computed, effect, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, effect, untracked } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { viewResource } from '../../api/view-resource';
 import { DayNav } from '../../shell/day-nav';
 import { injectDay } from '../../shell/day-param';
@@ -10,7 +11,7 @@ import { LineChart } from '../../ui/line-chart';
 import { SectionHeader } from '../../ui/section-header';
 import { State } from '../../ui/state';
 import { Tone } from '../../ui/tone';
-import { StrengthTrendChart } from './strength-trend';
+import { StrengthTrendChart } from '../../ui/strength-trend';
 import { LiftStatus, TrainingActivity, TrainingLift, TrainingView } from './training.types';
 
 const STATUS: Record<LiftStatus, { text: string; tone: Tone }> = {
@@ -35,7 +36,8 @@ const TYPES: Record<TrainingActivity['type'], string> = {
  */
 @Component({
   selector: 'app-training-page',
-  imports: [DayNav, RefreshButton, StaleLine, Card, LineChart, SectionHeader, State, StrengthTrendChart],
+  imports: [DayNav, RefreshButton, StaleLine, Card, LineChart, SectionHeader, State, StrengthTrendChart,
+    NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -47,7 +49,11 @@ const TYPES: Record<TrainingActivity['type'], string> = {
         <div class="cols">
           <div class="stack main">
             <app-card label="Strength">
-              <app-strength-trend [trend]="t.strength_trend" size="large" />
+              @if (t.strength_trend.rate_pct_per_week != null) {
+                <app-strength-trend [trend]="t.strength_trend" />
+              } @else {
+                <div class="t2">Not enough sessions in the last {{ t.strength_trend.window_days }} days yet.</div>
+              }
             </app-card>
 
             <app-section-header title="Lifts" [aside]="t.lifts.length ? String(t.lifts.length) : ''" />
@@ -121,7 +127,7 @@ const TYPES: Record<TrainingActivity['type'], string> = {
         <div class="spark">
           <app-line-chart [points]="spark(l)" [height]="28" tone="muted" emptyText="" [label]="l.name + ' history'" />
         </div>
-        <div class="status small m" [class]="'tone-' + status[l.status].tone">{{ status[l.status].text }}</div>
+        <div class="status small m" [class]="'tone-' + st(l).tone">{{ st(l).text }}</div>
       </li>
     </ng-template>
   `,
@@ -147,7 +153,7 @@ const TYPES: Record<TrainingActivity['type'], string> = {
       padding: 12px 4px 4px; cursor: pointer; list-style: none;
     }
     .more summary::-webkit-details-marker { display: none; }
-    .more summary .label::after { content: ' ›'; display: inline-block; transition: transform .12s ease; }
+    .more summary .label::after { content: '›'; display: inline-block; margin-left: 6px; transition: transform .12s ease; }
     .more[open] summary .label::after { transform: rotate(90deg); }
     .more[open] summary { margin-bottom: 12px; }
     @media (min-width: 900px) {
@@ -161,7 +167,9 @@ export class TrainingPage {
   protected readonly fmt = fmt;
   protected readonly dayLabel = dayLabel;
   protected readonly String = String;
-  protected readonly status = STATUS;
+  protected st(l: TrainingLift): { text: string; tone: Tone } {
+    return STATUS[l.status];
+  }
   protected readonly types = TYPES;
 
   constructor() {
@@ -177,8 +185,8 @@ export class TrainingPage {
     if (!s) return '–';
     const kg = (n: number) => fmt(n, Number.isInteger(n) ? 0 : 1);
     if (l.bodyweight_exercise) {
-      const added = s.effective_load_kg - (s.effective_load_kg - s.load_kg); // what Hevy logged on top
-      return `${kg(s.effective_load_kg)} kg × ${s.reps}${added ? ` · +${kg(s.load_kg)} kg` : ' · bodyweight'}`;
+      const extra = s.load_kg ? `+${kg(s.load_kg)} kg` : 'bodyweight';
+      return `${kg(s.effective_load_kg)} kg × ${s.reps} · ${extra}`;
     }
     return `${kg(s.load_kg)} kg × ${s.reps}`;
   }
@@ -190,7 +198,7 @@ export class TrainingPage {
   /** "11.5 km · 62 min", "90 min", or the type when there is nothing else. */
   protected details(a: TrainingActivity): string {
     const parts: string[] = [];
-    if (a.name) parts.push(TYPES[a.type]);
+    if (a.name && a.name.toLowerCase() !== TYPES[a.type].toLowerCase()) parts.push(TYPES[a.type]);
     if (a.distance_km != null) parts.push(`${fmt(a.distance_km, 1)} km`);
     if (a.minutes != null) parts.push(`${fmt(a.minutes)} min`);
     return parts.join(' · ');

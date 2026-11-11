@@ -69,7 +69,7 @@
         "big_drop_pct_ask_reset": { "type": "number", "minimum": 0 },
         "volume_note_max_sets_per_session": { "type": "integer" },
         "volume_note_max_sets_per_muscle_per_session": { "type": "integer" },
-        "strength_trend_days": { "type": "integer", "minimum": 7, "description": "The web page's strength trend window: per ISO week, the mean % change of the counting lifts' estimated 1RM from each lift's first session in the window (fa_coach/strength_trend.py)." }
+        "strength_trend_days": { "type": "integer", "minimum": 7, "description": "Web only: the strength trend (web_strength_trend) covers this many days ending on the day shown." }
       }
     },
     "nutrition": {

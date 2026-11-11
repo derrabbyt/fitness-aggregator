@@ -1,12 +1,12 @@
-"""The web page's Training tab (coach-web ticket 08): every lift with its
-status and a small chart, lifts that don't count apart, the 4-week strength
-trend, and the recent runs and other sessions.
+"""The web page's Training tab (coach-web ticket 08): the strength trend
+(`strength_trend.compute`, ticket 14, over a 28-day line here), every lift
+with its status and a small chart, lifts that don't count apart, and the
+recent runs and other sessions.
 
-Strength trend worked numbers (shown day Mon 30 Nov 2026, 28-day window
-3-30 Nov, ISO weeks 45-49): e1RM = load x (1 + reps / 30), so at 8 reps the
-% change is the load's. Bench 100 (4 Nov), 102 (11 Nov), 105 (18 Nov),
-108 (25 Nov): +0, +2, +5, +8 %. Squat 100 (5 Nov), 104 (19 Nov): +0, +4 %.
-Mean per week, each lift carrying its last value: 0, 1, 4.5, 6, 6.
+Strength trend worked numbers (shown day Mon 30 Nov 2026, look-back 3-30
+Nov): e1RM = load x (1 + reps / 30), so at 8 reps the % is the load's.
+Bench 100 (4 Nov) ... 108 (25 Nov): 108 %. Squat 100 (5 Nov), 104 (19 Nov):
+104 %. Mean 106 %: (106 - 100) / 4 weeks = +1.5 % per week.
 """
 
 import datetime
@@ -52,92 +52,26 @@ async def classify(coach, exercise_id: str, classification: str) -> None:
     progression.classify(coach, exercise_id, classification, None, coach.clock.now())
 
 
-def points(trend: dict) -> list:
-    return [p["change_pct"] for p in trend["points"]]
-
-
 # --- strength trend ----------------------------------------------------------------------
 
 
-async def test_strength_trend_rises_with_the_mean_change_of_the_counting_lifts(coach, api, clock):
+async def test_the_strength_trend_is_a_four_week_line_with_its_weekly_rate(coach, api, clock):
     await synced(coach, api, clock, rising())
 
     trend = training(coach)["strength_trend"]
 
-    assert [p["week"] for p in trend["points"]] == ["2026-W45", "2026-W46", "2026-W47", "2026-W48", "2026-W49"]
-    assert points(trend) == [0.0, 1.0, 4.5, 6.0, 6.0]
-    assert (trend["change_pct"], trend["direction"], trend["lifts"], trend["days"]) == (6.0, "rising", 2, 28)
+    assert (trend["start"], trend["end"], len(trend["points"])) == ("2026-11-03", "2026-11-30", 28)
+    assert trend["points"][-1]["pct"] == 106.0
+    assert (trend["rate_pct_per_week"], trend["direction"], trend["lifts"]) == (1.5, "rising", 2)
 
 
-async def test_strength_trend_within_one_percent_is_flat_and_below_it_falling(coach, api, clock):
-    # bench 100 -> 100.6 (+0.6 %), row 100 -> 95 (-5 %): mean -2.2 -> falling; bench alone: flat
-    await synced(coach, api, clock, [
-        session("a", "2026-11-16", lift("Bench Press", 100), lift("Row", 100)),
-        session("b", "2026-11-23", lift("Bench Press", 100.6), lift("Row", 95)),
-    ])
-    trend = training(coach)["strength_trend"]
-    assert (trend["change_pct"], trend["direction"]) == (-2.2, "falling")
-    assert points(trend) == [None, None, 0.0, -2.2, -2.2]  # nothing trained in weeks 45 and 46
-
-    await classify(coach, "row", "excluded")
-    trend = training(coach)["strength_trend"]
-    assert (trend["change_pct"], trend["direction"], trend["lifts"]) == (0.6, "flat", 1)
-
-
-async def test_a_lift_with_one_session_in_the_window_and_a_paused_lift_are_left_out(coach, api, clock):
-    await synced(coach, api, clock, [
-        session("a", "2026-10-20", lift("Squat", 100)),  # before the window
-        session("b", "2026-11-16", lift("Bench Press", 100), lift("Row", 100)),
-        session("c", "2026-11-23", lift("Bench Press", 105), lift("Squat", 120), lift("Row", 110)),
-    ])
-    progression.set_paused(coach, "row", True, "elbow", clock.now())
-
-    trend = training(coach)["strength_trend"]
-
-    assert (trend["change_pct"], trend["lifts"]) == (5.0, 1)
-
-
-async def test_a_baseline_reset_restarts_the_lifts_change(coach, api, clock):
-    await synced(coach, api, clock, [
-        session("a", "2026-11-04", lift("Bench Press", 100)),
-        session("b", "2026-11-11", lift("Bench Press", 110)),
-        session("c", "2026-11-18", lift("Bench Press", 90)),
-        session("d", "2026-11-25", lift("Bench Press", 99)),
-    ])
-    progression.mark_reset(coach, "bench-press", D(2026, 11, 18), clock.now(), session_id="c", reason="ROM")
-
-    trend = training(coach)["strength_trend"]
-
-    assert points(trend) == [None, None, 0.0, 10.0, 10.0]  # 90 -> 99, from the reset on
-    assert trend["direction"] == "rising"
-
-
-async def test_without_a_qualifying_lift_there_is_no_trend(coach, api, clock):
-    await synced(coach, api, clock, [session("a", "2026-11-23", lift("Bench Press", 100))])
-
-    trend = training(coach)["strength_trend"]
-
-    assert (trend["change_pct"], trend["direction"], trend["lifts"]) == (None, None, 0)
-    assert set(points(trend)) == {None}
-
-
-async def test_a_past_day_shows_the_trend_as_it_stood_that_day(coach, api, clock):
+async def test_a_past_day_shows_the_strength_trend_as_it_stood_that_day(coach, api, clock):
     await synced(coach, api, clock, rising())
 
-    trend = training(coach, "2026-11-18")["strength_trend"]  # window 22 Oct - 18 Nov
+    trend = training(coach, "2026-11-18")["strength_trend"]  # look-back 22 Oct - 18 Nov
 
-    assert [p["week"] for p in trend["points"]][-1] == "2026-W47"
-    assert (trend["change_pct"], trend["lifts"]) == (5.0, 1)  # squat has one session by then
-
-
-async def test_bodyweight_lifts_use_the_effective_load(coach, api, clock):
-    # pull-ups at 80 kg bodyweight, then +4 kg added: 80 -> 84 = +5 %
-    await synced(coach, api, clock, [
-        session("a", "2026-11-16", lift("Pull Up", None, exercise_type="bodyweight_reps")),
-        session("b", "2026-11-23", lift("Pull Up", 4, exercise_type="bodyweight_weighted")),
-    ], weigh_ins={(D(2026, 11, 10) + k * datetime.timedelta(days=1)).isoformat(): 80.0 for k in range(20)})
-
-    assert training(coach)["strength_trend"]["change_pct"] == 5.0
+    assert trend["end"] == "2026-11-18"
+    assert (trend["points"][-1]["pct"], trend["lifts"]) == (105.0, 1)  # squat has one session by then
 
 
 # --- the lift list -----------------------------------------------------------------------

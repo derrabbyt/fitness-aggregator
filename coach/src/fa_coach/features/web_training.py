@@ -1,8 +1,8 @@
 """The web page's Training tab (coach-web ticket 08): the `training` view,
 as of a day (default today).
 
-- `strength_trend`: the 4-week line (`strength_trend.compute`, shared with
-  Home's Gym block).
+- `strength_trend`: `strength_trend.compute` (shared with Home's Workouts
+  card) with a `TREND_DAYS`-day line.
 - `lifts`: every lift in the Hevy history that counts, alphabetically, with
   its status and a short series for its small chart; `not_counted`: the
   excluded ones, the same way. Status comes from `progression.week` (a lift's
@@ -28,6 +28,7 @@ from . import training_plan
 
 Date = datetime.date
 DAY = datetime.timedelta(days=1)
+TREND_DAYS = 28  # the strength trend's line here (Home shows 14 days)
 SERIES_SESSIONS = 12  # sessions in a lift's small chart
 ACTIVITY_DAYS = 28
 IGNORED = ("no_working_sets", "other_location")
@@ -45,7 +46,7 @@ def training(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, 
     return {
         "date": day.isoformat(),
         "freshness": views.freshness(coach, now),
-        "strength_trend": strength_trend.compute(coach, day, lifts),
+        "strength_trend": strength_trend.compute(coach, day, days=TREND_DAYS, lifts=lifts),
         "lifts": [x for x in listed if counts[x["exercise_id"]]],
         "not_counted": [x for x in listed if not counts[x["exercise_id"]]],
         "activities": activities(coach, day - (ACTIVITY_DAYS - 1) * DAY, day),

@@ -1,18 +1,9 @@
 /**
- * The Training tab's read model (coach/coach-skills/schemas/web_training.schema.json)
- * and the strength trend (web_strength_trend.schema.json, also on Home's Gym block).
+ * The Training tab's read model (coach/coach-skills/schemas/web_training.schema.json).
+ * The strength trend's type and chart are shared with Home (ui/strength-trend.ts).
  */
 import { Freshness } from '../../api/types';
-
-/** web_strength_trend.schema.json: mean % change of the counting lifts' estimated 1RM. */
-export interface StrengthTrend {
-  days: number;
-  band_pct: number;
-  change_pct: number | null;
-  direction: 'rising' | 'flat' | 'falling' | null;
-  lifts: number;
-  points: { week: string; start: string; change_pct: number | null }[];
-}
+import { StrengthTrend } from '../../ui/strength-trend';
 
 export type LiftStatus =
   | 'progressing' | 'same' | 'declining' | 'stall' | 'paused' | 'new_baseline' | 'not_judged' | 'not_recent';
