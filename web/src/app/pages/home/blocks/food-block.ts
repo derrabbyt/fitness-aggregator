@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { Card } from '../../../ui/card';
-import { fmt, signed } from '../../../ui/format';
+import { fmt } from '../../../ui/format';
 import { Meter } from '../../../ui/meter';
 import { Favorable, targetTone } from '../../../ui/tone';
 import { HomeView } from '../home.types';
@@ -26,7 +26,7 @@ const MACROS: { key: 'protein' | 'carbs' | 'fat' | 'fiber'; label: string; favor
     @if (food(); as f) {
       <app-card label="Food" link="/home/food" [queryParams]="dayQuery()">
         @if (math(); as parts) {
-          <div class="math small t2 num">@for (part of parts; track $index) {@if ($index) { · }<span class="part">{{ part }}</span>}<span class="part"> = {{ fmt(f.build_up?.total_kcal) }}</span></div>
+          <div class="math small t2 num">@for (part of parts; track $index) {@if ($index) {<span>{{ ' ' }}</span>}<span class="part">{{ part }}</span>}<span class="part"> = {{ fmt(f.build_up?.total_kcal) }}</span></div>
         }
         @if (f.kcal.target != null) {
           <div class="top">
@@ -79,16 +79,17 @@ export class FoodBlock {
   protected readonly fmt = fmt;
   protected readonly abs = (n: number | null) => (n == null ? null : Math.abs(n));
   protected readonly food = computed(() => this.view().food ?? null);
-  /** "base 2,050 · steps −95 · workouts +300 · …" (the parts that aren't 0), null before a phase. */
+  /**
+   * "2,050 (base) + 600 (activity) + 250 (surplus)", then " = 2,900" in the template. A negative
+   * part reads "− 250 (deficit)"; activity and surplus at 0 are left out. Null before a phase.
+   */
   protected readonly math = computed(() => {
     const b = this.food()?.build_up;
     if (!b) return null;
-    const parts = [`base ${fmt(b.base_kcal)}`];
-    const add = (label: string, n: number) => n && parts.push(`${label} ${signed(n)}`);
-    add('steps', b.steps_kcal);
-    add('workouts', b.workouts_kcal);
-    add('activities', b.activities_kcal);
-    add('surplus', b.surplus_kcal);
+    const parts = [`${fmt(b.base_kcal)} (base)`];
+    const add = (n: number, label: string) => n && parts.push(`${n < 0 ? '−' : '+'} ${fmt(Math.abs(n))} (${label})`);
+    add(b.activity_kcal, 'activity');
+    add(b.surplus_kcal, b.surplus_kcal < 0 ? 'deficit' : 'surplus');
     return parts;
   });
   protected readonly over = computed(() => (this.food()?.kcal.left ?? 0) < 0);
