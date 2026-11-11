@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_week_weight.schema.json",
+  "title": "Web: Week weight",
+  "description": "The `weight` part of GET /api/coach/week (null when no phase was active during the week). source check_in: the numbers the week's check-in stored (trend at the week's end, the trend the day before it, the weekly rate between them, its band and position). source so_far: the week not judged yet, its 7-day rate ending today (rate_window last_7_days, as Home shows it) against the band for the week. days: the week's days so far (7 once it is over). series: the day before the week (where its rate starts) to the last day so far: weigh-ins (outliers marked), the 7-day trend and the band corridor rising from that day's trend at the band's low and high rate (null when the week isn't judged against a band: glycogen window or no band).",
+  "type": ["object", "null"],
+  "required": ["source", "trend_kg", "prev_trend_kg", "weekly_rate_kg", "rate_window", "band", "vs_band", "weigh_ins", "weigh_ins_needed", "days", "series"],
+  "additionalProperties": false,
+  "properties": {
+    "source": { "enum": ["check_in", "so_far"] },
+    "trend_kg": { "type": ["number", "null"] },
+    "prev_trend_kg": { "type": ["number", "null"] },
+    "weekly_rate_kg": { "type": ["number", "null"] },
+    "rate_window": { "enum": ["week", "last_7_days"] },
+    "band": {
+      "type": ["object", "null"],
+      "required": ["low", "high"],
+      "additionalProperties": false,
+      "properties": { "low": { "type": "number" }, "high": { "type": "number" } }
+    },
+    "vs_band": { "enum": ["below_limit", "below_band", "in_band", "above_band", "above_limit", "not_evaluated", null] },
+    "weigh_ins": { "type": "integer", "minimum": 0, "maximum": 7 },
+    "weigh_ins_needed": { "type": "integer", "minimum": 0 },
+    "days": { "type": "integer", "minimum": 1, "maximum": 7 },
+    "series": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "required": ["date", "kg", "outlier", "trend_kg", "band_low_kg", "band_high_kg"],
+        "additionalProperties": false,
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "kg": { "type": ["number", "null"] },
+          "outlier": { "type": "boolean" },
+          "trend_kg": { "type": ["number", "null"] },
+          "band_low_kg": { "type": ["number", "null"] },
+          "band_high_kg": { "type": ["number", "null"] }
+        }
+      }
+    }
+  }
+}

@@ -94,7 +94,7 @@ def _checked_in(coach, iso_week: str) -> bool:
 @registry.view("week", schema="web_week")
 def week_view(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any]:
     w = resolve(coach, query, now)
-    phase = _phase_during(coach, w)
+    phase = phase_during(coach, w)
     state = _state(coach, w, phase)
     first = _first_phase_start(coach)
     prev_end = w.end - 7 * DAY
@@ -120,7 +120,7 @@ def week_view(coach, query: dict[str, str], now: datetime.datetime) -> dict[str,
 # --- state ---------------------------------------------------------------------------------
 
 
-def _phase_during(coach, w: Week) -> dict[str, Any] | None:
+def phase_during(coach, w: Week) -> dict[str, Any] | None:
     """The phase whose span covers the week's last day (the active one, or an ended one)."""
     for row in coach.db.all("SELECT * FROM phases WHERE start_date <= ? ORDER BY start_date DESC", (w.end.isoformat(),)):
         if row["ended_at"] is None or row["ended_at"][:10] >= w.start.isoformat():

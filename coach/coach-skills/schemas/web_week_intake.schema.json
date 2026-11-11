@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_week_intake.schema.json",
+  "title": "Web: Week intake",
+  "description": "The `intake` part of GET /api/coach/week (null when no phase was active during the week or no day of it has a target yet). Each day of the week so far, eaten against its daily target: logged complete (counts), partial (a suspected partial day the user hasn't confirmed: shown, left out of the average and adherence; today is never partial) or missing. average: eaten and target per day over the complete days. adherence: result pass/fail as the check-in judged it (source check_in), not_judged for a week not judged yet; deviation_pct of the week's intake from target (null unless every day so far is complete). macros: average eaten per complete day against the week's average daily macro targets; fiber as a range (g/kg of the macro reference weight).",
+  "type": ["object", "null"],
+  "required": ["source", "days", "average", "adherence", "macros"],
+  "additionalProperties": false,
+  "$defs": {
+    "macro": {
+      "type": "object",
+      "required": ["eaten_g", "target_g"],
+      "additionalProperties": false,
+      "properties": {
+        "eaten_g": { "type": ["integer", "null"], "minimum": 0 },
+        "target_g": { "type": ["number", "null"] }
+      }
+    }
+  },
+  "properties": {
+    "source": { "enum": ["check_in", "so_far"] },
+    "days": {
+      "type": "array",
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": ["date", "eaten_kcal", "target_kcal", "logged"],
+        "additionalProperties": false,
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "eaten_kcal": { "type": ["integer", "null"], "minimum": 0 },
+          "target_kcal": { "type": "integer" },
+          "logged": { "enum": ["complete", "partial", "missing"] }
+        }
+      }
+    },
+    "average": {
+      "type": "object",
+      "required": ["eaten_kcal", "target_kcal", "days"],
+      "additionalProperties": false,
+      "properties": {
+        "eaten_kcal": { "type": ["integer", "null"], "minimum": 0 },
+        "target_kcal": { "type": ["integer", "null"] },
+        "days": { "type": "integer", "minimum": 0, "maximum": 7 }
+      }
+    },
+    "adherence": {
+      "type": "object",
+      "required": ["result", "deviation_pct", "tolerance_pct", "days_logged", "days"],
+      "additionalProperties": false,
+      "properties": {
+        "result": { "enum": ["pass", "fail", "not_judged"] },
+        "deviation_pct": { "type": ["number", "null"] },
+        "tolerance_pct": { "type": "number" },
+        "days_logged": { "type": "integer", "minimum": 0, "maximum": 7 },
+        "days": { "type": "integer", "minimum": 0, "maximum": 7 }
+      }
+    },
+    "macros": {
+      "type": "object",
+      "required": ["protein", "carbs", "fat", "fiber"],
+      "additionalProperties": false,
+      "properties": {
+        "protein": { "$ref": "#/$defs/macro" },
+        "carbs": { "$ref": "#/$defs/macro" },
+        "fat": { "$ref": "#/$defs/macro" },
+        "fiber": {
+          "type": "object",
+          "required": ["eaten_g", "target_g", "target_max_g"],
+          "additionalProperties": false,
+          "properties": {
+            "eaten_g": { "type": ["integer", "null"], "minimum": 0 },
+            "target_g": { "type": ["integer", "null"] },
+            "target_max_g": { "type": ["integer", "null"] }
+          }
+        }
+      }
+    }
+  }
+}
