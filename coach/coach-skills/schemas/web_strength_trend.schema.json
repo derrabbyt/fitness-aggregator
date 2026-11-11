@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_strength_trend.schema.json",
+  "title": "Web: strength trend",
+  "description": "Whether lifting is improving overall, as of the day shown (fa_coach/strength_trend.py). Over the last `days` days: each counting lift (not excluded, not paused) with at least 2 sessions in the window (from its latest baseline reset), its heaviest working set as estimated 1RM (effective load for bodyweight lifts); per ISO week its best value as % change from its first session in the window; a week's point is the mean over the lifts trained by then, each carrying its last value forward. change_pct is the last point; direction: flat within ±band_pct, else rising or falling. Null change_pct and direction when no lift qualifies.",
+  "type": "object",
+  "required": ["days", "band_pct", "change_pct", "direction", "lifts", "points"],
+  "additionalProperties": false,
+  "properties": {
+    "days": { "type": "integer", "minimum": 1, "description": "training.strength_trend_days" },
+    "band_pct": { "type": "number", "minimum": 0, "description": "training.e1rm_same_band_pct" },
+    "change_pct": { "type": ["number", "null"] },
+    "direction": { "enum": ["rising", "flat", "falling", null] },
+    "lifts": { "type": "integer", "minimum": 0, "description": "Lifts in the mean." },
+    "points": {
+      "type": "array",
+      "description": "One per ISO week touching the window, oldest first; change_pct null before any counted lift was trained.",
+      "items": {
+        "type": "object",
+        "required": ["week", "start", "change_pct"],
+        "additionalProperties": false,
+        "properties": {
+          "week": { "type": "string", "pattern": "^[0-9]{4}-W[0-9]{2}$" },
+          "start": { "type": "string", "format": "date", "description": "The week's Monday." },
+          "change_pct": { "type": ["number", "null"] }
+        }
+      }
+    }
+  }
+}

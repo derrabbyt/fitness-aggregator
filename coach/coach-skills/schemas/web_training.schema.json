@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_training.schema.json",
+  "title": "Web: Training",
+  "description": "GET /api/coach/training?day=YYYY-MM-DD (default today), as of that day (features/web_training.py): the strength trend, every lift with its status and a short series, the lifts that don't count apart, and the recent runs and other sessions.",
+  "type": "object",
+  "required": ["date", "freshness", "strength_trend", "lifts", "not_counted", "activities"],
+  "additionalProperties": false,
+  "$defs": {
+    "top_set": {
+      "description": "A session's heaviest working set in the rep range. Bodyweight lifts: effective_load_kg = bodyweight + added load (- assistance); load_kg is what Hevy logged.",
+      "type": ["object", "null"],
+      "required": ["load_kg", "reps", "effective_load_kg", "e1rm_kg"],
+      "additionalProperties": false,
+      "properties": {
+        "load_kg": { "type": "number" },
+        "reps": { "type": "integer", "minimum": 1 },
+        "effective_load_kg": { "type": "number" },
+        "e1rm_kg": { "type": "number", "description": "Epley: effective load x (1 + reps / 30)." }
+      }
+    },
+    "lift": {
+      "type": "object",
+      "required": ["exercise_id", "name", "status", "not_judged_reason", "bodyweight_exercise", "last_session_date", "latest", "series"],
+      "additionalProperties": false,
+      "properties": {
+        "exercise_id": { "type": "string" },
+        "name": { "type": "string" },
+        "status": {
+          "enum": ["progressing", "same", "declining", "stall", "paused", "new_baseline", "not_judged", "not_recent"],
+          "description": "Of the lift's latest session that wasn't ignored. stall: a counting lift with training.stall_sessions sessions in a row without progress (wins over same/declining). new_baseline: its first session or the first after a baseline reset. not_judged: see not_judged_reason. not_recent: not trained within training.lift_recency_days."
+        },
+        "not_judged_reason": { "enum": ["after_break", "building_baseline", null] },
+        "bodyweight_exercise": { "type": "boolean" },
+        "last_session_date": { "type": ["string", "null"], "format": "date" },
+        "latest": { "$ref": "#/$defs/top_set" },
+        "series": {
+          "type": "array",
+          "description": "The small chart: estimated 1RM of the heaviest working set per session, oldest first, the last 12 sessions since the latest baseline reset.",
+          "items": {
+            "type": "object",
+            "required": ["date", "e1rm_kg"],
+            "additionalProperties": false,
+            "properties": { "date": { "type": "string", "format": "date" }, "e1rm_kg": { "type": "number" } }
+          }
+        }
+      }
+    }
+  },
+  "properties": {
+    "date": { "type": "string", "format": "date" },
+    "freshness": { "$ref": "web_freshness.schema.json" },
+    "strength_trend": { "$ref": "web_strength_trend.schema.json" },
+    "lifts": { "type": "array", "items": { "$ref": "#/$defs/lift" }, "description": "Counting lifts, alphabetically." },
+    "not_counted": { "type": "array", "items": { "$ref": "#/$defs/lift" }, "description": "Lifts classified as excluded, alphabetically." },
+    "activities": {
+      "type": "array",
+      "description": "Runs and other sessions of the last 28 days up to the day, newest first: Strava runs, wrestling (planned, done or skipped), extra sessions, and planned sessions reported done that no Hevy session covers. Hevy lifting sessions are the lifts.",
+      "items": {
+        "type": "object",
+        "required": ["date", "type", "name", "status", "distance_km", "minutes", "kcal_counted"],
+        "additionalProperties": false,
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "type": { "enum": ["run", "wrestling", "lift", "other"] },
+          "name": { "type": ["string", "null"] },
+          "status": { "enum": ["done", "planned", "skipped"], "description": "planned: a planned session that counts without a report (wrestling); the page shows it like a done one." },
+          "distance_km": { "type": ["number", "null"], "minimum": 0 },
+          "minutes": { "type": ["number", "null"], "minimum": 0 },
+          "kcal_counted": { "type": ["integer", "null"], "minimum": 0, "description": "What the session adds to the day's target (runs after the run discount). Null when the activity setup values aren't set yet." }
+        }
+      }
+    }
+  }
+}
