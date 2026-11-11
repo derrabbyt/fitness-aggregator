@@ -4,7 +4,7 @@
   "title": "Web: Home food",
   "description": "The `food` part of web_home: kcal eaten against the coach's daily target (never MFP's goal) and macros against their targets, as they stood that day. Every target is null before a phase is active or before its start. left = target - eaten (eaten counts as 0 when nothing is logged); negative = over.",
   "type": "object",
-  "required": ["kcal", "logged", "macros"],
+  "required": ["kcal", "build_up", "logged", "macros"],
   "additionalProperties": false,
   "$defs": {
     "grams": { "type": ["integer", "null"], "minimum": 0 },
@@ -24,6 +24,20 @@
         "eaten": { "type": ["integer", "null"], "minimum": 0 },
         "target": { "type": ["integer", "null"] },
         "left": { "type": ["integer", "null"] }
+      }
+    },
+    "build_up": {
+      "description": "How the day's target is built (phases.daily_target, as of the day): base at the step goal + step kcal + workouts (counted lifting sessions, fixed per-session values included) + activities (runs, wrestling, other and extra sessions) + surplus = total_kcal, exactly (rounding goes to steps_kcal, or to base_kcal without a step model; steps_kcal is 0 then). Null without a target (before a phase).",
+      "type": ["object", "null"],
+      "required": ["base_kcal", "steps_kcal", "workouts_kcal", "activities_kcal", "surplus_kcal", "total_kcal"],
+      "additionalProperties": false,
+      "properties": {
+        "base_kcal": { "type": "integer" },
+        "steps_kcal": { "type": "integer" },
+        "workouts_kcal": { "type": "integer", "minimum": 0 },
+        "activities_kcal": { "type": "integer", "minimum": 0 },
+        "surplus_kcal": { "type": "integer" },
+        "total_kcal": { "type": "integer" }
       }
     },
     "logged": {

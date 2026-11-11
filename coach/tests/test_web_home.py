@@ -14,7 +14,7 @@ rest day 2400 kcal from then on.
 import pytest
 
 from fa_coach import views
-from fakes import food
+from fakes import exercise, food, run, session
 from test_proposals import approve_tap, two_c_weeks
 from test_weekly_checkin import at, phase  # noqa: F401
 
@@ -84,12 +84,66 @@ async def test_before_any_phase_food_has_no_target(coach, api, clock):
     assert f["kcal"] == {"eaten": 2410, "target": None, "left": None}
     assert f["macros"]["protein"] == {"eaten_g": 142, "target_g": None}
     assert f["macros"]["fiber"] == {"eaten_g": 24, "target_g": None, "target_max_g": None}
+    assert f["build_up"] is None  # no target, so no math line
 
 
 async def test_a_day_before_the_phase_started_has_no_target(phase, api, clock):
     f = home(phase, "2026-11-01")["food"]
 
     assert f["kcal"] == {"eaten": 2000, "target": None, "left": None}  # the diet history ate 2000
+    assert f["build_up"] is None
+
+
+# --- the target build-up (ticket 14) ------------------------------------------------------
+# Base at the 10,000-step goal is 2570 or 2571 (2536 at the 9,000 average + 34.5); a lifting
+# session counts 300, planned wrestling 600, a Strava run 0.75 x its kcal.
+
+
+async def build_up(coach, api, clock, day: str, **values) -> dict:
+    api.days[day] = {"steps": 9000, **values}
+    clock.current = at(day, 20)
+    await coach.sync()
+    b = home(coach)["food"]["build_up"]
+    parts = ("base_kcal", "steps_kcal", "workouts_kcal", "activities_kcal", "surplus_kcal")
+    assert sum(b[k] for k in parts) == b["total_kcal"] == home(coach)["food"]["kcal"]["target"]
+    assert b["base_kcal"] in (2570, 2571) and b["surplus_kcal"] == -236
+    return b
+
+
+async def test_a_rest_day_is_base_steps_and_surplus(phase, api, clock):
+    b = await build_up(phase, api, clock, "2026-11-11")  # Wed: Legs not in Hevy
+
+    assert (b["workouts_kcal"], b["activities_kcal"], b["total_kcal"]) == (0, 0, 2300)
+    assert b["steps_kcal"] in (-34, -35)  # 1,000 under the goal
+
+
+async def test_a_lifting_day_adds_the_workout(phase, api, clock):
+    api.sessions.append(session("s1", "2026-11-10", exercise("Bench Press", (80, 8))))
+
+    b = await build_up(phase, api, clock, "2026-11-10")
+
+    assert (b["workouts_kcal"], b["activities_kcal"], b["total_kcal"]) == (300, 0, 2600)
+
+
+async def test_a_run_and_wrestling_day_adds_both_as_activities(phase, api, clock):
+    # Fri: planned wrestling (600) and a 5 km Strava run of 400 kcal (300); its 6,000 steps are left out.
+    b = await build_up(phase, api, clock, "2026-11-13", steps=15000, exercises=[run(400, 5, 30)])
+
+    assert (b["workouts_kcal"], b["activities_kcal"], b["total_kcal"]) == (0, 900, 3200)
+    assert b["steps_kcal"] in (-34, -35)
+
+
+async def test_a_day_below_the_step_goal_takes_step_kcal_off(phase, api, clock):
+    b = await build_up(phase, api, clock, "2026-11-12", steps=7000)  # Thu
+
+    assert b["total_kcal"] == 2231  # 2300 - 0.0345 x 2,000
+    assert b["steps_kcal"] in (-103, -104, -105)  # 0.0345 x -3,000 vs the goal
+
+
+async def test_a_day_with_untracked_steps_counts_the_average(phase, api, clock):
+    b = await build_up(phase, api, clock, "2026-11-12", steps=1800)  # under the tracking threshold
+
+    assert b["total_kcal"] == 2300 and b["steps_kcal"] in (-34, -35)  # counted at the 9,000 average
 
 
 # --- freshness ---------------------------------------------------------------------------

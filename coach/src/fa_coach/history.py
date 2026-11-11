@@ -38,6 +38,7 @@ def days(db: Database, start: str, end: str) -> list[dict[str, Any]]:
                 "kcal": e["kcal"],
                 "distance_km": e["distance_km"],
                 "minutes": e["minutes"],
+                "start_at": e["start_at"],
             }
         )
     out = []

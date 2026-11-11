@@ -1,5 +1,6 @@
 {
   "kcal": { "eaten": 2410, "target": null, "left": null },
+  "build_up": null,
   "logged": "complete",
   "macros": {
     "protein": { "eaten_g": 142, "target_g": null },
