@@ -71,30 +71,22 @@ def _day(coach, day: Date, params: dict[str, Any]) -> list[dict[str, Any]]:
     """The day's counted sessions (`counted_activity_on`), with distance and
     minutes from what they came from: the Strava entry, or the user's report."""
     iso = day.isoformat()
-    counted = training_plan.counted_activity_on(coach, day, params)["sessions"]
+    counted = training_plan.counted_activity_on(coach, day, params, refs=True)["sessions"]
     record = history.day(coach.db, iso)
     strava = [e for e in (record["exercises"] if record else [])
               if e["run"] and (e["source"] or "").lower() == "strava"]
-    hevy = len(history.sessions(coach.db, iso, iso))
     reports = training_plan.statuses(coach, day)
-    extras = [s for s in reports if s["status"] == "extra"]
     by_session = {s["session_id"]: s for s in reports if s["session_id"]}
-    plan = training_plan.plan_for(coach, day)
-    planned = list(plan["days"][training_plan.WEEKDAYS[day.weekday()]]) if plan else []
-    # counted_activity lists Strava runs, then Hevy sessions, then planned sessions (plan order), then extras.
-    origins: list[dict[str, Any] | None] = [
-        {"distance_km": e["distance_km"], "duration_min": e["minutes"]} for e in strava]
-    origins += [None] * hevy
-    for item in counted[len(strava) + hevy:len(counted) - len(extras)]:
-        match = next((s for s in planned if s["name"] == item["note"] and s["type"] == item["type"]), None)
-        if match is not None:
-            planned.remove(match)
-        origins.append(by_session.get(match["id"]) if match else None)
-    origins += extras
+    by_id = {s["id"]: s for s in reports}
     out = []
-    for item, origin in zip(counted, origins, strict=True):
-        if item["source"] == "training_log":
+    for item in counted:
+        kind, key = item["ref"]
+        if kind == "hevy":
             continue  # a Hevy session: it's in the lifts
+        if kind == "strava":
+            origin = {"distance_km": strava[key]["distance_km"], "duration_min": strava[key]["minutes"]}
+        else:
+            origin = (by_session if kind == "plan" else by_id).get(key)
         out.append({"date": iso, "type": item["type"], "name": item["note"], "status": item["status"],
                     "distance_km": origin["distance_km"] if origin else None,
                     "minutes": origin["duration_min"] if origin else None,
