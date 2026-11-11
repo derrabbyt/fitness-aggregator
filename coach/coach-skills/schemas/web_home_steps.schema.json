@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_home_steps.schema.json",
+  "title": "Web: Home steps",
+  "description": "The `steps` part of web_home: the day's steps (MFP's steps minus run steps) against the step goal. Under steps.not_tracked_below raw steps (or none) the day isn't tracked: steps, to_go and kcal are null. kcal is the step part of the day's target, k x (steps - goal) (negative = below the goal), under the targets valid that day; null without a step model (before a phase or its start). provisional: today, so steps and kcal still move until the day ends.",
+  "type": "object",
+  "required": ["tracked", "steps", "goal", "to_go", "kcal", "run_steps_removed", "provisional"],
+  "additionalProperties": false,
+  "properties": {
+    "tracked": { "type": "boolean" },
+    "steps": { "type": ["integer", "null"], "minimum": 0 },
+    "goal": { "type": "integer", "minimum": 0 },
+    "to_go": { "type": ["integer", "null"], "minimum": 0, "description": "Steps still to reach the goal, 0 once reached." },
+    "kcal": { "type": ["integer", "null"] },
+    "run_steps_removed": { "type": "integer", "minimum": 0, "description": "Steps of runs and reported sessions with a distance, left out so the session counts once." },
+    "provisional": { "type": "boolean" }
+  }
+}

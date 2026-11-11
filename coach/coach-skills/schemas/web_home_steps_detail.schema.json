@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_home_steps_detail.schema.json",
+  "title": "Web: Home steps detail",
+  "description": "GET /api/coach/home/steps?day=YYYY-MM-DD. The 14 days ending on the day, oldest first, each as in web_home_steps (steps and kcal null when not tracked). average_steps is over the tracked days (null if none); days_at_goal counts tracked days at or above the goal.",
+  "type": "object",
+  "required": ["date", "goal", "days", "average_steps", "days_tracked", "days_at_goal"],
+  "additionalProperties": false,
+  "properties": {
+    "date": { "type": "string", "format": "date" },
+    "goal": { "type": "integer", "minimum": 0 },
+    "days": {
+      "type": "array",
+      "minItems": 14,
+      "maxItems": 14,
+      "items": {
+        "type": "object",
+        "required": ["date", "tracked", "steps", "kcal", "run_steps_removed"],
+        "additionalProperties": false,
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "tracked": { "type": "boolean" },
+          "steps": { "type": ["integer", "null"], "minimum": 0 },
+          "kcal": { "type": ["integer", "null"] },
+          "run_steps_removed": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "average_steps": { "type": ["integer", "null"], "minimum": 0 },
+    "days_tracked": { "type": "integer", "minimum": 0, "maximum": 14 },
+    "days_at_goal": { "type": "integer", "minimum": 0, "maximum": 14 }
+  }
+}

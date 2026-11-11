@@ -13,6 +13,7 @@ export interface HomeView {
   freshness: Freshness;
   food?: HomeFood;
   weight?: HomeWeight;
+  steps?: HomeSteps;
 }
 
 export type Logged = 'complete' | 'partial' | 'missing';
@@ -43,4 +44,29 @@ export interface FoodDetail {
   iso_week: string;
   days: { date: string; eaten_kcal: number | null; target_kcal: number | null; logged: Logged }[];
   so_far: { days_logged: number; eaten_kcal: number | null; target_kcal: number | null; deviation_pct: number | null };
+}
+
+/**
+ * web_home_steps.schema.json: the `steps` part. Not tracked (under the
+ * not-tracked limit): steps, to_go and kcal are null. kcal is the step part
+ * of the day's target vs the goal (null before a phase).
+ */
+export interface HomeSteps {
+  tracked: boolean;
+  steps: number | null;
+  goal: number;
+  to_go: number | null;
+  kcal: number | null;
+  run_steps_removed: number;
+  provisional: boolean;
+}
+
+/** web_home_steps_detail.schema.json (GET /api/coach/home/steps?day=): the 14 days ending on the day. */
+export interface StepsDetail {
+  date: string;
+  goal: number;
+  days: { date: string; tracked: boolean; steps: number | null; kcal: number | null; run_steps_removed: number }[];
+  average_steps: number | null;
+  days_tracked: number;
+  days_at_goal: number;
 }

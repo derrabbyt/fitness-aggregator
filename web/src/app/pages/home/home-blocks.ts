@@ -1,5 +1,7 @@
 import { InputSignal, Type } from '@angular/core';
 import { FoodBlock } from './blocks/food-block';
+import { SleepBlock } from './blocks/sleep-block';
+import { StepsBlock } from './blocks/steps-block';
 import { WeightBlock } from './blocks/weight-block';
 import { HomeView } from './home.types';
 
@@ -17,7 +19,7 @@ export interface HomeBlock {
 export const HOME_BLOCKS: Type<HomeBlock>[] = [
   FoodBlock,
   WeightBlock,
-  // steps (ticket 04)
+  StepsBlock,
   // training: gym, other activities (ticket 05)
-  // sleep (ticket 04)
+  SleepBlock,
 ];
