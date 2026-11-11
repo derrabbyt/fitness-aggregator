@@ -13,7 +13,7 @@
   only from the phase start on; before it only synced and reported sessions);
   `counted_activity_on(coach, day, params)` loads those inputs from the database.
 
-Read API for other features: `plan_for(coach, day)`, `statuses(coach, day)`,
+Read API for other features: `plan_for(coach, day)`, `statuses(coach, day)`, `overview`,
 `exercise_lists(coach)`, `counted_activity`, `counted_activity_on`.
 """
 
@@ -185,7 +185,7 @@ def statuses(coach, day: Date) -> list[dict[str, Any]]:
     return [dict(row) for row in rows]
 
 
-def _week_dates(today: Date) -> list[Date]:
+def week_dates(today: Date) -> list[Date]:
     monday = today - datetime.timedelta(days=today.weekday())
     return [monday + datetime.timedelta(days=n) for n in range(7)]
 
@@ -343,6 +343,12 @@ async def seed_job(coach, now: datetime.datetime) -> None:
 )
 async def get_training_plan(coach, args: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
     _require_plan(coach, now)
+    return overview(coach, now)
+
+
+def overview(coach, now: datetime.datetime) -> dict[str, Any]:
+    """get_training_plan's result (also the web's Setup › Training plan); the
+    plan must exist (`ensure_seeded`)."""
     today = now.date()
     version = _version(coach, today)
     upcoming = [
@@ -354,7 +360,7 @@ async def get_training_plan(coach, args: dict[str, Any], now: datetime.datetime)
     ]
     return {
         "plan": {"valid_from": version["valid_from"], **version["plan"]},
-        "this_week": [_day_view(coach, day) for day in _week_dates(today)],
+        "this_week": [_day_view(coach, day) for day in week_dates(today)],
         "upcoming": upcoming,
     }
 
@@ -411,7 +417,7 @@ async def update_training_plan(coach, args: dict[str, Any], now: datetime.dateti
     _require_plan(coach, now)
     today = now.date()
     start = Date.fromisoformat(args["from"]) if "from" in args else today
-    if start < _week_dates(today)[0]:
+    if start < week_dates(today)[0]:
         raise ToolError("a lasting change starts this week at the earliest; past weeks keep their plan")
     plan = plan_for(coach, start)
     for day, sessions in args.get("days", {}).items():
@@ -470,7 +476,7 @@ async def update_training_plan(coach, args: dict[str, Any], now: datetime.dateti
 async def set_session_status(coach, args: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
     _require_plan(coach, now)
     day = Date.fromisoformat(args["date"])
-    this_week = _week_dates(now.date())
+    this_week = week_dates(now.date())
     if not this_week[0] - datetime.timedelta(days=7) <= day <= this_week[-1]:
         raise ToolError("sessions can be reported for this week and last week only")
     status, db, at = args["status"], coach.db, now.isoformat(timespec="seconds")

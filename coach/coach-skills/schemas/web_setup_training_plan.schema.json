@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_setup_training_plan.schema.json",
+  "title": "Web: Setup, Training plan",
+  "description": "GET /api/coach/setup/training-plan. The saved week in force today and this week (Monday to Sunday) with what the user reported. POST /api/coach/setup/training-plan/day {weekday, sessions: [{name, type, time, optional}], from?} is a lasting change to that weekday (chat's update_training_plan; from today unless `from` is later) and returns this view. POST /api/coach/setup/training-plan/session {date, status: skipped|done|extra|clear, session_id?, extra_id?, type?, name?, kcal?, activity?, duration_min?, distance_km?} reports a session of this week (chat's set_session_status; kcal are the user's, or estimated by code from activity + duration) and returns {reported: {kcal, kcal_source, kcal_counted, estimate?} | null, section: this view}. A refusal is a 400 with the reason.",
+  "type": "object",
+  "required": ["editable", "valid_from", "upcoming", "days", "this_week", "activities"],
+  "additionalProperties": false,
+  "$defs": {
+    "weekday": { "enum": ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"] },
+    "type": { "enum": ["lift", "run", "wrestling", "other"] },
+    "kcal_source": { "enum": ["reported", "estimated", "model_estimate", null] },
+    "session": {
+      "type": "object",
+      "required": ["id", "time", "name", "type", "optional"],
+      "properties": {
+        "id": { "type": "string", "description": "Weekday and position, e.g. fri-1." },
+        "time": { "type": ["string", "null"], "description": "HH:MM, morning, midday, afternoon, evening, or null." },
+        "name": { "type": "string" },
+        "type": { "$ref": "#/$defs/type" },
+        "optional": { "type": "boolean", "description": "May not happen, e.g. an optional easy run." }
+      }
+    }
+  },
+  "properties": {
+    "editable": { "type": "boolean", "description": "A plan is saved (it seeds on first start); false: nothing to show or change." },
+    "valid_from": { "type": ["string", "null"], "format": "date", "description": "First day of the plan in force today; null: the plan as first seeded." },
+    "upcoming": {
+      "type": "array",
+      "description": "Lasting changes that start later.",
+      "items": { "type": "object", "required": ["valid_from"], "additionalProperties": false,
+                 "properties": { "valid_from": { "type": "string", "format": "date" } } }
+    },
+    "days": {
+      "type": "array",
+      "description": "The saved week, Monday first; [] without a plan.",
+      "items": {
+        "type": "object",
+        "required": ["weekday", "sessions"],
+        "additionalProperties": false,
+        "properties": {
+          "weekday": { "$ref": "#/$defs/weekday" },
+          "sessions": { "type": "array", "items": { "$ref": "#/$defs/session", "unevaluatedProperties": false } }
+        }
+      }
+    },
+    "this_week": {
+      "type": "array",
+      "description": "This week day by day with the plan of that day and the user's reports.",
+      "items": {
+        "type": "object",
+        "required": ["date", "weekday", "today", "sessions", "extras"],
+        "additionalProperties": false,
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "weekday": { "$ref": "#/$defs/weekday" },
+          "today": { "type": "boolean" },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/session",
+              "required": ["status", "kcal", "kcal_source"],
+              "properties": {
+                "status": { "enum": ["skipped", "done", null], "description": "null: not reported." },
+                "kcal": { "type": ["number", "null"] },
+                "kcal_source": { "$ref": "#/$defs/kcal_source" }
+              },
+              "unevaluatedProperties": false
+            }
+          },
+          "extras": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["extra_id", "type", "name", "kcal", "kcal_source"],
+              "additionalProperties": false,
+              "properties": {
+                "extra_id": { "type": "string" },
+                "type": { "$ref": "#/$defs/type" },
+                "name": { "type": ["string", "null"] },
+                "kcal": { "type": ["number", "null"], "description": "null: a wrestling or lifting session counting its setup value." },
+                "kcal_source": { "$ref": "#/$defs/kcal_source" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "activities": {
+      "type": "array",
+      "description": "Activities code can estimate kcal for (core param activity.met_by_activity).",
+      "items": { "type": "string" }
+    }
+  }
+}

@@ -1,0 +1,57 @@
+{
+  "editable": true,
+  "valid_from": "2026-11-09",
+  "upcoming": [{ "valid_from": "2026-11-16" }],
+  "days": [
+    { "weekday": "monday", "sessions": [
+      { "id": "mon-1", "time": "06:30", "name": "Pull", "type": "lift", "optional": false },
+      { "id": "mon-2", "time": null, "name": "Easy run", "type": "run", "optional": true } ] },
+    { "weekday": "tuesday", "sessions": [
+      { "id": "tue-1", "time": "06:30", "name": "Push", "type": "lift", "optional": false },
+      { "id": "tue-2", "time": "evening", "name": "Workout run", "type": "run", "optional": false } ] },
+    { "weekday": "wednesday", "sessions": [
+      { "id": "wed-1", "time": "06:30", "name": "Legs", "type": "lift", "optional": false },
+      { "id": "wed-2", "time": null, "name": "Easy run", "type": "run", "optional": true } ] },
+    { "weekday": "thursday", "sessions": [
+      { "id": "thu-1", "time": "06:30", "name": "Upper", "type": "lift", "optional": false },
+      { "id": "thu-2", "time": "18:00", "name": "Wrestling", "type": "wrestling", "optional": false } ] },
+    { "weekday": "friday", "sessions": [
+      { "id": "fri-1", "time": "12:00", "name": "Wrestling", "type": "wrestling", "optional": false },
+      { "id": "fri-2", "time": null, "name": "Easy run", "type": "run", "optional": true } ] },
+    { "weekday": "saturday", "sessions": [
+      { "id": "sat-1", "time": "midday", "name": "Legs", "type": "lift", "optional": false },
+      { "id": "sat-2", "time": null, "name": "Easy run", "type": "run", "optional": true } ] },
+    { "weekday": "sunday", "sessions": [
+      { "id": "sun-1", "time": "morning", "name": "Long Run", "type": "run", "optional": false } ] }
+  ],
+  "this_week": [
+    { "date": "2026-11-09", "weekday": "monday", "today": false, "sessions": [
+      { "id": "mon-1", "time": "06:30", "name": "Pull", "type": "lift", "optional": false, "status": null, "kcal": null, "kcal_source": null },
+      { "id": "mon-2", "time": null, "name": "Easy run", "type": "run", "optional": true, "status": "done", "kcal": 400, "kcal_source": "reported" } ],
+      "extras": [] },
+    { "date": "2026-11-10", "weekday": "tuesday", "today": false, "sessions": [
+      { "id": "tue-1", "time": "06:30", "name": "Push", "type": "lift", "optional": false, "status": null, "kcal": null, "kcal_source": null },
+      { "id": "tue-2", "time": "evening", "name": "Workout run", "type": "run", "optional": false, "status": "skipped", "kcal": null, "kcal_source": null } ],
+      "extras": [ { "extra_id": "x_3f2a9c1d", "type": "other", "name": "Football", "kcal": 840, "kcal_source": "estimated" } ] },
+    { "date": "2026-11-11", "weekday": "wednesday", "today": true, "sessions": [
+      { "id": "wed-1", "time": "06:30", "name": "Legs", "type": "lift", "optional": false, "status": null, "kcal": null, "kcal_source": null },
+      { "id": "wed-2", "time": null, "name": "Easy run", "type": "run", "optional": true, "status": null, "kcal": null, "kcal_source": null } ],
+      "extras": [] },
+    { "date": "2026-11-12", "weekday": "thursday", "today": false, "sessions": [
+      { "id": "thu-1", "time": "06:30", "name": "Upper", "type": "lift", "optional": false, "status": null, "kcal": null, "kcal_source": null },
+      { "id": "thu-2", "time": "18:00", "name": "Wrestling", "type": "wrestling", "optional": false, "status": null, "kcal": null, "kcal_source": null } ],
+      "extras": [] },
+    { "date": "2026-11-13", "weekday": "friday", "today": false, "sessions": [
+      { "id": "fri-1", "time": "12:00", "name": "Wrestling", "type": "wrestling", "optional": false, "status": null, "kcal": null, "kcal_source": null },
+      { "id": "fri-2", "time": null, "name": "Easy run", "type": "run", "optional": true, "status": null, "kcal": null, "kcal_source": null } ],
+      "extras": [] },
+    { "date": "2026-11-14", "weekday": "saturday", "today": false, "sessions": [
+      { "id": "sat-1", "time": "midday", "name": "Legs", "type": "lift", "optional": false, "status": null, "kcal": null, "kcal_source": null },
+      { "id": "sat-2", "time": null, "name": "Easy run", "type": "run", "optional": true, "status": null, "kcal": null, "kcal_source": null } ],
+      "extras": [] },
+    { "date": "2026-11-15", "weekday": "sunday", "today": false, "sessions": [
+      { "id": "sun-1", "time": "morning", "name": "Long Run", "type": "run", "optional": false, "status": null, "kcal": null, "kcal_source": null } ],
+      "extras": [] }
+  ],
+  "activities": ["cycling", "football", "hiking", "martial_arts", "running", "swimming", "walking"]
+}
