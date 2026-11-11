@@ -14,3 +14,5 @@
 
 - Ticket 02: `fa-api` logs every proxied `/api/coach/` request at INFO via httpx; quiet the httpx logger in the api (warnings only).
 - Ticket 02: freshness is measured as of now, not as of the shown day; fiber target is a range and Home shows its low end — check these read sensibly in the review.
+- Ticket 05: skipped planned sessions currently show with a "skipped" flag on Home; hide them instead (they did not happen, and the user wants no status tags).
+- Ticket 05: sync re-checks only the last 7 days, so a Hevy session added more than 7 days after its date is never picked up (pre-existing; consider a periodic deeper re-check).

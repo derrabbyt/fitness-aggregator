@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_home_banner.schema.json",
+  "title": "Web: Home banner",
+  "description": "The `banner` part of web_home. Null on past days and when nothing waits. `proposal`: the latest open proposal of the active phase (shown read-only on the Week page, approved in Telegram), null without one. `questions`: coach questions waiting for a tap in Telegram (day questions asked and not answered, open 'was this a reset?' questions).",
+  "type": ["object", "null"],
+  "required": ["proposal", "questions"],
+  "additionalProperties": false,
+  "properties": {
+    "proposal": {
+      "type": ["object", "null"],
+      "required": ["id", "type", "change"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "enum": ["calorie_change", "calibration_change"] },
+        "change": { "type": "string", "description": "The change in plain words, e.g. '+100 kcal a day on average'." }
+      }
+    },
+    "questions": { "type": "integer", "minimum": 0 }
+  }
+}

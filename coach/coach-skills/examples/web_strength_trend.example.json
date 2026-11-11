@@ -1,0 +1,15 @@
+{
+  "days": 28,
+  "start": "2026-10-14",
+  "end": "2026-11-10",
+  "weeks": [
+    { "iso_week": "2026-W42", "change_pct": 0.0 },
+    { "iso_week": "2026-W43", "change_pct": 0.8 },
+    { "iso_week": "2026-W44", "change_pct": 1.9 },
+    { "iso_week": "2026-W45", "change_pct": 2.4 },
+    { "iso_week": "2026-W46", "change_pct": 3.2 }
+  ],
+  "change_pct": 3.2,
+  "direction": "rising",
+  "lifts": 7
+}

@@ -4,6 +4,7 @@
  * block adds its optional key to HomeView and its type below.
  */
 import { Freshness } from '../../api/types';
+import { StrengthTrend } from '../../ui/strength-trend';
 import { HomeWeight } from './weight.types';
 
 /** web_home.schema.json (GET /api/coach/home?day=). */
@@ -14,6 +15,36 @@ export interface HomeView {
   food?: HomeFood;
   weight?: HomeWeight;
   steps?: HomeSteps;
+  training?: HomeTraining;
+  banner?: HomeBanner | null;
+}
+
+/** web_home_training.schema.json: one line per session of the day. */
+export interface TrainingSession {
+  type: 'lift' | 'run' | 'wrestling' | 'other';
+  name: string;
+  /** "HH:MM" or the plan's label (morning, midday, afternoon, evening). */
+  time: string | null;
+  minutes: number | null;
+  distance_km: number | null;
+  pace_s_per_km: number | null;
+  skipped: boolean;
+}
+
+/** web_home_training.schema.json: the `training` part (Gym and Other activities blocks). */
+export interface HomeTraining {
+  gym: {
+    sessions: TrainingSession[];
+    trend: { progressing: number; counted: number; stalls: number; prs: number } | null;
+    strength_trend: StrengthTrend;
+  };
+  other: { sessions: TrainingSession[] };
+}
+
+/** web_home_banner.schema.json: only on today, null when nothing waits. */
+export interface HomeBanner {
+  proposal: { id: string; type: 'calorie_change' | 'calibration_change'; change: string } | null;
+  questions: number;
 }
 
 export type Logged = 'complete' | 'partial' | 'missing';

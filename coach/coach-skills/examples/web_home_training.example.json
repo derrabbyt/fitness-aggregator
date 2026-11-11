@@ -1,0 +1,30 @@
+{
+  "gym": {
+    "sessions": [
+      { "type": "lift", "name": "Push", "time": "06:32", "minutes": 64, "distance_km": null, "pace_s_per_km": null, "skipped": false }
+    ],
+    "trend": { "progressing": 5, "counted": 7, "stalls": 1, "prs": 2 },
+    "strength_trend": {
+      "days": 28,
+      "start": "2026-10-14",
+      "end": "2026-11-10",
+      "weeks": [
+        { "iso_week": "2026-W42", "change_pct": 0.0 },
+        { "iso_week": "2026-W43", "change_pct": 0.8 },
+        { "iso_week": "2026-W44", "change_pct": 1.9 },
+        { "iso_week": "2026-W45", "change_pct": 2.4 },
+        { "iso_week": "2026-W46", "change_pct": 3.2 }
+      ],
+      "change_pct": 3.2,
+      "direction": "rising",
+      "lifts": 7
+    }
+  },
+  "other": {
+    "sessions": [
+      { "type": "wrestling", "name": "Wrestling", "time": "12:00", "minutes": null, "distance_km": null, "pace_s_per_km": null, "skipped": false },
+      { "type": "run", "name": "Evening Run", "time": "18:05", "minutes": 62, "distance_km": 11.5, "pace_s_per_km": 323, "skipped": false },
+      { "type": "other", "name": "Football", "time": null, "minutes": 90, "distance_km": null, "pace_s_per_km": null, "skipped": false }
+    ]
+  }
+}

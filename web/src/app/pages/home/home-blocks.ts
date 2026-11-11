@@ -1,5 +1,7 @@
 import { InputSignal, Type } from '@angular/core';
+import { ActivitiesBlock } from './blocks/activities-block';
 import { FoodBlock } from './blocks/food-block';
+import { GymBlock } from './blocks/gym-block';
 import { SleepBlock } from './blocks/sleep-block';
 import { StepsBlock } from './blocks/steps-block';
 import { WeightBlock } from './blocks/weight-block';
@@ -20,6 +22,7 @@ export const HOME_BLOCKS: Type<HomeBlock>[] = [
   FoodBlock,
   WeightBlock,
   StepsBlock,
-  // training: gym, other activities (ticket 05)
+  GymBlock,
+  ActivitiesBlock,
   SleepBlock,
 ];
