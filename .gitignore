@@ -6,3 +6,8 @@ __pycache__/
 .env
 state/
 .pytest_cache/
+
+# Local files, not part of the project
+.claude/
+training-principles.zip
+Workout Plan 2026_2027.xlsx
