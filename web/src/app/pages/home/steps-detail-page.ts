@@ -19,7 +19,7 @@ import { StepsDetail } from './home.types';
     <div class="page">
       <app-day-nav heading="Steps" [day]="day.value()" back="/home" [backQuery]="day.query()"
                    (dayChange)="day.go($event)">
-        <app-refresh-button actions [busy]="detail.refreshing()" (refresh)="detail.refresh()" />
+        <app-refresh-button actions [busy]="detail.refreshing()" [done]="detail.refreshed()" (refresh)="detail.refresh()" />
       </app-day-nav>
       @if (detail.refreshError(); as err) { <p class="warn small m">Sync failed: {{ err }}</p> }
       @if (detail.data(); as d) {

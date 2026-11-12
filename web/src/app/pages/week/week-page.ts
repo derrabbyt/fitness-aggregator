@@ -37,7 +37,7 @@ const ISO_WEEK = /^\d{4}-W\d{2}$/;
                 [disabled]="!week.data()?.next_week" (click)="go(week.data()?.next_week)">
           <app-icon name="right" />
         </button>
-        <app-refresh-button actions [busy]="week.refreshing()" (refresh)="week.refresh()" />
+        <app-refresh-button actions [busy]="week.refreshing()" [done]="week.refreshed()" (refresh)="week.refresh()" />
       </app-page-header>
       <app-stale-line [freshness]="week.data()?.freshness" [refreshError]="week.refreshError()" />
 

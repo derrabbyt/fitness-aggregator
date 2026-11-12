@@ -11,7 +11,8 @@ let nextId = 0;
 
 /**
  * A thin line chart drawn as SVG, no library: one 2px line with a 6 % wash
- * under it, no grid, no axes. `points` are evenly spaced; null leaves a gap.
+ * under it, no grid, no axes. `points` are evenly spaced; the line bridges nulls (one continuous line)
+ * and runs on flat and dashed to the edges where there are no values yet.
  * Fewer than two values show a calm empty state at the same height.
  *
  *   <app-line-chart [points]="series" tone="ok" [height]="56" startLabel="14 days" endLabel="today" />
@@ -37,6 +38,10 @@ let nextId = 0;
           <path [attr.d]="seg.area" [attr.fill]="'url(#' + gradientId + ')'" />
           <path [attr.d]="seg.line" fill="none" [attr.stroke]="color()" stroke-width="2"
                 stroke-linejoin="round" stroke-linecap="round" vector-effect="non-scaling-stroke" />
+        }
+        @if (g.ends) {
+          <path [attr.d]="g.ends" fill="none" [attr.stroke]="color()" stroke-width="1.5" stroke-dasharray="3 4"
+                opacity=".5" vector-effect="non-scaling-stroke" />
         }
       </svg>
       @if (dots()) {
@@ -89,20 +94,22 @@ export class LineChart {
     const x = (i: number) => (n === 1 ? this.W / 2 : (i / (n - 1)) * this.W);
     const y = (v: number) => pad + (hi === lo ? 0.5 : 1 - (v - lo) / (hi - lo)) * (H - 2 * pad);
 
-    // Split at gaps: each run of values is its own line.
-    const runs: { i: number; v: number }[][] = [];
-    let run: { i: number; v: number }[] = [];
-    pts.forEach((v, i) => {
-      if (v == null) { if (run.length) runs.push(run); run = []; } else run.push({ i, v });
-    });
-    if (run.length) runs.push(run);
+    // One continuous line over the values, bridging days without one.
+    const run = pts.flatMap((v, i) => (v == null ? [] : [{ i, v }]));
+    const runs = [run];
 
     const segments = runs.filter((r) => r.length > 1).map((r) => {
       const line = r.map((p, k) => `${k ? 'L' : 'M'}${x(p.i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
       const area = `${line} L${x(r[r.length - 1].i).toFixed(1)},${H} L${x(r[0].i).toFixed(1)},${H} Z`;
       return { line, area };
     });
+    const first = run[0], last = run[run.length - 1];
+    const ends = [
+      first.i > 0 ? `M0,${y(first.v).toFixed(1)} L${x(first.i).toFixed(1)},${y(first.v).toFixed(1)}` : '',
+      last.i < n - 1 ? `M${x(last.i).toFixed(1)},${y(last.v).toFixed(1)} L${this.W},${y(last.v).toFixed(1)}` : '',
+    ].join(' ').trim() || null;
     return {
+      ends,
       segments,
       points: runs.flat().map((p) => ({ xPct: (x(p.i) / this.W) * 100, y: y(p.v) })),
       band: band ? { y: y(band.high), h: Math.max(1, y(band.low) - y(band.high)) } : null,

@@ -22,7 +22,7 @@ import { HomeView } from './home.types';
   template: `
     <div class="page">
       <app-day-nav [day]="day.value()" (dayChange)="day.go($event)">
-        <app-refresh-button actions [busy]="home.refreshing()" (refresh)="home.refresh()" />
+        <app-refresh-button actions [busy]="home.refreshing()" [done]="home.refreshed()" (refresh)="home.refresh()" />
       </app-day-nav>
       <app-stale-line [freshness]="home.data()?.freshness" [refreshError]="home.refreshError()" />
       @if (home.data(); as view) {

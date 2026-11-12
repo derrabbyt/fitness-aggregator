@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "web_home_weight_detail.schema.json",
   "title": "Web: weight detail",
-  "description": "GET /api/coach/home/weight?day=YYYY-MM-DD&weeks=4|12 (default today, 4 weeks). Weight as it stood that day: the latest weigh-in, the 7-day trend, the weekly rate against the band, and the chart series ending the day.",
+  "description": "GET /api/coach/home/weight?day=YYYY-MM-DD&weeks=1|2|4|12|26|all (default today, 4 weeks; all: from the first weigh-in). Weight as it stood that day: the latest weigh-in, the 7-day trend, the weekly rate against the band, and the chart series ending the day.",
   "type": "object",
   "required": ["date", "weeks", "weigh_in", "trend_kg", "weekly_rate_kg", "vs_band", "band", "series",
                "recent", "waist", "prediction"],
@@ -12,7 +12,7 @@
   },
   "properties": {
     "date": { "type": "string", "format": "date" },
-    "weeks": { "enum": [4, 12] },
+    "weeks": { "enum": [1, 2, 4, 12, 26, "all"] },
     "weigh_in": { "$ref": "web_home_weight.schema.json#/properties/weigh_in" },
     "trend_kg": { "$ref": "#/$defs/kg", "description": "Mean of the non-outlier weigh-ins in the 7 days ending the day; null with too few." },
     "weekly_rate_kg": { "$ref": "#/$defs/kg" },
@@ -30,7 +30,7 @@
       }
     },
     "series": {
-      "description": "weeks x 7 days ending the day, oldest first. kg: that day's weigh-in (outlier: left out of the trend). band_low_kg/band_high_kg: the band as a weight corridor, starting at the trend on the first day in the range inside the active phase and past the glycogen window, then rising by the band's low/high rate a week; null before it.",
+      "description": "weeks x 7 days ending the day (all: from the first weigh-in, at least 7 days), oldest first. kg: that day's weigh-in (outlier: left out of the trend). band_low_kg/band_high_kg: the band as a weight corridor, starting at the trend on the first day in the range inside the active phase and past the glycogen window, then rising by the band's low/high rate a week; null before it.",
       "type": "array",
       "items": {
         "type": "object",
@@ -47,9 +47,8 @@
       }
     },
     "recent": {
-      "description": "The last 14 weigh-ins on or before the day, newest first; outliers marked (likely typos, left out of the trend).",
+      "description": "Every weigh-in on or before the day, newest first; outliers marked (likely typos, left out of the trend).",
       "type": "array",
-      "maxItems": 14,
       "items": {
         "type": "object",
         "required": ["date", "kg", "outlier"],

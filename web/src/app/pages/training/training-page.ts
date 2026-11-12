@@ -1,9 +1,8 @@
-import { ChangeDetectionStrategy, Component, effect, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { viewResource } from '../../api/view-resource';
-import { DayNav } from '../../shell/day-nav';
-import { injectDay } from '../../shell/day-param';
+import { PageHeader } from '../../shell/page-header';
 import { RefreshButton } from '../../shell/refresh-button';
 import { StaleLine } from '../../shell/stale-line';
 import { Card } from '../../ui/card';
@@ -12,7 +11,7 @@ import { LineChart } from '../../ui/line-chart';
 import { SectionHeader } from '../../ui/section-header';
 import { State } from '../../ui/state';
 import { Tone } from '../../ui/tone';
-import { StrengthTrendChart, strengthEmptyText } from '../../ui/strength-trend';
+import { StrengthTrendChart, hasStrengthLine, strengthEmptyText } from '../../ui/strength-trend';
 import { LIFT_STATUS, setText } from './lift-format';
 import { TrainingActivity, TrainingLift, TrainingView } from './training.types';
 
@@ -21,26 +20,26 @@ const TYPES: Record<TrainingActivity['type'], string> = {
 };
 
 /**
- * The Training tab, as of a day: the strength trend, every counting lift
+ * The Training tab, always as of today (lift charts carry the history): the strength trend, every counting lift
  * alphabetically (status, latest heaviest set, a small chart), the lifts that
  * don't count in a collapsed section, then the recent runs and other sessions.
  */
 @Component({
   selector: 'app-training-page',
-  imports: [DayNav, RefreshButton, StaleLine, Card, LineChart, SectionHeader, State, StrengthTrendChart,
+  imports: [PageHeader, RefreshButton, StaleLine, Card, LineChart, SectionHeader, State, StrengthTrendChart,
     NgTemplateOutlet, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
-      <app-day-nav heading="Training" [day]="day.value()" (dayChange)="day.go($event)">
-        <app-refresh-button actions [busy]="training.refreshing()" (refresh)="training.refresh()" />
-      </app-day-nav>
+      <app-page-header title="Training">
+        <app-refresh-button actions [busy]="training.refreshing()" [done]="training.refreshed()" (refresh)="training.refresh()" />
+      </app-page-header>
       <app-stale-line [freshness]="training.data()?.freshness" [refreshError]="training.refreshError()" />
       @if (training.data(); as t) {
         <div class="cols">
           <div class="stack main">
             <app-card label="Strength">
-              @if (t.strength_trend.rate_pct_per_week != null) {
+              @if (hasStrengthLine(t.strength_trend)) {
                 <app-strength-trend [trend]="t.strength_trend" />
               } @else {
                 <div class="t2">{{ strengthEmptyText(t.strength_trend) }}</div>
@@ -111,7 +110,7 @@ const TYPES: Record<TrainingActivity['type'], string> = {
 
     <ng-template #liftRow let-l>
       <li class="lift">
-        <a class="row" [routerLink]="['lift', l.exercise_id]" [queryParams]="day.query()">
+        <a class="row" [routerLink]="['lift', l.exercise_id]">
         <div class="what">
           <div class="m name">{{ l.name }}</div>
           <div class="t2 small num">{{ topSet(l) }}</div>
@@ -159,22 +158,19 @@ const TYPES: Record<TrainingActivity['type'], string> = {
   `,
 })
 export class TrainingPage {
-  protected readonly day = injectDay();
   protected readonly training = viewResource<TrainingView>('training');
   protected readonly fmt = fmt;
   protected readonly dayLabel = dayLabel;
   protected readonly String = String;
   protected readonly strengthEmptyText = strengthEmptyText;
+  protected readonly hasStrengthLine = hasStrengthLine;
   protected st(l: TrainingLift): { text: string; tone: Tone } {
     return LIFT_STATUS[l.status];
   }
   protected readonly types = TYPES;
 
   constructor() {
-    effect(() => {
-      const day = this.day.query().day;
-      untracked(() => this.training.load({ day }));
-    });
+    this.training.load({});
   }
 
   protected topSet(l: TrainingLift): string {

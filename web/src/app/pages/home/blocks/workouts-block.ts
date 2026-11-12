@@ -1,17 +1,17 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { Card } from '../../../ui/card';
 import { LineChart } from '../../../ui/line-chart';
-import { strengthEmptyText, strengthRate, strengthTone } from '../../../ui/strength-trend';
+import { hasStrengthLine, strengthRate, strengthTone } from '../../../ui/strength-trend';
 import { toneClass } from '../weight-format';
 import { HomeView } from '../home.types';
 import { SessionLine } from './session-line';
 
 /**
- * Home's Workouts card (tickets 05 and 14), always shown: the day's lifting
- * sessions, one line each with their PRs and kcal ("No workout" without
- * one), then the 14-day strength trend full width with its rate in % per
- * week under it (coloured rising / within the band / falling), then the
- * lift summary over the last 14 days (ticket 15's stacked layout). Taps open Training.
+ * Home's Workouts card: the day's lifting sessions, one line each with their
+ * PRs and kcal ("No workout" without one), then the 14-day strength line with
+ * its rate in % per week on it (coloured rising / flat / falling). Without a
+ * line (no lift trained twice in 4 weeks) the chart and the rate are left
+ * out. Taps open Training.
  */
 @Component({
   selector: 'app-workouts-block',
@@ -19,7 +19,7 @@ import { SessionLine } from './session-line';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (workouts(); as w) {
-      <app-card label="Workouts" link="/training" [queryParams]="dayQuery()">
+      <app-card label="Workouts" link="/training">
         <div class="sessions">
           @for (s of w.sessions; track $index) {
             <app-session-line [session]="s" />
@@ -27,26 +27,22 @@ import { SessionLine } from './session-line';
             <div class="none t2">No workout</div>
           }
         </div>
-        <app-line-chart class="spark" [points]="points()" [tone]="tone()" [height]="56"
-                        startLabel="14 days" [endLabel]="view().is_today ? 'today' : ''"
-                        [emptyText]="emptyText()"
-                        [label]="'Strength trend, last 14 days, ' + rate()" />
-        @if (w.strength_trend.rate_pct_per_week != null) {
-          <div class="rate num m" [class]="toneClass(tone())">{{ rate() }}</div>
-        }
-        @if (summaryParts().length) {
-          <div class="summary small t2">@for (part of summaryParts(); track $index) {@if ($index) { · }<span class="part">{{ part }}</span>}</div>
+        @if (hasLine()) {
+          <div class="trend">
+            <div class="rate num m" [class]="toneClass(tone())">{{ rate() }}</div>
+            <app-line-chart [points]="points()" [tone]="tone()" [height]="56"
+                            startLabel="14 days" [endLabel]="view().is_today ? 'today' : ''"
+                            [label]="'Strength, last 14 days, ' + rate()" />
+          </div>
         }
       </app-card>
     }
   `,
   styles: `
     .none { padding: 9px 0; }
-    .rate { font-size: 15px; margin-top: 6px; white-space: nowrap; }
+    .trend { position: relative; margin-top: 12px; padding-top: 22px; }
+    .rate { position: absolute; top: 0; right: 0; font-size: 13px; white-space: nowrap; }
     .rate:not(.ok):not(.bad):not(.warn) { color: var(--text-2); }
-    .spark { margin-top: 12px; }
-    .summary { margin-top: 10px; }
-    .part { white-space: nowrap; }
   `,
 })
 export class WorkoutsBlock {
@@ -56,18 +52,7 @@ export class WorkoutsBlock {
   protected readonly toneClass = toneClass;
   protected readonly workouts = computed(() => this.view().training?.workouts ?? null);
   protected readonly points = computed(() => (this.workouts()?.strength_trend.points ?? []).map((p) => p.pct));
+  protected readonly hasLine = computed(() => hasStrengthLine(this.workouts()?.strength_trend));
   protected readonly rate = computed(() => strengthRate(this.workouts()?.strength_trend));
   protected readonly tone = computed(() => strengthTone(this.workouts()?.strength_trend));
-  protected readonly emptyText = computed(() => strengthEmptyText(this.workouts()?.strength_trend));
-
-  /** "5 of 7 lifts progressing · 1 stall · 2 PRs"; zeros left out. */
-  protected readonly summaryParts = computed(() => {
-    const t = this.workouts()?.summary;
-    if (!t) return [];
-    const parts: string[] = [];
-    if (t.counted) parts.push(`${t.progressing} of ${t.counted} ${t.counted === 1 ? 'lift' : 'lifts'} progressing`);
-    if (t.stalls) parts.push(`${t.stalls} ${t.stalls === 1 ? 'stall' : 'stalls'}`);
-    if (t.prs) parts.push(`${t.prs} ${t.prs === 1 ? 'PR' : 'PRs'}`);
-    return parts;
-  });
 }
