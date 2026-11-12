@@ -1,17 +1,29 @@
 ---
 name: phase-maintenance
-description: Active-phase rules for holding weight (phase_id maintenance). DRAFT – macro values are reused from reverse_bulk until decided. Load in every coach call while this phase is active.
+description: Active-phase rules for holding weight (phase_id maintenance). Load in every coach call while this phase is active. Flat band, drift limits and the MAINT decision table; all numbers are in params.yaml next to this file.
 ---
 
-# Phase: maintenance (draft)
+# Phase: maintenance
 
-**Draft status.** Macros in `params.yaml` are placeholders reused from reverse_bulk (TO
-DECIDE). Everything else reuses the core: timing rules, adherence gate, guardrails, reports.
+Kept small. Everything not here reuses the core: timing rules, adherence gate, guardrails,
+reports.
+
+## Start (phase-start skill uses this)
+
+- **MAINT-START** – Start kcal = the maintenance estimate plus `start.surplus_kcal`. No
+  first-week increase and no glycogen window (`glycogen_window_weeks`): the first week is
+  judged.
+
+## Macros (code computes, you explain)
+
+- **MAINT-MACROS** – As the bulk's: protein `macros.protein_g_per_kg`, fat between
+  `macros.fat_g_per_kg_min` and `macros.fat_g_per_kg_max` (start at
+  `macros.fat_g_per_kg_start`), carbs the rest.
 
 ## Weight classes
 
-Flat band from `weight_band_kg_per_week`; drift limits from `drift_threshold_kg_per_week`
-(mirrored in `weight_lower_limit_kg_per_week` / `weight_upper_limit_kg_per_week`).
+Flat band from `weight_band_kg_per_week`; drift limits `weight_lower_limit_kg_per_week` /
+`weight_upper_limit_kg_per_week`.
 
 | `vs_band` | Means |
 | --- | --- |
@@ -28,9 +40,11 @@ Flat band from `weight_band_kg_per_week`; drift limits from `drift_threshold_kg_
 | **MAINT-UP** | drifting up | drift_up | decrease | Propose a calorie decrease. |
 | **MAINT-DOWN** | drifting down | drift_down | increase | Propose a calorie increase. |
 
-- A change needs `drift_confirmation_weeks` usable weeks drifting the same way.
-- Size per the core step sizes (`decisions.small_step_kcal` / `decisions.large_step_kcal`,
-  using `decisions.far_off_margin_kg_per_week` beyond the drift limit).
+- A change needs `decisions.confirmation_weeks` counted weeks drifting the same way (no fast
+  lane).
+- **MAINT-SIZE** – Always `decisions.small_step_kcal`, toward flat (a decrease when drifting
+  up, an increase when drifting down). Code enforces the direction and size and stores a
+  small drift (inside the limits) as `hold` (weekly-decision, WD-GUARD).
 - Strength: report trends; several lifts declining flags `deload_signal`.
 
 ## Phase end
