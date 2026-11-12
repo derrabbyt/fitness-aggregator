@@ -18,3 +18,5 @@
 - Ticket 05: sync re-checks only the last 7 days, so a Hevy session added more than 7 days after its date is never picked up (pre-existing; consider a periodic deeper re-check).
 - Ticket 10: the run-discount refusal names the 0–1 share ("run_kcal_discount = 1.5 is outside 0–1") while the web takes a percentage; reword for the web.
 - Ticket 11: `web_setup.schema.json` description still lists only the first three sections; update it to all eight.
+- Ticket 09: lift chart high/low labels are rounded to whole kg; Setup › Exercises could link each exercise to its lift detail.
+- Ticket 12: fa-api access log prints `/api/coach/photos/<date>/<n>` lines (dates only); fine, but quieting /api/coach access lines with the httpx logger would be consistent.
