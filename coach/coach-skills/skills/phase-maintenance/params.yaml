@@ -1,27 +1,26 @@
-# Maintenance. DRAFT: numbers get tuned when a maintenance phase actually starts.
+# Maintenance: hold the weight. Kept small (spec "Maintenance"); the core does the rest.
+# Single source for this phase's numbers. SKILL.md refers to these keys by name.
 
 phase_id: maintenance
 name: Maintenance
-draft: true
+draft: false
 direction: hold
 
-macros:                             # TO DECIDE; until then the reverse_bulk macro values are reused
+macros:                             # as the bulk's (phase-reverse-bulk)
   protein_g_per_kg: 2.0
   fat_g_per_kg_min: 0.8
   fat_g_per_kg_max: 1.0
-  fat_g_per_kg_start: null          # setup value
+  fat_g_per_kg_start: null          # setup value, within min..max
 
 start:
-  surplus_kcal: 0
+  surplus_kcal: 0                   # start kcal = the maintenance estimate
 
 glycogen_window_weeks: 0
 
 weight_band_kg_per_week:            # flat band
   - { from_week: 1, to_week: null, low: -0.1, high: 0.1 }
-drift_threshold_kg_per_week: 0.2    # act on drift beyond ±this ...
-drift_confirmation_weeks: 2         # ... for this many usable weeks
-weight_lower_limit_kg_per_week: -0.2
-weight_upper_limit_kg_per_week: 0.2
+weight_lower_limit_kg_per_week: -0.2  # drift: act only beyond these limits ...
+weight_upper_limit_kg_per_week: 0.2   # ... for decisions.confirmation_weeks (2) counted weeks
 
 default_lever: calories
 

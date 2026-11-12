@@ -19,7 +19,7 @@ coach-skills/
 │   ├── coach-core/           always loaded; hard rules; params.yaml (phase-independent numbers)
 │   ├── phase-reverse-bulk/   active phase: A–E table; params.yaml
 │   ├── phase-cut/            draft
-│   ├── phase-maintenance/    draft
+│   ├── phase-maintenance/    hold weight: flat band, drift → small step; params.yaml
 │   ├── phase-start/          "start reverse" command → setup → preview → confirm
 │   ├── weekly-decision/      facts → verdict JSON
 │   ├── weekly-report/        verdict → Telegram report
@@ -127,7 +127,7 @@ changes the schema, the skills that reference it, the examples, and reruns
 | Adherence-gate weeks | skipped like unusable weeks for confirmation (code records the skip with each stored verdict) | SPEC says no changes when adherence fails, not how they count |
 | Sport-load weeks | a week with a `sport_load` context note gives no C/D call and is skipped for confirmation (neither counts nor breaks a streak) | SPEC says no C or D proposals from them |
 | Cut weight classes | `above_band` = losing too slowly, `below_limit` = too fast | signed band; numbers still TO DECIDE |
-| Maintenance macros | reused from reverse_bulk | not decided |
+| Maintenance | macros as the bulk's; drift beyond the limits for `decisions.confirmation_weeks` → `small_step_kcal` toward flat; small drift stored as hold | spec 2026-11-12 (kept small) |
 
 ## Spec coverage
 
@@ -143,5 +143,5 @@ changes the schema, the skills that reference it, the examples, and reruns
 | Triggers | weekly-decision step 6 flags, evening-recap, training-feedback |
 | Calibration and guardrails | `maintenance_estimate`, `prediction_*`, TOOLS.md guardrails, phase-review calibration |
 | On-demand behaviours, reports | coach-chat, weekly-report, `coach_message` |
-| Other phases (draft) | phase-cut, phase-maintenance |
+| Other phases | phase-cut (draft), phase-maintenance |
 | Dropped / left out | coach-core "Out of scope" |
