@@ -84,7 +84,7 @@ only and never decide the scenario.
 
 - **RB-BF** – When the latest body-fat estimate (user's own, or photo estimate) reaches
   `body_fat.advise_near_pct`, advise a mini-cut or ending the bulk. Code sends that advice
-  itself when a new estimate reaches the low end (at most once per 4 weeks); in reports,
+  itself when a new estimate reaches the low end (not more than once a month); in reports,
   refer to it rather than sending it again. It is advice, not a stop;
   if the user chooses to continue, accept it and don't repeat the advice every week (repeat
   only at the next phase review or if the estimate rises further). Never use the scale's
