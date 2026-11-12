@@ -4,7 +4,7 @@
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Test: phase-start tool list contains an allowed live tool and no write
 - [x] Skill text

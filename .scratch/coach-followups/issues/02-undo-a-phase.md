@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Delete in one transaction; other phases untouched (test)
 - [x] Card lists the counts of what goes

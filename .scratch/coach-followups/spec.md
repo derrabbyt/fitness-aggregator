@@ -1,6 +1,6 @@
 # Coach follow-ups: ending a phase, history for past days, v1 gaps
 
-Status: ready-for-agent
+Status: resolved
 
 Sources: the questions of 2026-11-12, `.scratch/later/issues/01-coach-reset.md` and `02-setup-value-history.md`, the v1 code review (`.scratch/coach/spec.md`, review finding "step size and direction come only from the model"), `GLOSSARY.md`.
 

@@ -4,7 +4,7 @@
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Migration with seeding
 - [x] Tests: a lift excluded later still counts on earlier weeks; a pause covers only its days

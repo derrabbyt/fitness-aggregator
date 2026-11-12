@@ -4,7 +4,7 @@
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Tests: wrong direction -> hold, wrong size -> corrected, correct verdict unchanged, hold untouched, streak uses code's direction
 - [x] Skill text (weekly-decision / RB-SIZE) notes code enforces it

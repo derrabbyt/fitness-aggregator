@@ -4,7 +4,7 @@
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Migration adds `phases.end_date`; `phases.on(day)` helper
 - [x] Tool + command + card + one atomic claim; tests: card, confirm once, proposals withdrawn, jobs stopped, training feedback still sent, ending on the start day

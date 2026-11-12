@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Migration with seeding, tested on a DB with an existing phase
 - [x] Tests: past day after a calibration change and after a step-goal change; an ended phase's day shows target and band

@@ -4,7 +4,7 @@
 
 **Blocked by:** None
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Tests: partial day asked with no phase; no implausible question without a target; confirmed day makes its week usable
 - [x] Tests green
