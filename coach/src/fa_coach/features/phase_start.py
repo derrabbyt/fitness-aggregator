@@ -456,7 +456,8 @@ async def confirm_phase_start(coach, ref_id: str, now: datetime.datetime) -> Non
     phase_row_id = f"p_{secrets.token_hex(4)}"
     at = now.isoformat(timespec="seconds")
     with coach.db.transaction():
-        coach.db.execute("UPDATE phases SET status = 'ended', ended_at = ? WHERE status = 'active'", (at,))
+        coach.db.execute("UPDATE phases SET status = 'ended', ended_at = ?, end_date = ? WHERE status = 'active'",
+                         (at, (now.date() - datetime.timedelta(days=1)).isoformat()))
         coach.db.execute(
             "INSERT INTO phases (id, phase_id, setup_id, status, start_date, setup, first_change_applied_at,"
             " started_at) VALUES (?, ?, ?, 'active', ?, ?, ?, ?)",
