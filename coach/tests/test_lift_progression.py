@@ -299,7 +299,7 @@ async def test_two_lifts_declining_two_sessions_in_a_row_give_the_deload_signal(
     assert t["declining_lifts"] == ["bench-press", "squat"] and t["deload_signal"] is True
 
     progression.set_paused(coach, "squat", True, "knee", clock.now())
-    t = week(coach)
+    t = week(coach, clock.now().date().isoformat())  # a pause applies from the day it's made
     assert {lift["exercise_id"]: lift["status"] for lift in t["tracked_lifts"]}["squat"] == "paused"
     assert t["deload_signal"] is False and t["counted_lifts"] == 1
 

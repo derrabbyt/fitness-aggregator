@@ -63,12 +63,13 @@ def _kcal_per_line(coach, day: Date) -> dict[tuple, float]:
 
 
 def _prs_per_session(lifts: dict[str, dict[str, Any]]) -> dict[str, int]:
-    """PRs per Hevy session (paused exercises set none, as in progression.week)."""
+    """PRs per Hevy session (paused exercises set none, as in progression.week;
+    paused as on the session's day)."""
     out: dict[str, int] = {}
     for lift in lifts.values():
         if not lift["paused"]:
             for e in lift["entries"]:
-                if e["is_pr"]:
+                if e["is_pr"] and not e["paused"]:
                     out[e["session_id"]] = out.get(e["session_id"], 0) + 1
     return out
 
