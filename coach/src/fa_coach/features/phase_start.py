@@ -30,7 +30,7 @@ from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-from .. import phases, progression
+from .. import cut, phases, progression
 from ..ask import ToolError
 from ..ports import Button, ChatTurn, ModelError
 from ..registry import registry
@@ -54,9 +54,11 @@ LOGISTICS = ("weekly_checkin", "evening_reminder_time", "max_unprompted_messages
 KEYS = ("starting_calories_kcal", "starting_trend_weight_kg", "maintenance_estimate_kcal",
         "maintenance_includes_activity", "run_kcal_discount", "wrestling_kcal_per_session",
         "lifting_kcal_per_session", "fat_g_per_kg_start", "week1_increase_kcal", "time_goal_weeks",
-        "photos_enabled", "waist_cm_start", "step_goal") + tuple(f"logistics.{k}" for k in LOGISTICS)
+        "photos_enabled", "waist_cm_start", "step_goal") + tuple(f"logistics.{k}" for k in LOGISTICS) \
+    + cut.SETUP_KEYS
 # Have a default (maintenance includes activity; the step goal from core params): never need asking.
-OPTIONAL = ("maintenance_includes_activity", "step_goal")
+# A cut needs a level or a goal (`still_needed`); its end date is optional.
+OPTIONAL = ("maintenance_includes_activity", "step_goal", "goal", "end_date")
 CLASSIFY = "exercise_classification"  # not a setup value: every Hevy exercise classified (features/lifts.py)
 
 
@@ -194,10 +196,19 @@ def still_needed(coach, phase_id: str, values: dict[str, Any], today: datetime.d
     """Setup keys not recorded yet, plus `exercise_classification` while an
     exercise in the Hevy history isn't classified (`classify_exercises`)."""
     recorded = _flat(values)
-    uses_increase = "week1_increase_kcal" in coach.skills.params(phase_id)["start"]
+    p = coach.skills.params(phase_id)
+    uses_increase = "week1_increase_kcal" in p["start"]
     unclassified = progression.unclassified(coach, lifts.history_start(today), today)
     return ([CLASSIFY] if unclassified else []) + [
-        k for k in KEYS if k not in recorded and k not in OPTIONAL and (k != "week1_increase_kcal" or uses_increase)]
+        k for k in KEYS if k not in recorded and k not in OPTIONAL and (k != "week1_increase_kcal" or uses_increase)
+        and (k != "fat_g_per_kg_start" or _fixed_fat(p) is None)
+        and (k != "cut_level" or (phase_id == cut.PHASE_ID and recorded.get("goal") is None))]
+
+
+def _fixed_fat(p: dict[str, Any]) -> float | None:
+    """The phase's fat in g/kg when it is fixed (min = max, e.g. the cut's floor): not asked then."""
+    m = p["macros"]
+    return m["fat_g_per_kg_min"] if m["fat_g_per_kg_min"] == m["fat_g_per_kg_max"] else None
 
 
 # --- tools -----------------------------------------------------------------------
@@ -209,9 +220,11 @@ def still_needed(coach, phase_id: str, values: dict[str, Any], today: datetime.d
     "phase-setup schema and the phase's params). Logistics keys: logistics.weekly_checkin ('sun 18:00'), "
     "logistics.evening_reminder_time ('20:30'), logistics.max_unprompted_messages_per_day, "
     "logistics.soft_floor_min_days. step_goal (default 10,000 steps: where step kcal are 0; it doesn't change "
-    "the energy the user gets). Optional values the user declines are recorded as null. After the phase "
-    "started, changes logistics, photos_enabled, time_goal_weeks, waist_cm_start and step_goal of the active "
-    "phase. "
+    "the energy the user gets). A cut only: cut_level (conservative / moderate / aggressive) or goal "
+    "({weight_kg, date} or {body_fat_pct, current_body_fat_pct, date}; code derives the deficit), and end_date "
+    "(optional, a mini-cut's last day). Optional values the user declines are recorded as null. After the phase "
+    "started, changes logistics, photos_enabled, time_goal_weeks, waist_cm_start, step_goal and end_date of the "
+    "active phase. "
     "Returns what is still needed (exercise_classification: classify the exercises with classify_exercises).",
     {
         "type": "object",
@@ -280,6 +293,8 @@ def validate_value(coach, phase_id: str, key: str, value: Any) -> list[str]:
     if problems:
         return problems
     p = coach.skills.params(phase_id)
+    if key in cut.SETUP_KEYS and phase_id != cut.PHASE_ID:
+        problems.append("only a cut takes this value")
     if key == "fat_g_per_kg_start":
         low, high = p["macros"]["fat_g_per_kg_min"], p["macros"]["fat_g_per_kg_max"]
         if value < low or (high is not None and value > high):
@@ -309,13 +324,22 @@ async def start_phase(coach, args: dict[str, Any], now: datetime.datetime) -> di
     if missing:
         raise ToolError("still needed: " + ", ".join(missing))
     full = _full_setup(setup, now.date())
+    p = coach.skills.params(setup["phase_id"])
+    if "fat_g_per_kg_start" not in full and _fixed_fat(p) is not None:
+        full["fat_g_per_kg_start"] = _fixed_fat(p)
     problems = coach.skills.errors(full, "phase_setup")
     if problems:
         raise ToolError("invalid setup: " + "; ".join(problems))
     try:
+        plan = None
+        if setup["phase_id"] == cut.PHASE_ID:  # the deficit (from the level or the goal) is fixed for the phase
+            plan = cut.plan(p, full)
+            full["deficit_kcal"] = plan["deficit_kcal"]
         result = phases.preview(coach, full, now)
     except ValueError as exc:
         raise ToolError(str(exc)) from exc
+    if plan is not None:
+        result["cut"] = plan
     result["exercises"] = [{"name": e["title"], "classification": e["classification"]}
                            for e in progression.exercises(coach, lifts.history_start(now.date()), now.date())]
     with coach.db.transaction():
@@ -398,6 +422,7 @@ def render_card(preview: dict[str, Any]) -> str:
     run = f"{days['run']:,} kcal (typical run)" if days["run"] is not None else "rest day + the synced run's kcal"
     lines = [
         f"Week-1 preview: {preview['phase_name']}",
+        *_cut_lines(preview.get("cut")),
         f"Average daily target: {preview['average_daily_target_kcal']:,} kcal",
         f"MyFitnessPal goal: {goal['kcal']:,} kcal · P {goal['protein_g']} g · C {goal['carbs_g']} g · "
         f"F {goal['fat_g']} g (a rest day; activity comes on top: add it in your head in MyFitnessPal, "
@@ -430,6 +455,23 @@ def render_card(preview: dict[str, Any]) -> str:
         if names:
             lines.append(f"{label}: {', '.join(names)}.")
     return "\n".join(lines)
+
+
+def _cut_lines(plan: dict[str, Any] | None) -> list[str]:
+    """The cut's level, deficit, target rate and band (and its goal and warning) on the card."""
+    if plan is None:
+        return []
+    lines = [f"Cut: {plan['level']}, {plan['deficit_kcal']:,} kcal a day below maintenance; target rate "
+             f"{plan['target_rate_kg_per_week']:+.2f} kg/week (band {plan['band']['low']:+.2f} to "
+             f"{plan['band']['high']:+.2f})."]
+    goal = plan["goal"]
+    if goal is not None:
+        lines.append(f"Goal: {goal['goal_weight_kg']:g} kg by {goal['date']} needs "
+                     f"{goal['needed_rate_kg_per_week']:+.2f} kg/week, about {goal['needed_deficit_kcal']:,} kcal a "
+                     f"day below maintenance (suggested level: {goal['suggested_level']}).")
+    if plan["warning"]:
+        lines.append(f"⚠️ {plan['warning']}")
+    return lines
 
 
 def _num(x: float) -> str:

@@ -1,33 +1,53 @@
-# Cut. DRAFT: numbers get tuned when a cut actually starts (see SPEC.md "Other phases").
-# Also used for a mini-cut during a bulk.
+# Cut, and a mini-cut (a cut with an end_date) during a bulk.
+# Single source for this phase's numbers. SKILL.md refers to these keys by name.
+# Deficit levels and the weekly scenarios: docs/reference/training-principles/02-fat-loss-coaching-protocol.txt;
+# the band tolerance and "too fast -> +100 kcal" are the user's choices (coach-reviews spec).
 
 phase_id: cut
 name: Cut
-draft: true
+draft: false
 direction: loss
 
 macros:
   protein_g_per_kg: 2.5
-  fat_g_per_kg_min: 0.6             # floor
-  fat_g_per_kg_max: null            # not decided
-  fat_g_per_kg_start: null          # setup value
+  fat_g_per_kg_min: 0.6             # floor; fat stays here (not asked at setup)
+  fat_g_per_kg_max: 0.6
+  fat_g_per_kg_start: 0.6
 
 start:
-  deficit_kcal: 750                 # vs current base maintenance + activity (surplus_kcal = -deficit)
+  deficit_kcal: 750                 # the default level's; code replaces it with the setup's deficit_kcal
 
-glycogen_window_weeks: 0
+cut:
+  levels_kcal:                      # daily deficit vs the maintenance estimate (setup value cut_level)
+    conservative: 500
+    moderate: 750
+    aggressive: 1000
+  default_level: moderate
+  max_deficit_kcal: 1000            # cap for a deficit derived from a goal
+  warn_above_kcal: 750              # past moderate: warn (experienced dieters only)
+  band_tolerance: 0.4               # band = target rate x (1 +- this)
+  stall_activity_steps: [1000, 2000]   # offered in words as the alternative to eating less
 
-weight_band_kg_per_week: null       # TO DECIDE before first use (signed, negative for loss)
-weight_lower_limit_kg_per_week: null  # TO DECIDE: losing faster than this = too fast
+glycogen_window_weeks: 0            # no glycogen window ...
+unjudged_weeks: 1                   # ... but week 1's water drop is not judged against the band
+
+# Code replaces the band with the setup's (target rate = deficit_kcal x 7 / kcal_per_kg, x (1 +- band_tolerance));
+# this one is the default level's.
+weight_band_kg_per_week:
+  - { from_week: 1, to_week: null, low: -0.98, high: -0.42 }
+weight_lower_limit_kg_per_week: null  # faster than the band is already "too fast"
 weight_upper_limit_kg_per_week: null
 
+decisions:
+  increase_step_kcal: 100           # too fast: always the small step up, to protect muscle
+
 stall_lever: carbs
-carb_step_g: [25, 50]               # = 100-200 kcal per step
+carb_step_g: [25, 50]               # = 100-200 kcal per step (decisions.small_step_kcal / large_step_kcal)
 
 default_lever: calories
 
 body_fat:
-  advise_near_pct: null             # target set at phase start, if any
+  advise_near_pct: null
   sources: [user_estimate, photo_estimate]
 
 time_goal_weeks: null               # setup value, optional

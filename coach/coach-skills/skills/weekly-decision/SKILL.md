@@ -29,6 +29,9 @@ every rule you applied in `rules_applied`.
 - **WD-GLYCOGEN** – If `week.in_glycogen_window`, apply the phase's glycogen rule (e.g.
   RB-GLY): scenario `glycogen_window`, direction `hold`, weight `not_evaluated`, flag
   `glycogen_jump` if weight rose. Continue with step 6 for flags; no proposal.
+- A phase without a glycogen window can still leave its first weeks unjudged
+  (`unjudged_weeks`, e.g. CUT-FIRST-WEEK): `weight.vs_band` is `not_evaluated` there, so direction
+  `hold` and no proposal; the week is not skipped.
 
 ## Step 3 – Adherence gate
 

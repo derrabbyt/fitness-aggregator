@@ -33,6 +33,38 @@
       }
     },
     "glycogen_window_weeks": { "type": "integer", "minimum": 0 },
+    "unjudged_weeks": { "type": "integer", "minimum": 0, "description": "The first phase weeks whose weight trend is not judged against the band (vs_band not_evaluated; e.g. the cut's week-1 water drop). Default 0." },
+    "decisions": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Phase overrides of coach-core decisions.",
+      "properties": {
+        "increase_step_kcal": { "type": "number", "minimum": 0, "description": "The step of every increase the trend calls for (instead of small/large by the distance from the band)." }
+      }
+    },
+    "cut": {
+      "type": "object",
+      "required": ["levels_kcal", "default_level", "max_deficit_kcal", "warn_above_kcal", "band_tolerance", "stall_activity_steps"],
+      "additionalProperties": false,
+      "description": "Cut only: deficit levels, the cap for a goal-derived deficit, the warning threshold and the band tolerance.",
+      "properties": {
+        "levels_kcal": {
+          "type": "object",
+          "required": ["conservative", "moderate", "aggressive"],
+          "additionalProperties": false,
+          "properties": {
+            "conservative": { "type": "number", "exclusiveMinimum": 0 },
+            "moderate": { "type": "number", "exclusiveMinimum": 0 },
+            "aggressive": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        "default_level": { "enum": ["conservative", "moderate", "aggressive"] },
+        "max_deficit_kcal": { "type": "number", "exclusiveMinimum": 0 },
+        "warn_above_kcal": { "type": "number", "exclusiveMinimum": 0 },
+        "band_tolerance": { "type": "number", "exclusiveMinimum": 0, "exclusiveMaximum": 1 },
+        "stall_activity_steps": { "$ref": "#/$defs/range" }
+      }
+    },
     "glycogen_jump_kg": { "$ref": "#/$defs/range", "description": "Expected early weight jump from glycogen and water (said in advance at phase start)." },
     "weight_band_kg_per_week": {
       "type": ["array", "null"],

@@ -13,7 +13,8 @@ Read API for features:
   before it was ended (features/phase_end.py, or a new phase start).
 - `params(coach)`: coach-core params merged with the active phase's params
   and its setup values (run discount, wrestling/lifting kcal, fat start,
-  photos, time goal, logistics -> `messaging` and `activity.soft_floor_min_days`).
+  photos, time goal, logistics -> `messaging` and `activity.soft_floor_min_days`;
+  a cut's `deficit_kcal` -> its start deficit and band, `cut.apply`).
   This is the `params` block facts carry. Today's values.
 - `params_on(coach, day)`: the same for `day`: the params of the phase of
   that day (`on`) with the setup values in force that day (`setup_on`; core
@@ -56,7 +57,7 @@ import statistics
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
-from . import daycheck, history
+from . import cut, daycheck, history
 
 if TYPE_CHECKING:
     from .core import Coach
@@ -84,7 +85,8 @@ CALIBRATION_SOURCE = "calibration"
 PHASE_START_SOURCE = "phase_start"
 SETUP_VALUE_SOURCE = "setup_value"
 START_KEYS = ("starting_calories_kcal", "starting_trend_weight_kg", "maintenance_estimate_kcal",
-              "maintenance_includes_activity", "fat_g_per_kg_start", "week1_increase_kcal")
+              "maintenance_includes_activity", "fat_g_per_kg_start", "week1_increase_kcal",
+              "cut_level", "goal", "deficit_kcal")
 
 
 # --- phases ---------------------------------------------------------------------
@@ -227,6 +229,8 @@ def params_for(skills, phase_id: str, setup: dict[str, Any]) -> dict[str, Any]:
         merged["steps"]["step_goal"] = setup["step_goal"]
     if "time_goal_weeks" in setup:
         merged["time_goal_weeks"] = setup["time_goal_weeks"]
+    if phase_id == cut.PHASE_ID and setup.get("deficit_kcal") is not None:
+        cut.apply(merged, setup["deficit_kcal"])  # the setup's deficit and its band
     return merged
 
 
