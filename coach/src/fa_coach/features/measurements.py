@@ -27,6 +27,7 @@
 
 import datetime
 import re
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .. import messaging, phases
@@ -101,7 +102,7 @@ async def remind(coach: "Coach", now: datetime.datetime) -> None:
     for item in measurements_due(coach, today - datetime.timedelta(days=longest - 1), horizon):
         latest[item["kind"]] = item["date"]  # in date order: the last one wins
     open_ = [(kind, due) for kind, due in sorted(latest.items(), key=lambda kv: KINDS.index(kv[0]))
-             if not _received_since(coach, kind, due)
+             if not received_since(coach, kind, due)
              and (due > today.isoformat() or now.time() >= REMINDER_TIME)]
     # Counts toward the daily message limit; at the limit nothing is claimed,
     # so the reminder goes out later (on the due day; still once).
@@ -113,7 +114,7 @@ async def remind(coach: "Coach", now: datetime.datetime) -> None:
         messaging.send(coach, _reminder_text(asked, today), now, kind="measurement-reminder")
 
 
-def _received_since(coach: "Coach", kind: str, day: str) -> bool:
+def received_since(coach: "Coach", kind: str, day: str) -> bool:
     table, column = ("waist_measurements", "date") if kind == "waist" else ("photos", "set_date")
     return coach.db.value(f"SELECT COUNT(*) FROM {table} WHERE {column} >= ?", (day,)) > 0
 
@@ -141,14 +142,27 @@ async def waist_text(coach: "Coach", text: str, now: datetime.datetime) -> bool:
     cm = _waist_in(text, coach, now)
     if cm is None:
         return False
-    if not WAIST_CM[0] <= cm <= WAIST_CM[1]:
-        coach.say(f"{cm:g} cm doesn't look like a waist measurement; send it in cm, e.g. \"waist 84.5\".")
+    problem = waist_problem(cm)
+    if problem:
+        coach.say(f"{problem}; send it in cm, e.g. \"waist 84.5\".")
         return True
-    day = now.date().isoformat()
-    coach.db.execute("INSERT INTO waist_measurements (date, cm, created_at) VALUES (?, ?, ?)",
-                     (day, cm, now.isoformat(timespec="seconds")))
-    coach.say(f"📏 Saved: waist {cm:g} cm on {day}.")
+    day = now.date()
+    add_waist(coach, cm, day, now)
+    coach.say(f"📏 Saved: waist {cm:g} cm on {day.isoformat()}.")
     return True
+
+
+def waist_problem(cm: float) -> str | None:
+    """Why `cm` isn't a plausible waist value, or None (chat and the web page)."""
+    if not WAIST_CM[0] <= cm <= WAIST_CM[1]:
+        return f"{cm:g} cm doesn't look like a waist measurement"
+    return None
+
+
+def add_waist(coach: "Coach", cm: float, day: Date, now: datetime.datetime) -> None:
+    """Store a waist value for `day` (checked with `waist_problem` first)."""
+    coach.db.execute("INSERT INTO waist_measurements (date, cm, created_at) VALUES (?, ?, ?)",
+                     (day.isoformat(), cm, now.isoformat(timespec="seconds")))
 
 
 def _waist_in(text: str, coach: "Coach", now: datetime.datetime) -> float | None:
@@ -183,7 +197,7 @@ def _waist_reminder_open(coach: "Coach", now: datetime.datetime) -> bool:
         return False
     sent = coach.db.value("SELECT 1 FROM once_keys WHERE key = ?",
                           (f"measurement-reminder:{phase['id']}:waist:{due[-1]}",))
-    return bool(sent) and not _received_since(coach, "waist", due[-1])
+    return bool(sent) and not received_since(coach, "waist", due[-1])
 
 
 def waist_values(coach: "Coach") -> list[dict[str, Any]]:
@@ -219,3 +233,20 @@ def photo_sets(coach: "Coach") -> list[dict[str, Any]]:
         sets.setdefault(r["set_date"], []).append(
             {"path": r["path"], "caption": r["caption"], "received_at": r["received_at"]})
     return [{"date": day, "photos": photos} for day, photos in sets.items()]
+
+
+def photo_file(coach: "Coach", set_date: str, number: int) -> Path | None:
+    """The stored file of photo `number` (1-based, in arrival order) of the
+    `set_date` set, or None. Only paths from the photos table, and only
+    inside the coach's photos directory."""
+    if number < 1:
+        return None
+    row = coach.db.one("SELECT path FROM photos WHERE set_date = ? ORDER BY id LIMIT 1 OFFSET ?",
+                       (set_date, number - 1))
+    if row is None:
+        return None
+    root = (coach.state_dir / PHOTOS_DIR).resolve()
+    path = (coach.state_dir / row["path"]).resolve()
+    if not path.is_relative_to(root) or not path.is_file():
+        return None
+    return path

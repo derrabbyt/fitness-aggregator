@@ -1,0 +1,25 @@
+{
+  "today": "2026-11-11",
+  "waist": {
+    "start": { "date": "2026-10-26", "cm": 84.5 },
+    "values": [ { "date": "2026-11-09", "cm": 84.0 } ],
+    "next_due": "2026-11-23",
+    "min": 40,
+    "max": 200
+  },
+  "photos": {
+    "enabled": true,
+    "next_due": "2026-11-23",
+    "sets": [
+      { "date": "2026-11-09", "photos": [
+        { "number": 1, "url": "photos/2026-11-09/1", "caption": "front", "received_at": "2026-11-09T07:12:00+01:00" },
+        { "number": 2, "url": "photos/2026-11-09/2", "caption": "side", "received_at": "2026-11-09T07:13:00+01:00" },
+        { "number": 3, "url": "photos/2026-11-09/3", "caption": null, "received_at": "2026-11-09T07:13:30+01:00" }
+      ] },
+      { "date": "2026-10-26", "photos": [
+        { "number": 1, "url": "photos/2026-10-26/1", "caption": "front", "received_at": "2026-10-26T07:20:00+01:00" },
+        { "number": 2, "url": "photos/2026-10-26/2", "caption": "side", "received_at": "2026-10-26T07:21:00+01:00" }
+      ] }
+    ]
+  }
+}

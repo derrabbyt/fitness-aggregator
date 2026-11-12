@@ -6,6 +6,10 @@ unchanged over the compose network. No login: access control is the tailnet.
     GET  /api/coach/<view>?day=...          coach.view (e.g. home, home/food)
     POST /api/coach/refresh/<view>?day=...  coach.refresh: sync, then the view
     POST /api/coach/<command>  {json}       coach.command (a registered web command)
+    GET  /api/coach/photos/<date>/<n>       coach.photo: one stored progress photo (JPEG), read-only
+
+Photos are private: no caching by shared caches, and neither their bytes nor
+their paths are logged (no access log; a failure logs only the exception).
 
 Errors are `{"error": "<plain reason>"}` with the status of `views.WebError`
 (500 for anything unexpected). Reads run straight away from stored data;
@@ -21,7 +25,7 @@ from typing import Any
 import uvicorn
 from starlette.applications import Starlette
 from starlette.requests import Request
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
 from .core import Coach
@@ -53,7 +57,20 @@ def build_app(coach: Coach, run: Runner) -> Starlette:
             return JSONResponse({"error": "The body must be a JSON object."}, status_code=400)
         return await _respond(lambda: run(lambda: coach.command(name, body)))
 
+    async def photo(request: Request) -> Response:
+        day, number = request.path_params["day"], request.path_params["number"]
+        try:
+            data = coach.photo(day, number)
+        except WebError as exc:
+            return JSONResponse({"error": exc.message}, status_code=exc.status)
+        except Exception as exc:  # noqa: BLE001 - only the type: a traceback could carry the photo's path
+            logger.error("photo request failed (%s)", type(exc).__name__)
+            return JSONResponse({"error": "That photo can't be read right now."}, status_code=500)
+        return Response(data, media_type="image/jpeg",
+                        headers={"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff"})
+
     return Starlette(routes=[
+        Route("/api/coach/photos/{day}/{number:int}", photo, methods=["GET"]),
         Route("/api/coach/refresh/{name:path}", refresh, methods=["POST"]),
         Route("/api/coach/{name:path}", get_view, methods=["GET"]),
         Route("/api/coach/{name:path}", command, methods=["POST"]),

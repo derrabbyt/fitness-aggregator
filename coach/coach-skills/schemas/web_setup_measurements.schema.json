@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_setup_measurements.schema.json",
+  "title": "Web: Setup, Measurements",
+  "description": "GET /api/coach/setup/measurements. Waist values and photo sets, newest first, with the next due dates of the active phase. POST /api/coach/setup/measurements/waist {cm, date?} stores a waist value (chat's range check; date defaults to today, never in the future) and returns this view. Each photo is served read-only as an image at GET /api/coach/<url>.",
+  "type": "object",
+  "required": ["today", "waist", "photos"],
+  "additionalProperties": false,
+  "properties": {
+    "today": { "type": "string", "format": "date" },
+    "waist": {
+      "type": "object",
+      "required": ["start", "values", "next_due", "min", "max"],
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "type": ["object", "null"],
+          "description": "The waist from the active phase's setup, on its start date. null: no phase or not given.",
+          "required": ["date", "cm"],
+          "additionalProperties": false,
+          "properties": { "date": { "type": "string", "format": "date" }, "cm": { "type": "number" } }
+        },
+        "values": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["date", "cm"],
+            "additionalProperties": false,
+            "properties": { "date": { "type": "string", "format": "date" }, "cm": { "type": "number" } }
+          }
+        },
+        "next_due": { "type": ["string", "null"], "format": "date", "description": "null: no active phase." },
+        "min": { "type": "number" },
+        "max": { "type": "number" }
+      }
+    },
+    "photos": {
+      "type": "object",
+      "required": ["enabled", "next_due", "sets"],
+      "additionalProperties": false,
+      "properties": {
+        "enabled": { "type": ["boolean", "null"], "description": "Photo check-ins on (null: no active phase). Photos sent anyway are kept." },
+        "next_due": { "type": ["string", "null"], "format": "date" },
+        "sets": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["date", "photos"],
+            "additionalProperties": false,
+            "properties": {
+              "date": { "type": "string", "format": "date" },
+              "photos": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "required": ["number", "url", "caption", "received_at"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "number": { "type": "integer", "minimum": 1 },
+                    "url": { "type": "string", "pattern": "^photos/[0-9]{4}-[0-9]{2}-[0-9]{2}/[1-9][0-9]*$", "description": "Relative to /api/coach/." },
+                    "caption": { "type": ["string", "null"] },
+                    "received_at": { "type": "string", "format": "date-time" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -14,4 +14,12 @@ export const SETUP_ROUTES: Routes = [
     loadComponent: () => import('./messaging-page').then((m) => m.MessagingPage) },
   { path: 'training-plan', title: 'Training plan · Coach',
     loadComponent: () => import('./training-plan-page').then((m) => m.TrainingPlanPage) },
+  { path: 'exercises', title: 'Exercises · Coach',
+    loadComponent: () => import('./exercises-page').then((m) => m.ExercisesPage) },
+  { path: 'notes', title: 'Context notes · Coach',
+    loadComponent: () => import('./context-notes-page').then((m) => m.ContextNotesPage) },
+  { path: 'profile', title: 'Profile · Coach',
+    loadComponent: () => import('./profile-page').then((m) => m.ProfilePage) },
+  { path: 'measurements', title: 'Measurements · Coach',
+    loadComponent: () => import('./measurements-page').then((m) => m.MeasurementsPage) },
 ];
