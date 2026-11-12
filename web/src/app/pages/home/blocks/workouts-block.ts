@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { Card } from '../../../ui/card';
 import { LineChart } from '../../../ui/line-chart';
-import { strengthRate, strengthTone } from '../../../ui/strength-trend';
+import { strengthEmptyText, strengthRate, strengthTone } from '../../../ui/strength-trend';
 import { toneClass } from '../weight-format';
 import { HomeView } from '../home.types';
 import { SessionLine } from './session-line';
@@ -19,7 +19,7 @@ import { SessionLine } from './session-line';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (workouts(); as w) {
-      <app-card label="Workouts" link="/training">
+      <app-card label="Workouts" link="/training" [queryParams]="dayQuery()">
         <div class="sessions">
           @for (s of w.sessions; track $index) {
             <app-session-line [session]="s" />
@@ -29,7 +29,7 @@ import { SessionLine } from './session-line';
         </div>
         <app-line-chart class="spark" [points]="points()" [tone]="tone()" [height]="56"
                         startLabel="14 days" [endLabel]="view().is_today ? 'today' : ''"
-                        emptyText="No lifts in the last 4 weeks"
+                        [emptyText]="emptyText()"
                         [label]="'Strength trend, last 14 days, ' + rate()" />
         @if (w.strength_trend.rate_pct_per_week != null) {
           <div class="rate num m" [class]="toneClass(tone())">{{ rate() }}</div>
@@ -58,6 +58,7 @@ export class WorkoutsBlock {
   protected readonly points = computed(() => (this.workouts()?.strength_trend.points ?? []).map((p) => p.pct));
   protected readonly rate = computed(() => strengthRate(this.workouts()?.strength_trend));
   protected readonly tone = computed(() => strengthTone(this.workouts()?.strength_trend));
+  protected readonly emptyText = computed(() => strengthEmptyText(this.workouts()?.strength_trend));
 
   /** "5 of 7 lifts progressing · 1 stall · 2 PRs"; zeros left out. */
   protected readonly summaryParts = computed(() => {

@@ -14,7 +14,7 @@ import { SessionLine } from './session-line';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (sessions().length) {
-      <app-card label="Other activities" link="/training">
+      <app-card label="Other activities" link="/training" [queryParams]="dayQuery()">
         @for (s of sessions(); track $index) {
           <app-session-line [session]="s" />
         }
