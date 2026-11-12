@@ -16,10 +16,14 @@ import json
 from fa_coach import body_fat, reviews, weekly_facts
 from fa_coach.ports import ModelError
 from fakes import reply, reply_json, tool_call
-from test_measurements import activate, at
+from test_measurements import activate as activate_reverse
+from test_measurements import at
 from test_weekly_checkin import phase  # noqa: F401
 
-REVIEW_KIND = "photo"
+
+def activate(coach, **changes) -> None:
+    """The reverse with 12-week blocks: no block review (ticket 02) within these tests' dates."""
+    activate_reverse(coach, **{"block_weeks": 12, **changes})
 
 
 def review_json(day: str, low: float, high: float, *, compared: str | None = None,
