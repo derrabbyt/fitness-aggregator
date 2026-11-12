@@ -12,8 +12,8 @@ import { Night, SleepApi } from './sleep';
 const NIGHTS = 14;
 
 /**
- * Sleep detail: the 14 nights ending on the day (fa-api's /api/sleep, one
- * request per night), hours asleep and from–to, "–" where there is none.
+ * Sleep detail: the 14 nights ending on the day (fa-api's /api/sleep with
+ * start and end, one request), hours asleep and from–to, "–" where there is none.
  * No verdict colours (sleep has no target) and no explanatory notes.
  */
 @Component({

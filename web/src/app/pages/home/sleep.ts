@@ -1,11 +1,11 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { Observable, catchError, forkJoin, map, of } from 'rxjs';
+import { Observable, catchError, map, of } from 'rxjs';
 import { addDays } from '../../ui/format';
 
 /**
- * Sleep is fa-api data, not the coach's (ADR 0001): GET /api/sleep?date= and
- * its `phone` field, the night ending on that date estimated from phone use
+ * Sleep is fa-api data, not the coach's (ADR 0001): GET /api/sleep?date= (or
+ * ?start=&end= for several nights) and its `phone` field, the night ending on that date estimated from phone use
  * (src/fitness_aggregator/phone_sleep.py). A missing night or any error is
  * null, so the page shows "–".
  */
@@ -37,10 +37,16 @@ export class SleepApi {
     );
   }
 
-  /** The `count` nights ending on `date`, oldest first, null where there is none. */
+  /** The `count` nights ending on `date`, oldest first, null where there is none (one request:
+   *  GET /api/sleep?start=&end=; every night null on error). */
   nights(date: string, count: number): Observable<{ date: string; night: Night | null }[]> {
     const dates = Array.from({ length: count }, (_, i) => addDays(date, i - count + 1));
-    return forkJoin(dates.map((d) => this.night(d))).pipe(map((nights) => dates.map((d, i) => ({ date: d, night: nights[i] }))));
+    const params = { start: dates[0], end: date };
+    return this.http.get<{ nights?: { date: string; phone?: PhoneSleep | null }[] }>('/api/sleep', { params }).pipe(
+      map((r) => new Map((r?.nights ?? []).map((n) => [n.date, n.phone]))),
+      catchError(() => of(new Map<string, PhoneSleep | null | undefined>())),
+      map((byDate) => dates.map((d) => ({ date: d, night: toNight(d, byDate.get(d)) }))),
+    );
   }
 }
 

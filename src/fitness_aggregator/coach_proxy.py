@@ -2,7 +2,8 @@
 
 The coach serves the web page's read models and edits from its own process
 (the only one that opens coach.db) on the compose network, unpublished.
-This process forwards method, path, query and body unchanged and streams
+This process forwards GET and POST (the only methods the coach serves; any
+other method gets 405 here) with path, query and body unchanged and streams
 the answer back; it adds nothing coach-specific. Access control is the
 tailnet (FA_BIND), as for the rest of the UI.
 """
@@ -34,7 +35,7 @@ def _coach() -> httpx.AsyncClient:
     return _client
 
 
-@router.api_route("/api/coach/{path:path}", methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+@router.api_route("/api/coach/{path:path}", methods=["GET", "POST"],
                   include_in_schema=False)
 async def coach(path: str, request: Request):
     client = _coach()
