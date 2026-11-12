@@ -140,6 +140,12 @@ def in_glycogen_window(phase: dict[str, Any], end: Date, p: dict[str, Any]) -> b
     return phases.phase_week(phase, end - 6 * DAY) <= p.get("glycogen_window_weeks", 0)
 
 
+def in_unjudged_weeks(phase: dict[str, Any], end: Date, p: dict[str, Any]) -> bool:
+    """Any of the 7 days ending `end` in the phase's first `unjudged_weeks` (the cut's week-1
+    water drop): the trend isn't judged against the band ("not evaluated"), without a glycogen window."""
+    return phases.phase_week(phase, end - 6 * DAY) <= p.get("unjudged_weeks", 0)
+
+
 def weight_band(p: dict[str, Any], week: int) -> dict[str, Any]:
     rows = [b for b in p["weight_band_kg_per_week"]
             if b["from_week"] <= week and (b["to_week"] is None or week <= b["to_week"])]
@@ -165,7 +171,8 @@ def _weight(coach, phase, start: Date, end: Date, week: dict, usable: bool, p) -
     prev = phases.trend_weight(coach, start - DAY)
     rate = weekly_rate(coach, end)
     band = weight_band(p, week["phase_week"])
-    evaluated = usable and not week["in_glycogen_window"] and rate is not None
+    evaluated = (usable and not week["in_glycogen_window"] and not in_unjudged_weeks(phase, end, p)
+                 and rate is not None)
     # The prediction made at the start of the week: last week's average plus
     # the planned daily surplus over 7 days.
     at_start = phases.targets(coach, start)

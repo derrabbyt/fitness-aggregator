@@ -60,7 +60,8 @@ DAY = datetime.timedelta(days=1)
 FAST_LANE_SCENARIO = {"reverse_bulk": "E", "cut": "too_fast"}
 # The phase decision table's scenarios that change calories (all others: no
 # calorie change). Phases not listed (drafts) get no size/direction check.
-SCENARIO_DIRECTION = {"reverse_bulk": {"C": "increase", "E": "decrease"}}
+SCENARIO_DIRECTION = {"reverse_bulk": {"C": "increase", "E": "decrease"},
+                      "cut": {"stalled": "decrease", "too_fast": "increase"}}
 STEP_TOLERANCE_KCAL = 25
 CALIBRATION_KEYS = phases.CALIBRATION_KEYS
 DECIDED = ("approved", "rejected", "superseded")
@@ -228,6 +229,8 @@ def _size_or_direction(coach, phase, based: dict[str, Any], delta: int, first: b
             beyond = round(band["low"] - rate if want == "increase" else rate - band["high"], 2)
             far = beyond >= d["far_off_margin_kg_per_week"]
             step = d["large_step_kcal"] if far else d["small_step_kcal"]
+            if want == "increase" and d.get("increase_step_kcal") is not None:  # the cut's fixed too-fast step
+                step = d["increase_step_kcal"]
             expected += f" of about {sign * step:+g} kcal a day"
             why = (f": the trend ({rate:+.2f} kg/week) is {max(beyond, 0):.2f} kg/week outside the band "
                    f"({'at least' if far else 'less than'} {d['far_off_margin_kg_per_week']:g})")

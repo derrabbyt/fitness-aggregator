@@ -41,9 +41,13 @@ the input:
      `confirm_day` (`kind: complete`); the prefill then counts it.
    - run kcal discount, wrestling kcal per session, lifting kcal per session (counted for each
      lifting session that shows up in Hevy)
-   - fat start in g/kg within `limits.fat_g_per_kg_start`
+   - fat start in g/kg within `limits.fat_g_per_kg_start` (not asked when the phase fixes it,
+     e.g. the cut's floor: it isn't in `still_needed` then)
    - phase specifics: reverse_bulk the week-1 increase within `limits.week1_increase_kcal`
-     (suggest the lower end)
+     (suggest the lower end). Cut (phase-cut, CUT-START): `cut_level` (conservative /
+     moderate / aggressive; moderate is the default to suggest) or a `goal` (a goal weight, or
+     a goal body fat with the user's current estimate, and a date); with both, the level
+     decides. Optional `end_date` for a mini-cut (record null for an open-ended cut).
    - optional time goal (`time_goal_weeks`), photos on/off, waist at start; record null when
      the user has none
    - logistics: weekly check-in day and time (`logistics.weekly_checkin`, e.g. `sun 18:00`),
@@ -59,8 +63,12 @@ the input:
    step goal and step kcal per 1,000 steps (the user may set `step_goal`, default 10,000;
    it only moves where "0" is shown), targets on a
    rest / lifting / run / wrestling day, macros, the glycogen-window note, the counting and
-   excluded lifts, and the confirm and edit buttons. Don't repeat or compute any of these numbers; reply with one short line
-   (e.g. what the first weeks look like, per the phase skill) or nothing.
+   excluded lifts, and the confirm and edit buttons; for a cut also its level, deficit,
+   target rate and band, the goal's needs and code's warning (the result's `cut`). Don't
+   repeat or compute any of these numbers; reply with one short line
+   (e.g. what the first weeks look like, per the phase skill) or nothing. A cut's `warning`
+   (aggressive, or a goal past moderate or capped) is worth one plain sentence; offer the
+   suggested level if the user wants to change it.
 3. **PS-CONFIRM** – Nothing changes until the user taps confirm. Confirm makes the phase
    active, stores its targets, sets the MyFitnessPal goal and marks the phase's first change
    as applied. Edit returns here: record the changed values and call `start_phase` again.

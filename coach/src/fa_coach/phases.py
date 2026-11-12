@@ -56,7 +56,7 @@ import statistics
 from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
-from . import daycheck, history
+from . import cut, daycheck, history
 
 if TYPE_CHECKING:
     from .core import Coach
@@ -84,7 +84,8 @@ CALIBRATION_SOURCE = "calibration"
 PHASE_START_SOURCE = "phase_start"
 SETUP_VALUE_SOURCE = "setup_value"
 START_KEYS = ("starting_calories_kcal", "starting_trend_weight_kg", "maintenance_estimate_kcal",
-              "maintenance_includes_activity", "fat_g_per_kg_start", "week1_increase_kcal")
+              "maintenance_includes_activity", "fat_g_per_kg_start", "week1_increase_kcal",
+              "cut_level", "goal", "deficit_kcal")
 
 
 # --- phases ---------------------------------------------------------------------
@@ -227,6 +228,8 @@ def params_for(skills, phase_id: str, setup: dict[str, Any]) -> dict[str, Any]:
         merged["steps"]["step_goal"] = setup["step_goal"]
     if "time_goal_weeks" in setup:
         merged["time_goal_weeks"] = setup["time_goal_weeks"]
+    if phase_id == cut.PHASE_ID and setup.get("deficit_kcal") is not None:
+        cut.apply(merged, setup["deficit_kcal"])  # the setup's deficit and its band
     return merged
 
 
