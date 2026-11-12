@@ -70,6 +70,12 @@ every rule you applied in `rules_applied`.
   `adherence_gate` is `pass`, and confirmation is met. Size per the phase's size rule
   (reverse_bulk RB-SIZE); `delta_kcal` is signed. Otherwise `proposal: null` and say in
   `reasoning` when the earliest change could come.
+- **WD-GUARD** – Code enforces direction and size on the stored verdict for a week that
+  counts: an `increase` or `decrease` must match `weight.vs_band` (increase below the band,
+  decrease above it, none in it), else it becomes `hold` and the proposal is dropped; a
+  proposal's size must match RB-SIZE, else code sets it (a phase's first change keeps its
+  start range). Holds and skipped weeks stay as you wrote them. Corrections go into the
+  check-in's code adjustments, and the stored direction is code's, so streaks count it.
 - **WD-REJECTED** – If `history.last_rejected` has the same direction, propose only when the
   consecutive count since the rejection reaches `decisions.rejected_return_weeks`; then set
   `returning_rejected_proposal_id`, add flag `rejected_proposal_returning` and mention the
