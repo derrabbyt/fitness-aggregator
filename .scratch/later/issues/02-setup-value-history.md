@@ -9,4 +9,8 @@ So a calibration or step-goal change rewrites how past days' targets split into 
 
 **Blocked by:** None (to be specced first)
 
-**Status:** needs-triage
+**Status:** resolved
+
+## Comments
+
+- 2026-11-12: specced in `.scratch/coach-followups/spec.md` (tickets 01-04).

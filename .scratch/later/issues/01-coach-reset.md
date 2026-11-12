@@ -4,9 +4,13 @@
 
 **Blocked by:** None (to be specced first)
 
-**Status:** needs-triage
+**Status:** resolved
 
 ## Notes for when this gets specced
 
 - Today's manual way (2026-11-11, phase test): stop `coach`, copy `state/coach/coach.db` aside, start it; to undo, stop it, put the copy back, start it. Data synced in between comes back on the next sync. The MFP goal has to be set back separately: one `fitness_set_goal` write, read back once, never retried.
 - Questions to settle: what a reset covers (only the phase and targets, or also proposals, verdicts, notes, profile, exercise classification, photos); whether it is undoable; whether it needs a confirm tap in Telegram (it changes targets and possibly the MFP goal, so probably yes, following the "nothing without a tap" rule); and what happens to the MFP goal.
+
+## Comments
+
+- 2026-11-12: specced in `.scratch/coach-followups/spec.md` (tickets 01-04).
