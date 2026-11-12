@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { viewResource } from '../../api/view-resource';
@@ -13,14 +13,26 @@ import { State } from '../../ui/state';
 import { Tone } from '../../ui/tone';
 import { StrengthTrendChart, hasStrengthLine, strengthEmptyText } from '../../ui/strength-trend';
 import { LIFT_STATUS, setText } from './lift-format';
-import { TrainingActivity, TrainingLift, TrainingView } from './training.types';
+import { LiftStatus, TrainingActivity, TrainingLift, TrainingView } from './training.types';
+
+/** The status counts at the top, in this order; a count of 0 is left out. New covers building a baseline too. */
+const COUNTS: { label: string; tone: Tone; statuses: LiftStatus[] }[] = [
+  { label: 'Progressing', tone: 'ok', statuses: ['progressing'] },
+  { label: 'Same', tone: 'muted', statuses: ['same'] },
+  { label: 'Stalled', tone: 'warn', statuses: ['stall'] },
+  { label: 'Declining', tone: 'bad', statuses: ['declining'] },
+  { label: 'New', tone: 'muted', statuses: ['new_baseline', 'not_judged'] },
+  { label: 'Not recent', tone: 'muted', statuses: ['not_recent'] },
+  { label: 'Paused', tone: 'muted', statuses: ['paused'] },
+];
 
 const TYPES: Record<TrainingActivity['type'], string> = {
   run: 'Run', wrestling: 'Wrestling', lift: 'Lifting', other: 'Session',
 };
 
 /**
- * The Training tab, always as of today (lift charts carry the history): the strength trend, every counting lift
+ * The Training tab, always as of today (lift charts carry the history): the
+ * counting lifts per status and the strength trend, every counting lift
  * alphabetically (status, latest heaviest set, a small chart), the lifts that
  * don't count in a collapsed section, then the recent runs and other sessions.
  */
@@ -39,6 +51,13 @@ const TYPES: Record<TrainingActivity['type'], string> = {
         <div class="cols">
           <div class="stack main">
             <app-card label="Strength">
+              @if (counts().length) {
+                <div class="counts">
+                  @for (c of counts(); track c.label) {
+                    <div><div class="mid num" [class]="'tone-' + c.tone">{{ c.n }}</div><div class="t2 small">{{ c.label }}</div></div>
+                  }
+                </div>
+              }
               @if (hasStrengthLine(t.strength_trend)) {
                 <app-strength-trend [trend]="t.strength_trend" />
               } @else {
@@ -125,6 +144,8 @@ const TYPES: Record<TrainingActivity['type'], string> = {
   `,
   styles: `
     .cols { display: grid; gap: 12px; }
+    .counts { display: flex; flex-wrap: wrap; gap: 12px 24px; margin-bottom: 16px; }
+    .counts .tone-muted { color: var(--text); }
     .list { list-style: none; margin: 0; padding: 0; }
     .list li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--divider); }
     .list li:first-child { border-top: 0; padding-top: 0; }
@@ -168,6 +189,12 @@ export class TrainingPage {
     return LIFT_STATUS[l.status];
   }
   protected readonly types = TYPES;
+  /** Counting lifts per status (the not-counted ones are left out), zeros dropped. */
+  protected readonly counts = computed(() => {
+    const lifts = this.training.data()?.lifts ?? [];
+    return COUNTS.map((c) => ({ ...c, n: lifts.filter((l) => c.statuses.includes(l.status)).length }))
+      .filter((c) => c.n > 0);
+  });
 
   constructor() {
     this.training.load({});
