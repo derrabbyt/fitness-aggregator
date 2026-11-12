@@ -40,7 +40,8 @@ logger = logging.getLogger("fa-coach")
 
 SKILLS = ("phase-start",)
 TOOLS = ("record_setup_value", "start_phase", "get_training_plan", "update_training_plan", "get_coach_profile",
-         "get_context_notes", "classify_exercises", "get_tracked_exercises", "confirm_day")
+         "get_context_notes", "classify_exercises", "get_tracked_exercises", "confirm_day",
+         "live")  # the read-only MFP/Hevy lookups (live_tools.READ_TOOLS), as in the chat
 IDLE = datetime.timedelta(hours=24)  # an idle setup stops taking over the chat ("start reverse" resumes it)
 TURNS = 8
 NO_ANSWER = "I don't have an answer to that."
