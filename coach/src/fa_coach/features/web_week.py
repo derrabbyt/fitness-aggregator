@@ -31,6 +31,7 @@ from .web_home import check_in_week_start
 Date = datetime.date
 DAY = datetime.timedelta(days=1)
 ISO_WEEK = re.compile(r"^(\d{4})-W(\d{2})$")
+JUST_JUDGED_DAYS = 1  # the default week stays on the judged one through the day after the check-in
 
 UNUSABLE_WORDS = {
     "stale_sync": "the data wasn't synced in time",
@@ -54,12 +55,17 @@ class Week:
 
 
 def resolve(coach, query: dict[str, str], now: datetime.datetime) -> Week:
-    """The check-in week of `?week=YYYY-Www` (default: the one holding today).
-    A week that hasn't started is refused."""
+    """The check-in week of `?week=YYYY-Www`. By default the one holding
+    today, except on the check-in day and the day after, when it is the week
+    just judged (once its check-in has run), so the new decision is seen
+    first. A week that hasn't started is refused."""
     today = now.date()
     raw = query.get("week")
     if not raw:
         start = check_in_week_start(coach, today)
+        if (today - start).days <= JUST_JUDGED_DAYS and weekly_facts.checkin_weekday(coach) is not None \
+                and _checked_in(coach, weekly_facts.iso_week(start - DAY)):
+            start -= 7 * DAY
     else:
         match = ISO_WEEK.match(raw)
         try:
@@ -80,10 +86,15 @@ def resolve(coach, query: dict[str, str], now: datetime.datetime) -> Week:
     return Week(iso, start, start + 6 * DAY, today, stored)
 
 
+def _checked_in(coach, iso_week: str) -> bool:
+    """The check-in for `iso_week` ran (it may have failed)."""
+    return bool(coach.db.value("SELECT COUNT(*) FROM weekly_checkins WHERE iso_week = ?", (iso_week,)))
+
+
 @registry.view("week", schema="web_week")
 def week_view(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any]:
     w = resolve(coach, query, now)
-    phase = _phase_during(coach, w)
+    phase = phase_during(coach, w)
     state = _state(coach, w, phase)
     first = _first_phase_start(coach)
     prev_end = w.end - 7 * DAY
@@ -109,7 +120,7 @@ def week_view(coach, query: dict[str, str], now: datetime.datetime) -> dict[str,
 # --- state ---------------------------------------------------------------------------------
 
 
-def _phase_during(coach, w: Week) -> dict[str, Any] | None:
+def phase_during(coach, w: Week) -> dict[str, Any] | None:
     """The phase whose span covers the week's last day (the active one, or an ended one)."""
     for row in coach.db.all("SELECT * FROM phases WHERE start_date <= ? ORDER BY start_date DESC", (w.end.isoformat(),)):
         if row["ended_at"] is None or row["ended_at"][:10] >= w.start.isoformat():

@@ -1,0 +1,81 @@
+{
+  "source": "check_in",
+  "trend_kg": 82.1,
+  "prev_trend_kg": 82.05,
+  "weekly_rate_kg": 0.05,
+  "rate_window": "week",
+  "band": {
+    "low": 0.1,
+    "high": 0.3
+  },
+  "vs_band": "below_band",
+  "weigh_ins": 6,
+  "weigh_ins_needed": 5,
+  "days": 7,
+  "series": [
+    {
+      "date": "2026-11-29",
+      "kg": 82.0,
+      "outlier": false,
+      "trend_kg": 82.05,
+      "band_low_kg": 82.05,
+      "band_high_kg": 82.05
+    },
+    {
+      "date": "2026-11-30",
+      "kg": 82.3,
+      "outlier": false,
+      "trend_kg": 82.08,
+      "band_low_kg": 82.06,
+      "band_high_kg": 82.09
+    },
+    {
+      "date": "2026-12-01",
+      "kg": 81.9,
+      "outlier": false,
+      "trend_kg": 82.04,
+      "band_low_kg": 82.08,
+      "band_high_kg": 82.14
+    },
+    {
+      "date": "2026-12-02",
+      "kg": null,
+      "outlier": false,
+      "trend_kg": 82.04,
+      "band_low_kg": 82.09,
+      "band_high_kg": 82.18
+    },
+    {
+      "date": "2026-12-03",
+      "kg": 82.2,
+      "outlier": false,
+      "trend_kg": 82.06,
+      "band_low_kg": 82.11,
+      "band_high_kg": 82.22
+    },
+    {
+      "date": "2026-12-04",
+      "kg": 82.0,
+      "outlier": false,
+      "trend_kg": 82.05,
+      "band_low_kg": 82.12,
+      "band_high_kg": 82.26
+    },
+    {
+      "date": "2026-12-05",
+      "kg": 82.1,
+      "outlier": false,
+      "trend_kg": 82.07,
+      "band_low_kg": 82.14,
+      "band_high_kg": 82.31
+    },
+    {
+      "date": "2026-12-06",
+      "kg": 82.4,
+      "outlier": false,
+      "trend_kg": 82.1,
+      "band_low_kg": 82.15,
+      "band_high_kg": 82.35
+    }
+  ]
+}

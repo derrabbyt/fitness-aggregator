@@ -1,4 +1,8 @@
 import { InputSignal, Type } from '@angular/core';
+import { WeekIntakeBlock } from './blocks/week-intake-block';
+import { WeekNotesBlock } from './blocks/week-notes-block';
+import { WeekTrainingBlock } from './blocks/week-training-block';
+import { WeekWeightBlock } from './blocks/week-weight-block';
 import { WeekView } from './week.types';
 
 /**
@@ -11,6 +15,4 @@ export interface WeekBlock {
 }
 
 /** Week's number blocks in page order (spec, stories 45-48). */
-export const WEEK_BLOCKS: Type<WeekBlock>[] = [
-  // weight, intake, training, notes and flags (ticket 07)
-];
+export const WEEK_BLOCKS: Type<WeekBlock>[] = [WeekWeightBlock, WeekIntakeBlock, WeekTrainingBlock, WeekNotesBlock];

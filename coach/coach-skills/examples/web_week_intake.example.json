@@ -1,0 +1,78 @@
+{
+  "source": "check_in",
+  "days": [
+    {
+      "date": "2026-11-30",
+      "eaten_kcal": 2380,
+      "target_kcal": 2400,
+      "logged": "complete"
+    },
+    {
+      "date": "2026-12-01",
+      "eaten_kcal": 2310,
+      "target_kcal": 2400,
+      "logged": "complete"
+    },
+    {
+      "date": "2026-12-02",
+      "eaten_kcal": 2450,
+      "target_kcal": 2400,
+      "logged": "complete"
+    },
+    {
+      "date": "2026-12-03",
+      "eaten_kcal": 2290,
+      "target_kcal": 2400,
+      "logged": "complete"
+    },
+    {
+      "date": "2026-12-04",
+      "eaten_kcal": 2960,
+      "target_kcal": 3000,
+      "logged": "complete"
+    },
+    {
+      "date": "2026-12-05",
+      "eaten_kcal": 2300,
+      "target_kcal": 2400,
+      "logged": "complete"
+    },
+    {
+      "date": "2026-12-06",
+      "eaten_kcal": 2330,
+      "target_kcal": 2400,
+      "logged": "complete"
+    }
+  ],
+  "average": {
+    "eaten_kcal": 2431,
+    "target_kcal": 2486,
+    "days": 7
+  },
+  "adherence": {
+    "result": "pass",
+    "deviation_pct": -1.7,
+    "tolerance_pct": 5,
+    "days_logged": 7,
+    "days": 7
+  },
+  "macros": {
+    "protein": {
+      "eaten_g": 171,
+      "target_g": 164
+    },
+    "carbs": {
+      "eaten_g": 281,
+      "target_g": 290
+    },
+    "fat": {
+      "eaten_g": 78,
+      "target_g": 74
+    },
+    "fiber": {
+      "eaten_g": 27,
+      "target_g": 25,
+      "target_max_g": 41
+    }
+  }
+}
