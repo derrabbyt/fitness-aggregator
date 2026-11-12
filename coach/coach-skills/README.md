@@ -18,7 +18,7 @@ coach-skills/
 ├── skills/                   one folder per skill, each with SKILL.md
 │   ├── coach-core/           always loaded; hard rules; params.yaml (phase-independent numbers)
 │   ├── phase-reverse-bulk/   active phase: A–E table; params.yaml
-│   ├── phase-cut/            draft
+│   ├── phase-cut/            cut / mini-cut: level or goal → deficit, band ±40 %; params.yaml
 │   ├── phase-maintenance/    hold weight: flat band, drift → small step; params.yaml
 │   ├── phase-start/          "start reverse" command → setup → preview → confirm
 │   ├── weekly-decision/      facts → verdict JSON
@@ -143,5 +143,5 @@ changes the schema, the skills that reference it, the examples, and reruns
 | Triggers | weekly-decision step 6 flags, evening-recap, training-feedback |
 | Calibration and guardrails | `maintenance_estimate`, `prediction_*`, TOOLS.md guardrails, phase-review calibration |
 | On-demand behaviours, reports | coach-chat, weekly-report, `coach_message` |
-| Other phases | phase-cut (draft), phase-maintenance |
+| Other phases | phase-cut, phase-maintenance |
 | Dropped / left out | coach-core "Out of scope" |

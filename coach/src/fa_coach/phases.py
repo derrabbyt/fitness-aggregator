@@ -13,7 +13,8 @@ Read API for features:
   before it was ended (features/phase_end.py, or a new phase start).
 - `params(coach)`: coach-core params merged with the active phase's params
   and its setup values (run discount, wrestling/lifting kcal, fat start,
-  photos, time goal, logistics -> `messaging` and `activity.soft_floor_min_days`).
+  photos, time goal, logistics -> `messaging` and `activity.soft_floor_min_days`;
+  a cut's `deficit_kcal` -> its start deficit and band, `cut.apply`).
   This is the `params` block facts carry. Today's values.
 - `params_on(coach, day)`: the same for `day`: the params of the phase of
   that day (`on`) with the setup values in force that day (`setup_on`; core
