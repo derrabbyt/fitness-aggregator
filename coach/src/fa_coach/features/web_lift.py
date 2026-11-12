@@ -53,7 +53,7 @@ def lift(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any]
                if r["exercise_id"] == exercise_id)
     head = web_training.lift_row(row, data)
     paused = data["paused"]
-    stored = progression.settings(coach).get(exercise_id, {})
+    stored = progression.setting_on(coach, exercise_id, day)
     entries = data["entries"]
     lines = list(reversed(entries))
     return {
@@ -64,7 +64,7 @@ def lift(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any]
         "counts": data["counts"],
         "paused": paused,
         "chart": [{"date": e["date"], "session_id": e["session_id"], **_set(e["top"]),
-                   "pr": e["is_pr"] and not paused, "baseline_reset": e["not_judged_reason"] == "baseline_reset"}
+                   "pr": e["is_pr"] and not paused and not e["paused"], "baseline_reset": e["not_judged_reason"] == "baseline_reset"}
                   for e in entries if e["top"] is not None and e["not_judged_reason"] not in IGNORED],
         "resets": _resets(coach, exercise_id, day, entries),
         "sessions": {
@@ -109,7 +109,7 @@ def _line(entry: dict[str, Any], counts: bool, paused: bool) -> dict[str, Any]:
         "top_set": _set(entry["top"]) if entry["top"] is not None else None,
         "status": SESSION_STATUS.get(status, status),
         "not_judged_reason": entry["not_judged_reason"] if status == "not_judged" else None,
-        "pr": entry["is_pr"] and not paused,
+        "pr": entry["is_pr"] and not paused and not entry["paused"],
     }
 
 

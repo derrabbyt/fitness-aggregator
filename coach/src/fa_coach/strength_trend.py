@@ -6,7 +6,9 @@ Schema: coach-skills/schemas/web_strength_trend.schema.json.
 - A lift's value per session is the heaviest working set as estimated 1RM,
   the value the lift status uses (progression.py; effective load for
   bodyweight lifts). Ignored sessions (no working set, other location) are
-  left out; excluded lifts never count.
+  left out; excluded lifts never count. Whether a lift counts is its
+  classification on each point's day (coach-followups ticket 04), so a lift
+  excluded later still counts on earlier points.
 - Each day D of the series looks back over the `training.strength_trend_days`
   (28) days ending on D. Every counting lift trained in that window gives
   its latest value as % of its first value in the window (its latest
@@ -47,19 +49,20 @@ def compute(coach: "Coach", day: Date, *, days: int = SERIES_DAYS,
     `lifts`: `progression.lifts(coach, day)` when the caller has it."""
     p = phases.params(coach)["training"]
     window, band = p["strength_trend_days"], p["e1rm_same_band_pct"]
-    histories = [_values(lift["entries"]) for lift in (lifts or progression.lifts(coach, day)).values()
-                 if lift["counts"]]
+    histories = [(lift, _values(lift["entries"])) for lift in (lifts or progression.lifts(coach, day)).values()]
     points, rates = [], []
     for n in range(days - 1, -1, -1):
         d = day - n * DAY
-        changes = [c for c in (_change(h, d - (window - 1) * DAY, d) for h in histories) if c is not None]
+        changes = [c for c in (_change(h, d - (window - 1) * DAY, d) for lift, h in histories
+                               if progression.counts_on(lift, d)) if c is not None]
         pcts = [pct for pct, _ in changes]
         points.append({"date": d.isoformat(), "pct": round(sum(pcts) / len(pcts), 1) if pcts else None})
         rates = [(pct - 100) / (max(span, MIN_SPAN_DAYS) / 7) for pct, span in changes]
     trained = len(rates)
     rate = round(sum(rates) / trained, 1) if rates else None
     first, last = (day - (window - 1) * DAY).isoformat(), day.isoformat()
-    in_window = sum(1 for h in histories if any(first <= v[0] <= last for v in h))
+    in_window = sum(1 for lift, h in histories
+                    if progression.counts_on(lift, day) and any(first <= v[0] <= last for v in h))
     direction = None if rate is None else "rising" if rate > band else "falling" if rate < -band else "flat"
     return {"window_days": window, "start": points[0]["date"], "end": day.isoformat(), "points": points,
             "rate_pct_per_week": rate, "direction": direction, "lifts": trained,
