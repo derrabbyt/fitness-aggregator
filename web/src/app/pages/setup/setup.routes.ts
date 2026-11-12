@@ -12,6 +12,8 @@ export const SETUP_ROUTES: Routes = [
     loadComponent: () => import('./activity-page').then((m) => m.ActivityPage) },
   { path: 'messaging', title: 'Messaging · Coach',
     loadComponent: () => import('./messaging-page').then((m) => m.MessagingPage) },
+  { path: 'training-plan', title: 'Training plan · Coach',
+    loadComponent: () => import('./training-plan-page').then((m) => m.TrainingPlanPage) },
   { path: 'exercises', title: 'Exercises · Coach',
     loadComponent: () => import('./exercises-page').then((m) => m.ExercisesPage) },
   { path: 'notes', title: 'Context notes · Coach',

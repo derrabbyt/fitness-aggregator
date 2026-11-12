@@ -1,7 +1,7 @@
 import { Routes } from '@angular/router';
 
-/** The Training tab and its detail views (a placeholder until its ticket builds the page). */
+/** The Training tab and its detail views (ticket 09 adds the lift detail here). */
 export const TRAINING_ROUTES: Routes = [
-  { path: '', title: 'Training · Coach', data: { title: 'Training' },
-    loadComponent: () => import('../../shell/placeholder-page').then((m) => m.PlaceholderPage) },
+  { path: '', title: 'Training · Coach',
+    loadComponent: () => import('./training-page').then((m) => m.TrainingPage) },
 ];

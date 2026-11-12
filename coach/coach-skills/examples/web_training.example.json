@@ -1,0 +1,284 @@
+{
+  "date": "2026-11-30",
+  "freshness": {
+    "last_sync_at": "2026-11-30T08:40:00+01:00",
+    "age_hours": 0.3,
+    "stale": false
+  },
+  "strength_trend": {
+    "window_days": 28,
+    "start": "2026-11-03",
+    "end": "2026-11-30",
+    "points": [
+      {
+        "date": "2026-11-03",
+        "pct": null
+      },
+      {
+        "date": "2026-11-04",
+        "pct": null
+      },
+      {
+        "date": "2026-11-05",
+        "pct": 100.0
+      },
+      {
+        "date": "2026-11-06",
+        "pct": 100.0
+      },
+      {
+        "date": "2026-11-07",
+        "pct": 100.0
+      },
+      {
+        "date": "2026-11-08",
+        "pct": 100.0
+      },
+      {
+        "date": "2026-11-09",
+        "pct": 100.0
+      },
+      {
+        "date": "2026-11-10",
+        "pct": 100.0
+      },
+      {
+        "date": "2026-11-11",
+        "pct": 100.6
+      },
+      {
+        "date": "2026-11-12",
+        "pct": 100.6
+      },
+      {
+        "date": "2026-11-13",
+        "pct": 101.1
+      },
+      {
+        "date": "2026-11-14",
+        "pct": 101.1
+      },
+      {
+        "date": "2026-11-15",
+        "pct": 101.1
+      },
+      {
+        "date": "2026-11-16",
+        "pct": 101.4
+      },
+      {
+        "date": "2026-11-17",
+        "pct": 101.4
+      },
+      {
+        "date": "2026-11-18",
+        "pct": 101.4
+      },
+      {
+        "date": "2026-11-19",
+        "pct": 101.9
+      },
+      {
+        "date": "2026-11-20",
+        "pct": 101.9
+      },
+      {
+        "date": "2026-11-21",
+        "pct": 102.3
+      },
+      {
+        "date": "2026-11-22",
+        "pct": 102.3
+      },
+      {
+        "date": "2026-11-23",
+        "pct": 102.3
+      },
+      {
+        "date": "2026-11-24",
+        "pct": 102.3
+      },
+      {
+        "date": "2026-11-25",
+        "pct": 102.8
+      },
+      {
+        "date": "2026-11-26",
+        "pct": 102.8
+      },
+      {
+        "date": "2026-11-27",
+        "pct": 103.1
+      },
+      {
+        "date": "2026-11-28",
+        "pct": 103.1
+      },
+      {
+        "date": "2026-11-29",
+        "pct": 103.1
+      },
+      {
+        "date": "2026-11-30",
+        "pct": 103.1
+      }
+    ],
+    "rate_pct_per_week": 0.8,
+    "direction": "flat",
+    "lifts": 6
+  },
+  "lifts": [
+    {
+      "exercise_id": "bench-press",
+      "name": "Bench Press",
+      "status": "progressing",
+      "not_judged_reason": null,
+      "bodyweight_exercise": false,
+      "last_session_date": "2026-11-26",
+      "latest": {
+        "load_kg": 100,
+        "reps": 9,
+        "effective_load_kg": 100,
+        "e1rm_kg": 130.0
+      },
+      "series": [
+        {
+          "date": "2026-11-05",
+          "e1rm_kg": 124.0
+        },
+        {
+          "date": "2026-11-12",
+          "e1rm_kg": 125.33
+        },
+        {
+          "date": "2026-11-19",
+          "e1rm_kg": 126.67
+        },
+        {
+          "date": "2026-11-26",
+          "e1rm_kg": 130.0
+        }
+      ]
+    },
+    {
+      "exercise_id": "deadlift",
+      "name": "Deadlift",
+      "status": "stall",
+      "not_judged_reason": null,
+      "bodyweight_exercise": false,
+      "last_session_date": "2026-11-26",
+      "latest": {
+        "load_kg": 140,
+        "reps": 5,
+        "effective_load_kg": 140,
+        "e1rm_kg": 163.33
+      },
+      "series": [
+        {
+          "date": "2026-11-12",
+          "e1rm_kg": 163.33
+        },
+        {
+          "date": "2026-11-16",
+          "e1rm_kg": 163.33
+        },
+        {
+          "date": "2026-11-19",
+          "e1rm_kg": 163.33
+        },
+        {
+          "date": "2026-11-26",
+          "e1rm_kg": 163.33
+        }
+      ]
+    },
+    {
+      "exercise_id": "pull-up",
+      "name": "Pull Up",
+      "status": "same",
+      "not_judged_reason": null,
+      "bodyweight_exercise": true,
+      "last_session_date": "2026-11-26",
+      "latest": {
+        "load_kg": 0.0,
+        "reps": 8,
+        "effective_load_kg": 80.0,
+        "e1rm_kg": 101.33
+      },
+      "series": [
+        {
+          "date": "2026-11-19",
+          "e1rm_kg": 101.33
+        },
+        {
+          "date": "2026-11-26",
+          "e1rm_kg": 101.33
+        }
+      ]
+    }
+  ],
+  "not_counted": [
+    {
+      "exercise_id": "lateral-raise",
+      "name": "Lateral Raise",
+      "status": "progressing",
+      "not_judged_reason": null,
+      "bodyweight_exercise": false,
+      "last_session_date": "2026-11-26",
+      "latest": {
+        "load_kg": 10,
+        "reps": 14,
+        "effective_load_kg": 10,
+        "e1rm_kg": 14.67
+      },
+      "series": [
+        {
+          "date": "2026-11-19",
+          "e1rm_kg": 14.0
+        },
+        {
+          "date": "2026-11-26",
+          "e1rm_kg": 14.67
+        }
+      ]
+    }
+  ],
+  "activities": [
+    {
+      "date": "2026-11-27",
+      "type": "wrestling",
+      "name": "Wrestling",
+      "status": "planned",
+      "distance_km": null,
+      "minutes": null,
+      "kcal_counted": 600
+    },
+    {
+      "date": "2026-11-24",
+      "type": "run",
+      "name": "Running (jogging)",
+      "status": "done",
+      "distance_km": 11.5,
+      "minutes": 62,
+      "kcal_counted": 389
+    },
+    {
+      "date": "2026-11-20",
+      "type": "wrestling",
+      "name": "Wrestling",
+      "status": "skipped",
+      "distance_km": null,
+      "minutes": null,
+      "kcal_counted": 0
+    },
+    {
+      "date": "2026-11-18",
+      "type": "other",
+      "name": "Climbing",
+      "status": "done",
+      "distance_km": null,
+      "minutes": 90,
+      "kcal_counted": 350
+    }
+  ]
+}

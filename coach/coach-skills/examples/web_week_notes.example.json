@@ -1,0 +1,51 @@
+{
+  "context_notes": [
+    {
+      "id": "n1",
+      "text": "Slept badly Tuesday and Wednesday, the baby was up.",
+      "applies_from": "2026-12-01",
+      "applies_to": "2026-12-02",
+      "tags": [
+        "sleep_poor"
+      ]
+    },
+    {
+      "id": "n2",
+      "text": "Shoulder a bit cranky on overhead work.",
+      "applies_from": "2026-12-03",
+      "applies_to": null,
+      "tags": [
+        "pain"
+      ]
+    }
+  ],
+  "flags": [
+    {
+      "code": "fiber_off",
+      "severity": "watch",
+      "detail": "Fiber was under 25 g on Tuesday and Thursday."
+    },
+    {
+      "code": "lift_stall",
+      "severity": "watch",
+      "detail": "Overhead Press: three sessions without progress."
+    },
+    {
+      "code": "prediction_miss",
+      "severity": "info",
+      "detail": "Weight is 0.3 kg under the week's prediction."
+    }
+  ],
+  "deferred": [
+    {
+      "date": "2026-12-02",
+      "text": "Protein was 30 g under target on Wednesday."
+    }
+  ],
+  "due_next_week": [
+    {
+      "date": "2026-12-07",
+      "kind": "waist"
+    }
+  ]
+}
