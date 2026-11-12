@@ -2,6 +2,8 @@
 Every number here is computed by code; the model only sees the results.
 
 Read API for features:
+- `end_active(coach, at, end_date)`: ends the active phase (ending it from
+  Telegram, or a new phase start).
 - `active(coach)`: the active phase {id, phase_id, status, start_date,
   end_date, setup, first_change_applied, started_at, ended_at} or None
   (nothing is active before the user confirms a phase start, or after it ended).
@@ -37,7 +39,7 @@ Read API for features:
   gets k x (its steps - goal) on top. So the step goal only moves where "0"
   is shown; on an average-steps day the target is base + sessions + surplus
   (= the MFP goal on a rest day).
-- `macros(params, kcal, weight_kg)`, `macro_reference_weight(coach, day)`,
+- `macros(params, kcal, weight_kg)`, `macro_reference_weight(coach, phase, day)`,
   `trend_weight(coach, day)`, `phase_week(phase, day)`, `in_glycogen_window(coach, day)`.
 - `maintenance_estimate(coach, end, params)`: back-calculated from logged
   intake and the weight trend over 3+ usable weeks.
@@ -74,8 +76,13 @@ HISTORY_WEEKS = 16  # as far back as the first sync reads
 # Setup values that are calibration (changed later only through a proposal)
 # and values that only define the start (fixed for the phase).
 CALIBRATION_KEYS = ("run_kcal_discount", "wrestling_kcal_per_session", "lifting_kcal_per_session")
-# The targets row an approved calibration change adds (its targets recomputed, surplus unchanged).
+# The targets row an approved calibration change adds (its targets recomputed, surplus unchanged);
+# also the `setup_changes` source of the calibrated values.
 CALIBRATION_SOURCE = "calibration"
+# Other `setup_changes` (and targets) sources: the confirmed phase start, and
+# a setup value changed during the phase (chat and web, `record_setup_value`).
+PHASE_START_SOURCE = "phase_start"
+SETUP_VALUE_SOURCE = "setup_value"
 START_KEYS = ("starting_calories_kcal", "starting_trend_weight_kg", "maintenance_estimate_kcal",
               "maintenance_includes_activity", "fat_g_per_kg_start", "week1_increase_kcal")
 
@@ -102,6 +109,13 @@ def on(coach: "Coach", day: Date) -> dict[str, Any] | None:
         "SELECT * FROM phases WHERE start_date <= ? AND (end_date IS NULL OR end_date >= ?)"
         " ORDER BY start_date DESC, started_at DESC LIMIT 1", (day.isoformat(), day.isoformat()))
     return _phase(row) if row else None
+
+
+def end_active(coach: "Coach", at: datetime.datetime, end_date: Date) -> None:
+    """End the active phase (if any): status 'ended', `ended_at` = `at`, its
+    last day `end_date`. Call inside the caller's transaction."""
+    coach.db.execute("UPDATE phases SET status = 'ended', ended_at = ?, end_date = ? WHERE status = 'active'",
+                     (at.isoformat(timespec="seconds"), end_date.isoformat()))
 
 
 def _phase(row) -> dict[str, Any]:
@@ -314,7 +328,7 @@ def daily_target(coach: "Coach", day: Date) -> dict[str, Any] | None:
         "surplus_kcal": round(current["surplus_kcal"]),
         "steps": steps and {k: v for k, v in steps.items() if k not in ("base_at_goal_kcal", "exact_vs_average")},
         "activity": activity,
-        "macros": macros(p, kcal, macro_reference_weight(coach, day)),
+        "macros": macros(p, kcal, macro_reference_weight(coach, phase, day)),
     }
 
 
@@ -387,12 +401,10 @@ def trend_weight(coach: "Coach", day: Date) -> float | None:
     return round(statistics.fmean(weights), 2) if len(weights) >= MIN_TREND_WEIGH_INS else None
 
 
-def macro_reference_weight(coach: "Coach", day: Date) -> float:
-    """The weight macros use on `day`: the starting trend weight in phase week
-    1, then the 7-day trend at the end of the previous phase week
-    (recalculated weekly), falling back to the starting trend weight. The
-    phase is the one of `day`, else the active one."""
-    phase = on(coach, day) or active(coach)
+def macro_reference_weight(coach: "Coach", phase: dict[str, Any], day: Date) -> float:
+    """The weight macros use on `day` in `phase`: the starting trend weight in
+    phase week 1, then the 7-day trend at the end of the previous phase week
+    (recalculated weekly), falling back to the starting trend weight."""
     start_weight = phase["setup"]["starting_trend_weight_kg"]
     week = phase_week(phase, day)
     if week <= 1:
