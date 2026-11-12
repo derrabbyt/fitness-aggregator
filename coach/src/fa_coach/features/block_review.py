@@ -187,6 +187,27 @@ def _day(iso: str) -> str:
 def facts(coach: "Coach", number: int, start: Date, end: Date, weeks: int, reason: str | None) -> dict[str, Any]:
     """The block's facts (`block_facts.schema.json`)."""
     p = phases.params_on(coach, end)["training"]
+    lifts, training = lifts_over(coach, start, end)
+    return {
+        "schema_version": 1,
+        "block": {"number": number, "start_date": start.isoformat(), "end_date": end.isoformat(),
+                  "days": (end - start).days + 1, "block_weeks": weeks, "ended_early": reason is not None,
+                  "reason": reason},
+        "lifts": lifts,
+        "training": training,
+        "sessions": _sessions(coach, start, end),
+        "volume": _volume(coach, start, end, p),
+        "context_notes": [{k: n[k] for k in ("applies_from", "applies_to", "tags", "text")}
+                          for n in context_notes.between(coach, start, end)],
+        "params": {k: p[k] for k in ("stall_sessions", "decline_sessions_for_deload", "deload_min_lifts_declining",
+                                     "e1rm_same_band_pct", "volume_note_max_sets_per_session",
+                                     "volume_note_max_sets_per_muscle_per_session")},
+    }
+
+
+def lifts_over(coach: "Coach", start: Date, end: Date) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """(lifts, training) of `block_facts` over start..end; the phase review uses it for a whole phase."""
+    p = phases.params_on(coach, end)["training"]
     lifts = [_lift(lift, start, end) for lift in progression.lifts(coach, end).values()]
     lifts = sorted((lift for lift in lifts if lift is not None), key=lambda lift: (not lift["counts"], lift["name"]))
     judged = [lift for lift in lifts if lift["counts"] and not lift["paused"]]
@@ -197,29 +218,15 @@ def facts(coach: "Coach", number: int, start: Date, end: Date, weeks: int, reaso
     band = p["e1rm_same_band_pct"]
     declining = sorted(lift["name"] for lift in judged
                        if lift["decline_streak_at_end"] >= p["decline_sessions_for_deload"])
-    return {
-        "schema_version": 1,
-        "block": {"number": number, "start_date": start.isoformat(), "end_date": end.isoformat(),
-                  "days": (end - start).days + 1, "block_weeks": weeks, "ended_early": reason is not None,
-                  "reason": reason},
-        "lifts": lifts,
-        "training": {
-            "strength_trend": {"change_pct": change, "lifts": len(changes),
-                               "direction": None if change is None else "rising" if change > band
-                               else "falling" if change < -band else "flat"},
-            "stalls": sorted(lift["name"] for lift in judged if lift["stalled_at_end"]),
-            "declining_lifts": declining,
-            "deload_signal": len(declining) >= p["deload_min_lifts_declining"],
-            "prs": sorted(({"name": lift["name"], "date": d} for lift in lifts for d in lift["prs"]),
-                          key=lambda pr: (pr["date"], pr["name"])),
-        },
-        "sessions": _sessions(coach, start, end),
-        "volume": _volume(coach, start, end, p),
-        "context_notes": [{k: n[k] for k in ("applies_from", "applies_to", "tags", "text")}
-                          for n in context_notes.between(coach, start, end)],
-        "params": {k: p[k] for k in ("stall_sessions", "decline_sessions_for_deload", "deload_min_lifts_declining",
-                                     "e1rm_same_band_pct", "volume_note_max_sets_per_session",
-                                     "volume_note_max_sets_per_muscle_per_session")},
+    return lifts, {
+        "strength_trend": {"change_pct": change, "lifts": len(changes),
+                           "direction": None if change is None else "rising" if change > band
+                           else "falling" if change < -band else "flat"},
+        "stalls": sorted(lift["name"] for lift in judged if lift["stalled_at_end"]),
+        "declining_lifts": declining,
+        "deload_signal": len(declining) >= p["deload_min_lifts_declining"],
+        "prs": sorted(({"name": lift["name"], "date": d} for lift in lifts for d in lift["prs"]),
+                      key=lambda pr: (pr["date"], pr["name"])),
     }
 
 

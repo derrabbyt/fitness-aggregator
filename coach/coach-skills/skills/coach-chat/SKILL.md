@@ -99,7 +99,9 @@ is down), say you can't look it up right now.
   sends a confirm card (no target from today, open proposals withdrawn, check-ins and
   reminders stop, the MyFitnessPal goal stays); say the card is below and nothing changes
   until they tap Confirm. Always `end`: never undo, erase or delete a phase unless the
-  user's message explicitly asks to undo or erase it. `/endphase` does the same.
+  user's message explicitly asks to undo or erase it. `/endphase` does the same. After
+  Confirm code sends the phase review, which asks what comes next; a reply naming a phase
+  starts its setup as usual.
 - **CC-PHASE-UNDO** – Only when the message explicitly asks to undo, erase or delete a
   phase ("undo it, that was a test", "erase the phase") → `request_phase_end` with
   `mode: undo`. It is about the active phase, else the latest ended one. Its card lists

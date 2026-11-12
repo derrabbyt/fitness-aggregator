@@ -225,6 +225,7 @@ def message(text: str) -> dict:
 async def test_training_feedback_keeps_running_after_the_phase_ended(phase, api, clock, model, outbox):
     clock.current = at("2026-11-12")
     await phase.on_message("/endphase")
+    model.script(reply_json(message("Phase review.")))  # sent on Confirm (coach-reviews ticket 03)
     await confirm(phase, outbox, at("2026-11-12", 13))
     model.script(reply_json(message("PR: bench 82.5 × 5.")))
 

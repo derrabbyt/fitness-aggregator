@@ -154,10 +154,16 @@
     },
     "reviews": {
       "block_weeks": 5,
-      "phase_review_every_weeks": [
-        8,
-        12
-      ]
+      "phase_review_every_weeks": 10,
+      "calibration": {
+        "min_weeks": 6,
+        "run_discount_drift": 0.15,
+        "run_discount_plausible": [0.2, 1.0],
+        "run_min_spread_kcal_per_day": 50,
+        "wrestling_drift_kcal": 150,
+        "wrestling_plausible_kcal": [100, 1500],
+        "wrestling_min_spread_sessions_per_week": 0.5
+      }
     },
     "messaging": {
       "missing_log_reminders_per_day": 1,
