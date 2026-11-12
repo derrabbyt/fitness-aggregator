@@ -281,3 +281,57 @@ async def test_what_arrived_before_the_reminder_is_not_asked_for_again(coach, ou
     await coach.run_due_jobs(at("2026-11-23", 7))
 
     assert reminders(outbox) == []
+
+
+# --- waist history in chat -------------------------------------------------------
+
+
+async def test_the_chat_reads_the_waist_history_newest_first_with_the_phase_start_value(coach, model, outbox):
+    activate(coach)  # waist 84.5 at the start, 9 Nov
+    await coach.on_message("waist 85.1", at("2026-11-23", 8))
+    await coach.on_message("waist 85.6", at("2026-12-07", 8))
+    model.script(tool_call("waist_history", limit=10), reply("85.6 now, 84.5 at the start."))
+
+    await coach.on_message("how has my waist changed?", at("2026-12-07", 9))
+
+    assert "waist_history" in {t["name"] for t in model.requests[0].tools}
+    [result] = model.results(0)
+    assert not result.is_error
+    assert result.content == {"waist": [
+        {"date": "2026-12-07", "cm": 85.6, "source": "measured"},
+        {"date": "2026-11-23", "cm": 85.1, "source": "measured"},
+        {"date": "2026-11-09", "cm": 84.5, "source": "phase_start"},
+    ]}
+
+
+async def test_the_waist_history_keeps_the_newest_values_up_to_the_limit(coach, model, outbox):
+    activate(coach)
+    await coach.on_message("waist 85.1", at("2026-11-23", 8))
+    await coach.on_message("waist 85.6", at("2026-12-07", 8))
+    model.script(tool_call("waist_history", limit=2), reply("ok"))
+
+    await coach.on_message("last two waist values?", at("2026-12-07", 9))
+
+    [result] = model.results(0)
+    assert [w["date"] for w in result.content["waist"]] == ["2026-12-07", "2026-11-23"]
+
+
+async def test_a_value_measured_on_the_start_date_replaces_the_setup_value(coach, model, outbox):
+    activate(coach)
+    await coach.on_message("waist 84.9", at(START, 8))
+    model.script(tool_call("waist_history"), reply("ok"))
+
+    await coach.on_message("my waist history?", at("2026-11-10", 9))
+
+    [result] = model.results(0)
+    assert result.content == {"waist": [{"date": START, "cm": 84.9, "source": "measured"}]}
+
+
+async def test_without_a_phase_the_waist_history_is_the_stored_values(coach, model, outbox):
+    await coach.on_message("waist 86", at("2026-11-02", 8))
+    model.script(tool_call("waist_history"), reply("ok"))
+
+    await coach.on_message("my waist history?", at("2026-11-10", 9))
+
+    [result] = model.results(0)
+    assert result.content == {"waist": [{"date": "2026-11-02", "cm": 86, "source": "measured"}]}
