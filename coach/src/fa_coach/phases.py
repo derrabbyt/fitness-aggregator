@@ -7,6 +7,7 @@ Read API for features:
 - `active(coach)`: the active phase {id, phase_id, status, start_date,
   end_date, setup, first_change_applied, started_at, ended_at} or None
   (nothing is active before the user confirms a phase start, or after it ended).
+- `get(coach, phase_row_id)`: one phase by its row id, or None.
 - `on(coach, day)`: the phase whose span covers `day` (active or ended), or
   None. A span is start_date..end_date; the active phase has no end_date and
   covers every day from its start. An ended phase's last day is the day
@@ -43,7 +44,8 @@ Read API for features:
 - `macros(params, kcal, weight_kg)`, `macro_reference_weight(coach, phase, day)`,
   `trend_weight(coach, day)`, `phase_week(phase, day)`, `in_glycogen_window(coach, day)`.
 - `maintenance_estimate(coach, end, params)`: back-calculated from logged
-  intake and the weight trend over 3+ usable weeks.
+  intake and the weight trend over 3+ usable weeks; `unusable_days` are
+  the dates it leaves out.
 - `on_confirmed`: hooks run once after a phase start is confirmed (the MFP
   goal is set there, features/phase_goal.py).
 
@@ -100,6 +102,11 @@ def active(coach: "Coach") -> dict[str, Any] | None:
 def latest(coach: "Coach") -> dict[str, Any] | None:
     """The active phase, else the most recently ended one."""
     row = coach.db.one("SELECT * FROM phases ORDER BY status = 'active' DESC, started_at DESC LIMIT 1")
+    return _phase(row) if row else None
+
+
+def get(coach: "Coach", phase_row_id: str) -> dict[str, Any] | None:
+    row = coach.db.one("SELECT * FROM phases WHERE id = ?", (phase_row_id,))
     return _phase(row) if row else None
 
 
@@ -465,6 +472,12 @@ def maintenance_estimate(coach: "Coach", end: Date, p: dict[str, Any]) -> dict[s
     value = intake - change * cfg["kcal_per_kg"] / ((len(run) - 1) * 7)
     return {"value": round(value), "weeks": len(run), "start": window[0], "end": window[-1],
             "avg_intake_kcal": round(intake), "weight_change_kg": round(change, 2)}
+
+
+def unusable_days(coach: "Coach", start: Date, end: Date, p: dict[str, Any]) -> set[str]:
+    """Dates in start..end the maintenance estimate leaves out: marked unusable
+    by a note, in a phase's glycogen window, or incomplete (daycheck.py)."""
+    return _unusable_days(coach, start, end, p["maintenance_estimate"]) | daycheck.incomplete_days(coach, start, end, p)
 
 
 def _unusable_days(coach: "Coach", start: Date, end: Date, cfg: dict[str, Any]) -> set[str]:

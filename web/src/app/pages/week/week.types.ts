@@ -137,7 +137,7 @@ export interface WeekDecision {
 export interface Proposal {
   id: string;
   type: 'calorie_change' | 'calibration_change';
-  source: 'weekly_decision' | 'user_counter' | 'user_request' | 'phase_start';
+  source: 'weekly_decision' | 'user_counter' | 'user_request' | 'phase_start' | 'phase_review';
   status: ProposalStatus;
   based_on_week: string | null;
   change: string;

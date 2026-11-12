@@ -11,6 +11,9 @@ and report see, computed in code for one 7-day week of the active phase.
   and the guardrails count it.
 - `window_start(coach, change)`: the first day of week 1 after a calorie
   change (the lockout and confirmation window).
+- `maintenance_base(coach, end, p)`: the maintenance estimate as base
+  maintenance (the weekly facts' `targets.maintenance_estimate`; also the
+  phase review's).
 - `weekly_rate(coach, end)` and `in_glycogen_window(phase, end, p)`: the
   weekly weight rate and the "not evaluated" rule for the 7 days ending
   `end`, shared with the web page's weight (`features/web_weight.py`).
@@ -87,7 +90,7 @@ def compute(coach: "Coach", end: Date, now: datetime.datetime) -> dict[str, Any]
             "surplus_kcal": round(current["surplus_kcal"]),
             "base_maintenance_kcal": round(current["base_maintenance_kcal"]),
             "avg_daily_target_kcal": round(current["avg_daily_target_kcal"]),
-            "maintenance_estimate": _maintenance(coach, end, p),
+            "maintenance_estimate": maintenance_base(coach, end, p),
             "mfp_goal_kcal": current["mfp_goal_kcal"],
             **_step_model(current, p),
         },
@@ -248,7 +251,7 @@ def _latest_bf(coach, end: Date) -> dict[str, Any] | None:
             "source": "photo" if latest["source"] == "model" else "user", "date": latest["date"]}
 
 
-def _maintenance(coach, end: Date, p) -> dict[str, Any]:
+def maintenance_base(coach, end: Date, p) -> dict[str, Any]:
     """The back-calculated estimate as base maintenance (its window's average
     counted activity taken off); the weeks after the estimate's window up to
     `end` were left out (glycogen window or unusable)."""

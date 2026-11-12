@@ -15,7 +15,7 @@
       "properties": {
         "id": { "type": "string" },
         "type": { "enum": ["calorie_change", "calibration_change"] },
-        "source": { "enum": ["weekly_decision", "user_counter", "user_request", "phase_start"] },
+        "source": { "enum": ["weekly_decision", "user_counter", "user_request", "phase_start", "phase_review"] },
         "status": { "enum": ["open", "approved", "rejected", "superseded", "blocked_by_guardrail"] },
         "based_on_week": { "type": ["string", "null"], "pattern": "^[0-9]{4}-W[0-9]{2}$" },
         "change": { "type": "string" },

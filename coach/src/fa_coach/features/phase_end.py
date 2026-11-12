@@ -16,6 +16,7 @@
   - effect `end`: the phase gets status 'ended', `ended_at` and `end_date` =
     yesterday (`phases.end_active`; `phases.on(day)` reads the span); its open
     proposals are withdrawn (`proposals.withdraw_open`) and their cards edited.
+    Then the phase review of the ended phase goes out (features/phase_review.py).
   - effect `erase` (an undo card, or an end card on the phase's start day,
     where an end would leave an empty phase): `erase` deletes the phase and
     everything that hangs on it in the same transaction; its open proposals'
@@ -36,6 +37,7 @@ A new table that hangs on a phase gets a row in `_erase_parts` (and a
 """
 
 import datetime
+import logging
 import secrets
 from typing import TYPE_CHECKING, Any
 
@@ -47,6 +49,7 @@ from ..registry import registry
 if TYPE_CHECKING:
     from ..core import Coach
 
+logger = logging.getLogger("fa-coach")
 Date = datetime.date
 DAY = datetime.timedelta(days=1)
 # What a card was asked for (`mode`) and what Confirm does (`effect`).
@@ -285,6 +288,7 @@ async def request_phase_end(coach: "Coach", args: dict[str, Any], now: datetime.
 async def confirm_phase_end(coach: "Coach", ref_id: str, now: datetime.datetime) -> None:
     at = now.isoformat(timespec="seconds")
     withdrawn: list[str] = []
+    ended: str | None = None  # the phase this tap ended
     card_edits: list[tuple[str, str]] = []
     with coach.db.transaction():
         claimed = coach.db.execute(
@@ -311,6 +315,7 @@ async def confirm_phase_end(coach: "Coach", ref_id: str, now: datetime.datetime)
             outcome += " MyFitnessPal's goal is unchanged."
         else:
             withdrawn = end(coach, phase, now)
+            ended = phase["id"]
             outcome = (f"✅ Ended. Its last day was {_day(now.date() - DAY)}; no target from today. "
                        "MyFitnessPal's goal is unchanged.")
             if withdrawn:
@@ -320,6 +325,19 @@ async def confirm_phase_end(coach: "Coach", ref_id: str, now: datetime.datetime)
         coach.edit(ref, text)
     for proposal_id in withdrawn:
         proposals.close_cards(coach, proposal_id, "⏹ Phase ended. Nothing changed from this proposal.")
+    if ended is not None:
+        await _review(coach, ended, now)
+
+
+async def _review(coach: "Coach", phase_row_id: str, now: datetime.datetime) -> None:
+    """The phase review of the phase just ended (coach-reviews ticket 03). A failure never undoes
+    the end: it's logged, and the phase-review job catches up."""
+    from . import phase_review
+
+    try:
+        await phase_review.review_end(coach, phases.get(coach, phase_row_id), now)
+    except Exception:
+        logger.exception("phase review after the phase end failed")
 
 
 @registry.button("cancel_phase_end")

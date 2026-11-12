@@ -27,7 +27,7 @@ coach-skills/
 │   ├── training-feedback/    after a logged session
 │   ├── new-exercise/         classifies an exercise that first shows up in Hevy
 │   ├── block-review/         end of each training block
-│   ├── phase-review/         every few weeks and at phase end
+│   ├── phase-review/         every 10 weeks and at phase end
 │   ├── photo-review/         photo check-ins (optional)
 │   ├── context-log/          notes → tagged context notes
 │   └── coach-chat/           every free-text message in the coach chat
@@ -54,7 +54,7 @@ result as `params` inside the facts.
 | Lifting session synced (with or without a phase) | training-feedback | `daily_facts` (training) | `coach_message` |
 | Unclassified exercise in a synced session (during a phase) | new-exercise | new exercises + those already classified, tool `classify_exercises` | text (counts toward the daily limit, else deferred to the weekly report) |
 | End of training block (every `reviews.block_weeks` weeks from the phase start; `end_block` ends one early) | block-review | `block_facts` | `coach_message` (code sends `text` once, no buttons; its own summary without a usable answer) |
-| Every few weeks / phase end | phase-review | `phase_summary` | `coach_message` (+ calibration proposals via tool) |
+| Every `reviews.phase_review_every_weeks` weeks from the phase start, and every phase end (confirming the end card) | phase-review (the phase's skill in the prefix) | `phase_summary` | `coach_message` (code sends `text` once, its own summary without a usable answer; code makes a calibration proposal per drifted value and sends its card after the review) |
 | Photo set received (active phase, photos on; no new photo for 10 min) | photo-review | the new set + the like-for-like set code picked (images), latest estimate, waist trend | `photo_review` (code stores the estimate, sends `notes` + the range as the photo review; code sends the body-fat advice) |
 | Coach chat message | coach-chat + context-log (others via `load_skill`) | message + tools | text reply |
 | "start …" command, and every message while that setup is open | phase-start (target phase skill in the prefix) | message + `setup` (recorded, still needed, prefill from history, Hevy exercises with their classification, limits) + tools | text; after `start_phase` code sends the preview card with confirm / edit buttons |
@@ -76,7 +76,7 @@ short history.
 | `weekly_facts` | code → weekly-decision, weekly-report |
 | `block_facts` | code → block-review |
 | `weekly_verdict` | weekly-decision → code (stored with its facts; drives confirmation counting) |
-| `proposal` | `propose_change` tool → store → buttons |
+| `proposal` | `propose_change` tool (and code: weekly decision, phase review calibration) → store → buttons |
 | `daily_facts` | code → evening-recap, training-feedback |
 | `coach_message` | message-writing skills → Telegram sender |
 | `context_note` | context-log → store → all facts |
