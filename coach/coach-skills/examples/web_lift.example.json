@@ -1,0 +1,161 @@
+{
+  "date": "2026-11-12",
+  "freshness": {
+    "last_sync_at": "2026-11-12T05:40:00+01:00",
+    "age_hours": 0.4,
+    "stale": false
+  },
+  "exercise_id": "pull-up",
+  "name": "Pull Up",
+  "status": "paused",
+  "not_judged_reason": null,
+  "bodyweight_exercise": true,
+  "last_session_date": "2026-09-01",
+  "latest": {
+    "load_kg": 10,
+    "reps": 8,
+    "effective_load_kg": 90,
+    "e1rm_kg": 114.0
+  },
+  "counts": true,
+  "paused": true,
+  "chart": [
+    {
+      "date": "2026-07-14",
+      "session_id": "s0",
+      "load_kg": 0,
+      "reps": 8,
+      "effective_load_kg": 80,
+      "e1rm_kg": 101.33,
+      "pr": false,
+      "baseline_reset": false
+    },
+    {
+      "date": "2026-07-21",
+      "session_id": "s1",
+      "load_kg": 0,
+      "reps": 10,
+      "effective_load_kg": 80,
+      "e1rm_kg": 106.67,
+      "pr": false,
+      "baseline_reset": false
+    },
+    {
+      "date": "2026-07-28",
+      "session_id": "s2",
+      "load_kg": 2.5,
+      "reps": 8,
+      "effective_load_kg": 82.5,
+      "e1rm_kg": 104.5,
+      "pr": false,
+      "baseline_reset": false
+    },
+    {
+      "date": "2026-08-04",
+      "session_id": "s3",
+      "load_kg": 5,
+      "reps": 8,
+      "effective_load_kg": 85,
+      "e1rm_kg": 107.67,
+      "pr": false,
+      "baseline_reset": false
+    },
+    {
+      "date": "2026-08-11",
+      "session_id": "s4",
+      "load_kg": 5,
+      "reps": 8,
+      "effective_load_kg": 85,
+      "e1rm_kg": 107.67,
+      "pr": false,
+      "baseline_reset": false
+    },
+    {
+      "date": "2026-08-18",
+      "session_id": "s5",
+      "load_kg": 7.5,
+      "reps": 8,
+      "effective_load_kg": 87.5,
+      "e1rm_kg": 110.83,
+      "pr": false,
+      "baseline_reset": false
+    },
+    {
+      "date": "2026-08-25",
+      "session_id": "s6",
+      "load_kg": 7.5,
+      "reps": 7,
+      "effective_load_kg": 87.5,
+      "e1rm_kg": 107.92,
+      "pr": false,
+      "baseline_reset": false
+    },
+    {
+      "date": "2026-09-01",
+      "session_id": "s7",
+      "load_kg": 10,
+      "reps": 8,
+      "effective_load_kg": 90,
+      "e1rm_kg": 114.0,
+      "pr": false,
+      "baseline_reset": false
+    }
+  ],
+  "resets": [],
+  "sessions": {
+    "items": [
+      {
+        "date": "2026-09-01",
+        "session_id": "s7",
+        "top_set": {
+          "load_kg": 10,
+          "reps": 8,
+          "effective_load_kg": 90,
+          "e1rm_kg": 114.0
+        },
+        "status": "progressing",
+        "not_judged_reason": null,
+        "pr": false
+      },
+      {
+        "date": "2026-08-25",
+        "session_id": "s6",
+        "top_set": {
+          "load_kg": 7.5,
+          "reps": 7,
+          "effective_load_kg": 87.5,
+          "e1rm_kg": 107.92
+        },
+        "status": "declining",
+        "not_judged_reason": null,
+        "pr": false
+      },
+      {
+        "date": "2026-08-18",
+        "session_id": "s5",
+        "top_set": {
+          "load_kg": 7.5,
+          "reps": 8,
+          "effective_load_kg": 87.5,
+          "e1rm_kg": 110.83
+        },
+        "status": "progressing",
+        "not_judged_reason": null,
+        "pr": false
+      }
+    ],
+    "offset": 0,
+    "total": 8,
+    "next_offset": 3
+  },
+  "controls": {
+    "classification": "counts",
+    "paused_reason": "left shoulder",
+    "reset_reasons": [
+      "technique_change",
+      "rom_change",
+      "exercise_swap",
+      "other"
+    ]
+  }
+}

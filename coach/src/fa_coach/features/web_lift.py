@@ -18,10 +18,11 @@ GET lift?exercise_id=…&day=…&offset=0&limit=3
   ignored sessions are listed with their reason.
 - `controls`: the state the page's controls start from.
 
-Commands run the chat tools through `web_setup.run_tool`, so values are
-checked by the tools' schemas and refusals carry their words:
-`lift/classify {exercise_id, counts}` (`classify_exercises`),
-`lift/pause {exercise_id, paused, reason?}` (`set_exercise_paused`),
+The controls run the chat tools through `web_setup.run_tool`, so values are
+checked by the tools' schemas and refusals carry their words. Counts / not
+counted and pause reuse Setup › Exercises' commands (ticket 12):
+`setup/exercises/classify {exercise_id, classification}` and
+`setup/exercises/pause {exercise_id, paused, reason?}`; this module adds
 `lift/reset {exercise_id, reason, date?}` (`mark_baseline_reset`).
 """
 
@@ -39,7 +40,6 @@ PAGE = 3  # sessions shown before "show more"
 MAX_PAGE = 50
 IGNORED = web_training.IGNORED
 SESSION_STATUS = {"improved": "progressing", "declined": "declining"}
-WEB_REASON = "Changed on the web page."
 
 
 @registry.view("lift", schema="web_lift")
@@ -130,24 +130,6 @@ def _resets(coach, exercise_id: str, day: Date, entries: list[dict[str, Any]]) -
 
 
 # --- commands ------------------------------------------------------------------------
-
-
-@registry.web_command("lift/classify")
-async def classify(coach, body: dict[str, Any], now: datetime.datetime) -> Any:
-    counts = field(body, "counts")
-    if not isinstance(counts, bool):
-        raise views.WebError(400, "counts must be true or false.")
-    item = {"exercise_id": field(body, "exercise_id"), "classification": "counts" if counts else "excluded",
-            "reason": WEB_REASON}
-    return await run_tool(coach, "classify_exercises", {"exercises": [item]}, now)
-
-
-@registry.web_command("lift/pause")
-async def pause(coach, body: dict[str, Any], now: datetime.datetime) -> Any:
-    args = {"exercise_id": field(body, "exercise_id"), "paused": field(body, "paused")}
-    if body.get("reason"):
-        args["reason"] = body["reason"]
-    return await run_tool(coach, "set_exercise_paused", args, now)
 
 
 @registry.web_command("lift/reset")

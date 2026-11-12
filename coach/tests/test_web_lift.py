@@ -1,7 +1,8 @@
 """The web page's lift detail (coach-web ticket 09): the `lift` view (history
 chart of the heaviest working set as estimated 1RM with PRs and baseline
 resets marked, the last sessions with "show more" paging, the controls'
-state) and its commands, which run the chat tools.
+state) and its controls: `lift/reset`, plus Setup › Exercises' classify and
+pause commands (ticket 12), all running the chat tools.
 
 e1RM = load x (1 + reps / 30): 100 kg x 8 = 126.67, 105 x 8 = 133.0.
 """
@@ -150,7 +151,7 @@ async def test_an_unknown_lift_or_a_bad_page_is_refused(coach, api, clock):
 async def test_switching_a_lift_to_not_counted_moves_it_on_the_training_list(coach, api, clock):
     await synced(coach, api, clock, bench_history())
 
-    await coach.command("lift/classify", {"exercise_id": "bench-press", "counts": False})
+    await coach.command("setup/exercises/classify", {"exercise_id": "bench-press", "classification": "excluded"})
 
     lift = lift_view(coach, "bench-press")
     assert (lift["counts"], lift["controls"]["classification"]) == (False, "excluded")
@@ -158,21 +159,21 @@ async def test_switching_a_lift_to_not_counted_moves_it_on_the_training_list(coa
     assert ([x["name"] for x in training["lifts"]], [x["name"] for x in training["not_counted"]]) == \
         ([], ["Bench Press"])
 
-    await coach.command("lift/classify", {"exercise_id": "bench-press", "counts": True})
+    await coach.command("setup/exercises/classify", {"exercise_id": "bench-press", "classification": "counts"})
     assert lift_view(coach, "bench-press")["counts"] is True
 
 
 async def test_pausing_a_lift_stops_judging_it_until_it_is_unpaused(coach, api, clock):
     await synced(coach, api, clock, bench_history())
 
-    await coach.command("lift/pause", {"exercise_id": "bench-press", "paused": True, "reason": "left shoulder"})
+    await coach.command("setup/exercises/pause", {"exercise_id": "bench-press", "paused": True, "reason": "left shoulder"})
 
     paused = lift_view(coach, "bench-press")
     assert (paused["status"], paused["paused"], paused["controls"]["paused_reason"]) == \
         ("paused", True, "left shoulder")
     assert not any(p["pr"] for p in paused["chart"])
 
-    await coach.command("lift/pause", {"exercise_id": "bench-press", "paused": False})
+    await coach.command("setup/exercises/pause", {"exercise_id": "bench-press", "paused": False})
 
     resumed = lift_view(coach, "bench-press")
     assert (resumed["status"], resumed["paused"], resumed["controls"]["paused_reason"]) == \
@@ -195,10 +196,10 @@ async def test_a_control_with_a_bad_value_is_refused_with_the_chat_tools_reason(
 
     refusals = []
     for name, body in [
-        ("lift/pause", {"exercise_id": "nope", "paused": True}),
+        ("setup/exercises/pause", {"exercise_id": "nope", "paused": True}),
         ("lift/reset", {"exercise_id": "bench-press", "reason": "felt like it"}),
-        ("lift/classify", {"exercise_id": "bench-press", "counts": "no"}),
-        ("lift/classify", {"exercise_id": "bench-press"}),
+        ("setup/exercises/classify", {"exercise_id": "bench-press", "classification": "no"}),
+        ("lift/reset", {"exercise_id": "bench-press"}),
     ]:
         with pytest.raises(views.WebError) as refused:
             await coach.command(name, body)
@@ -206,6 +207,7 @@ async def test_a_control_with_a_bad_value_is_refused_with_the_chat_tools_reason(
 
     assert refusals[0] == (400, "exercise_id 'nope' is not in the synced Hevy history; see get_tracked_exercises")
     assert refusals[1][0] == 400 and refusals[1][1].startswith("reason: 'felt like it' is not one of")
-    assert refusals[2:] == [(400, "counts must be true or false."), (400, "counts is missing.")]
+    assert refusals[2][0] == 400 and refusals[2][1].startswith("exercises/0/classification: 'no' is not one of")
+    assert refusals[3] == (400, "reason is missing.")
     lift = lift_view(coach, "bench-press")
     assert (lift["resets"], lift["paused"], lift["counts"]) == ([], False, True)

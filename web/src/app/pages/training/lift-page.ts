@@ -22,8 +22,9 @@ const MORE = 10; // sessions per "show more"
  * Training › a lift, as of the day: its estimated-1RM history (PRs and
  * baseline resets marked; bodyweight lifts on bodyweight + added weight),
  * the last 3 sessions with "show more", and its controls. Each control runs
- * the chat tool behind it (`lift/classify`, `lift/pause`, `lift/reset`) and
- * shows the coach's confirmation or reason inline.
+ * the chat tool behind it (Setup › Exercises' `setup/exercises/classify` and
+ * `setup/exercises/pause`, and `lift/reset`) and shows the coach's
+ * confirmation or reason inline.
  */
 @Component({
   selector: 'app-lift-page',
@@ -86,8 +87,9 @@ const MORE = 10; // sessions per "show more"
                 <span class="t2">{{ v.counts ? 'It will sit under Not counted and get no stall flags.' : 'It will decide the weekly progress check again.' }}</span>
               </app-edit-row>
 
-              <app-edit-row label="Paused" hint="A paused lift is logged but not judged."
-                            [value]="v.paused ? 'Paused' + (v.controls.paused_reason ? ' · ' + v.controls.paused_reason : '') : 'No'"
+              <app-edit-row label="Paused"
+                            [hint]="v.paused && v.controls.paused_reason ? 'Reason: ' + v.controls.paused_reason + '.' : 'A paused lift is logged but not judged.'"
+                            [value]="v.paused ? 'Paused' : 'No'"
                             [editable]="true" [editLabel]="v.paused ? 'Unpause' : 'Pause'"
                             [editing]="edit.open() === 'pause'" [busy]="edit.busy() === 'pause'"
                             [error]="edit.errorFor('pause')" [notice]="edit.noticeFor('pause')"
@@ -101,8 +103,8 @@ const MORE = 10; // sessions per "show more"
                 }
               </app-edit-row>
 
-              <app-edit-row label="Baseline reset" hint="After a technique change or swap: the next session starts a new history."
-                            [value]="resetText(v)" [editable]="true" editLabel="Mark reset"
+              <app-edit-row label="Baseline reset" [hint]="resetHint(v)"
+                            [value]="resetWhen(v)" [editable]="true" editLabel="Mark reset"
                             [editing]="edit.open() === 'reset'" [busy]="edit.busy() === 'reset'"
                             [error]="edit.errorFor('reset')" [notice]="edit.noticeFor('reset')"
                             (edit)="startReset(v)" (cancel)="edit.cancel()" (save)="saveReset(v)" saveLabel="Mark reset">
@@ -111,6 +113,7 @@ const MORE = 10; // sessions per "show more"
                     <option [value]="r" [selected]="r === resetReason()">{{ reasonText(r) }}</option>
                   }
                 </select>
+                <span class="t2">The next session starts a new history; older ones are no longer compared.</span>
               </app-edit-row>
             </app-card>
           </div>
@@ -239,11 +242,17 @@ export class LiftPage {
     return r ? RESET_REASONS[r] ?? r : 'Reset';
   }
 
-  protected resetText(v: LiftView): string {
+  /** The latest reset's session ("9 Oct", "Next session") or "None". */
+  protected resetWhen(v: LiftView): string {
     const last = v.resets[v.resets.length - 1];
     if (!last) return 'None';
-    const when = last.session_date ? dayLabel(last.session_date, false) : 'next session';
-    return `${this.reasonText(last.reason)} · ${when}`;
+    return last.session_date ? dayLabel(last.session_date, false) : 'Next session';
+  }
+
+  protected resetHint(v: LiftView): string {
+    const last = v.resets[v.resets.length - 1];
+    return last ? `Last: ${this.reasonText(last.reason).toLowerCase()}.`
+      : 'After a technique change or swap, the next session starts a new history.';
   }
 
   protected text(e: Event): string {
@@ -262,7 +271,8 @@ export class LiftPage {
 
   protected saveCounts(v: LiftView): void {
     const counts = !v.counts;
-    this.edit.save('counts', this.api.command('lift/classify', { exercise_id: v.exercise_id, counts }), () => {
+    const body = { exercise_id: v.exercise_id, classification: counts ? 'counts' : 'excluded' };
+    this.edit.save('counts', this.api.command('setup/exercises/classify', body), () => {
       this.reload();
       return counts ? 'Counts again.' : 'Moved to Not counted.';
     });
@@ -272,7 +282,7 @@ export class LiftPage {
     const paused = !v.paused;
     const reason = this.pauseReason().trim();
     const body = paused && reason ? { exercise_id: v.exercise_id, paused, reason } : { exercise_id: v.exercise_id, paused };
-    this.edit.save('pause', this.api.command('lift/pause', body), () => {
+    this.edit.save('pause', this.api.command('setup/exercises/pause', body), () => {
       this.reload();
       return paused ? 'Paused.' : 'Unpaused.';
     });

@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "web_lift.schema.json",
   "title": "Web: lift detail",
-  "description": "GET /api/coach/lift?exercise_id=…&day=YYYY-MM-DD&offset=0&limit=3, as of that day (features/web_lift.py): the lift's status, its history chart (heaviest working set as estimated 1RM, PRs and baseline resets marked), its sessions newest first with paging, and the state of its controls. 404 for an exercise not in the synced Hevy history. Edits: POST lift/classify {exercise_id, counts}, lift/pause {exercise_id, paused, reason?}, lift/reset {exercise_id, reason, date?}; they run the chat tools classify_exercises, set_exercise_paused and mark_baseline_reset.",
+  "description": "GET /api/coach/lift?exercise_id=…&day=YYYY-MM-DD&offset=0&limit=3, as of that day (features/web_lift.py): the lift's status, its history chart (heaviest working set as estimated 1RM, PRs and baseline resets marked), its sessions newest first with paging, and the state of its controls. 404 for an exercise not in the synced Hevy history. Edits: POST setup/exercises/classify {exercise_id, classification} and setup/exercises/pause {exercise_id, paused, reason?} (web_setup_exercises.py), and lift/reset {exercise_id, reason, date?}; they run the chat tools classify_exercises, set_exercise_paused and mark_baseline_reset.",
   "type": "object",
   "required": ["date", "freshness", "exercise_id", "name", "status", "not_judged_reason", "bodyweight_exercise", "last_session_date", "latest", "counts", "paused", "chart", "resets", "sessions", "controls"],
   "additionalProperties": false,
