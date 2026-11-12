@@ -6,9 +6,9 @@
 
 **Status:** resolved
 
-- [ ] Use the prototype skill; the prototype lives outside the shipped app (or behind a throwaway route) and is easy to delete
-- [ ] Phone-width screenshots, light and dark, plus one desktop-width screenshot, saved where the user can open them
-- [ ] Fixture data covers: a normal day, a day before any phase (no target), no sleep data, a not-tracked steps day, an open proposal banner
+- [x] Use the prototype skill; the prototype lives outside the shipped app (or behind a throwaway route) and is easy to delete
+- [x] Phone-width screenshots, light and dark, plus one desktop-width screenshot, saved where the user can open them
+- [x] Fixture data covers: a normal day, a day before any phase (no target), no sleep data, a not-tracked steps day, an open proposal banner
 - [x] The user's feedback and the chosen direction (incl. food block style) are recorded in this ticket's Comments; the prototype is then removed or left clearly marked as throwaway
 
 ## Comments
@@ -17,3 +17,4 @@
   - **Food: the bar variant** — "kcal left" big, eaten / target on the right, one bar, then protein / carbs / fat / fiber as four compact columns with thin bars.
   - **Weight:** today's weigh-in big, the weekly rate (coloured vs band) and the 14-day line; **no "trend" value and no band text** on Home (both stay in the weight detail).
   - **Training split in two blocks:** **Gym** (lifting sessions, one line each with time and duration, and the lift trend line under them) and **Other activities** (runs with distance, duration and **pace**, wrestling, extra sessions). **No "planned" tag.**
+- **Boxes (orchestrator):** the prototype, its screenshots and the fixture states were delivered on the unmerged throwaway branch `web/01-home-prototype`; ticked here.

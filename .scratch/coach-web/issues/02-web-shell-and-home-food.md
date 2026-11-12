@@ -12,7 +12,7 @@
 - [x] Angular shell with the four tabs, routes, design tokens per `docs/design/sure-reference.md` and the direction chosen in 01; Home shows the food block and its detail; errors show inline states
 - [x] The old day view is served under `/legacy` and nothing in the UI links to it
 - [x] Production build passes; phone and desktop screenshots against schema-valid fixture data are attached to this ticket's Comments
-- [ ] README (Development / web) and CLAUDE.md mention the coach HTTP API and `/api/coach/`; checked once by hand against the running stack (noted in Comments); `docker compose run --rm test` green
+- [x] README (Development / web) and CLAUDE.md mention the coach HTTP API and `/api/coach/`; checked once by hand against the running stack (noted in Comments); `docker compose run --rm test` green
 
 ## Comments
 
@@ -26,3 +26,4 @@
 - **Legacy:** the old `App` moved unchanged to `web/src/app/legacy/legacy-day.ts` (selector and class renamed only), route `/legacy`, linked from nowhere. It now inherits the global page background and font.
 - **Hand check:** not against the live stack (the rules forbid starting services). Checked instead in a throwaway `--network none` container: the real `fa-api` app (worktree sources, built `web/dist`) in front of the coach's `web_adapter` with a Coach on the test fakes: `GET /api/coach/home` 200, `POST /api/coach/refresh/home` 200 (synced: `mfp_days`, `hevy_sessions` called, freshness fresh), `?day=2026-11-08` 200, `/home/food` 200, future day 400 "That day hasn't started yet.", bad day 400, unknown view 404, unknown command 404, `/home/food` and `/legacy` serve `index.html`, `/api/nope` stays a JSON 404, coach down → 502. **Still to do once by hand on the running stack after deploy** (left unticked).
 - **Screenshots** (`/tmp/claude-1000/-home-debian-projects-fitness-aggregator/5741d455-db4e-4fd2-8a29-efc585325ab1/scratchpad/coach-web-notes/screenshots/02/`), fixtures schema-valid (built from the `web_*` examples, validated with the coach's schemas), served by Playwright route interception, not shipped: `phone-home-normal`, `phone-home-stale`, `phone-home-over` (past day, over target), `phone-home-nophase` (before any phase), `phone-home-empty` (nothing logged), `phone-home-error` (coach unreachable), `phone-food-detail`, `phone-food-detail-full` (whole week, partial and missing days), `phone-week-placeholder`, each `-light`/`-dark`; `desktop-home-normal`, `desktop-home-stale`, `desktop-food-detail-full`, each `-light`/`-dark`.
+- **Hand check (orchestrator, 2026-11-11/12):** deployed live from the main checkout; `/api/coach/*` answered through `fa-api` for every view, and the user used the page with real data.
