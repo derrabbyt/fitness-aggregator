@@ -8,7 +8,7 @@
 
 - [x] Delete in one transaction; other phases untouched (test)
 - [x] Card lists the counts of what goes
-- [ ] Tests green
+- [x] Tests green
 
 Spec: `.scratch/coach-followups/spec.md`.
 
