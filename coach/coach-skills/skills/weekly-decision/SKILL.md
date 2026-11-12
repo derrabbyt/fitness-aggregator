@@ -74,8 +74,10 @@ every rule you applied in `rules_applied`.
   counts: an `increase` or `decrease` must match `weight.vs_band` (increase below the band,
   decrease above it, none in it), else it becomes `hold` and the proposal is dropped; a
   proposal's size must match RB-SIZE, else code sets it (a phase's first change keeps its
-  start range). Holds and skipped weeks stay as you wrote them. Corrections go into the
-  check-in's code adjustments, and the stored direction is code's, so streaks count it.
+  start range). Holds and skipped weeks stay as you wrote them (a hold is never turned into a
+  proposal). Corrections go into the check-in's code adjustments. For a week that counts, the
+  stored direction is always code's (from `weight.vs_band`), even when you hold, so streaks
+  count it: a hold below the band counts toward an increase streak.
 - **WD-REJECTED** – If `history.last_rejected` has the same direction, propose only when the
   consecutive count since the rejection reaches `decisions.rejected_return_weeks`; then set
   `returning_rejected_proposal_id`, add flag `rejected_proposal_returning` and mention the

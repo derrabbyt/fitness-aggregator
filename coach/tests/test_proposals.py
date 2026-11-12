@@ -302,7 +302,8 @@ async def test_a_change_the_scenario_doesnt_call_for_is_blocked(phase, api, cloc
 
     assert up["guardrail"]["violations"] == ["size_or_direction_mismatch"]
     assert "no calorie change" in mismatch(up)
-    assert hold["guardrail"]["violations"] == ["confirmation_not_met", "size_or_direction_mismatch"]
+    # W49 and W50 are below the band: the streak counts code's increase for both, the hold included.
+    assert hold["guardrail"]["violations"] == ["size_or_direction_mismatch"]
     assert "no calorie change" in mismatch(hold)
 
 

@@ -102,3 +102,17 @@ async def test_the_streak_counts_codes_direction(phase, api, clock, model):
     assert [(v["iso_week"], v["direction"]) for v in history["previous_verdicts"][:2]] == [
         ("2026-W49", "increase"), ("2026-W48", "hold")]
     assert history["confirmation_streaks"] == {"increase": 1, "decrease": 0}
+
+
+async def test_a_hold_below_the_band_is_stored_with_codes_direction_and_counts_toward_the_streak(
+        phase, api, clock, model):
+    stored = await week3(phase, api, clock, model, 81.85, scenario="B", direction="hold")  # 0.05 below the band
+
+    assert (stored["verdict"]["direction"], stored["verdict"]["proposal"]) == ("hold", None)
+    assert stored["direction"] == "increase" and stored["code_adjustments"] == []
+    fill_week(api, 4, avg=81.9)  # +0.05: still below the band
+    await check_in(phase, clock, model, "2026-12-07", verdict("2026-W49", scenario="C", direction="increase"))
+
+    history = decision_requests(model)[-1].input["history"]
+    assert history["previous_verdicts"][0]["direction"] == "increase"
+    assert history["confirmation_streaks"] == {"increase": 1, "decrease": 0}
