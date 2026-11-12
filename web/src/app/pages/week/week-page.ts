@@ -60,7 +60,7 @@ const ISO_WEEK = /^\d{4}-W\d{2}$/;
             @case ('in_progress') {
               @let s = w.so_far!;
               <app-card label="So far">
-                <div class="big num">Day {{ s.days }} <span class="t2 of">of 7</span></div>
+                <div class="big num">{{ range(w) }}</div>
                 <p class="line t2 num">{{ s.weigh_ins }} {{ s.weigh_ins === 1 ? 'weigh-in' : 'weigh-ins' }}
                   · food logged on {{ s.food_days_logged }} {{ s.food_days_logged === 1 ? 'day' : 'days' }}</p>
                 @if (checkin(); as c) { <p class="meta t2 small">Check-in {{ c }}</p> }
@@ -130,7 +130,8 @@ export class WeekPage {
   protected readonly sub = computed(() => {
     const w = this.week.data();
     if (!w) return '';
-    const parts = [this.range(w)];
+    // The week in progress shows its dates big in the "So far" card instead.
+    const parts = w.state === 'in_progress' ? [] : [this.range(w)];
     if (w.phase_week != null && w.phase_week > 0) parts.push(`Phase week ${w.phase_week}`);
     return parts.join(' · ');
   });
@@ -177,7 +178,7 @@ export class WeekPage {
     void this.router.navigate([], { relativeTo: this.route, queryParams: { week }, replaceUrl: true });
   }
 
-  private range(w: WeekView): string {
+  protected range(w: WeekView): string {
     return `${dayLabel(w.start, false)} – ${dayLabel(w.end, false)}`;
   }
 }
