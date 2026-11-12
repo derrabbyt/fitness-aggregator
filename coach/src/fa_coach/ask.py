@@ -99,12 +99,16 @@ async def ask(
 async def _tools(coach: "Coach", names: Iterable[str] | None, now: datetime.datetime) -> dict:
     """The tools for one task: registered ones, plus runtime tools from the
     registry's tool sources (live reads) when the task gets every tool
-    (`names` None) or names one that isn't registered. A registered name
-    always wins over a runtime tool of the same name."""
+    (`names` None) or names one that isn't registered. A source's name
+    ("live") in `names` stands for all of that source's tools; a source that
+    fails leaves the task without its tools. A registered name always wins
+    over a runtime tool of the same name."""
     available = dict(coach.registry.tools)
     names = None if names is None else list(names)
+    by_source: dict[str, list[str]] = {}
     if names is None or any(n not in available for n in names):
         for source in coach.registry.tool_sources:
+            by_source[source.name] = []
             try:
                 runtime = await source.fn(coach, now)
             except Exception:  # noqa: BLE001 - the task runs without that source's tools
@@ -112,8 +116,11 @@ async def _tools(coach: "Coach", names: Iterable[str] | None, now: datetime.date
                 continue
             for tool in runtime:
                 available.setdefault(tool.name, tool)
+                by_source[source.name].append(tool.name)
     if names is None:
         names = list(available)
+    else:
+        names = [m for n in names for m in (by_source[n] if n in by_source and n not in available else [n])]
     missing = [n for n in names if n not in available]
     if missing:
         raise KeyError(f"unknown tools: {missing}")

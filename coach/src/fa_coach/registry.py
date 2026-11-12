@@ -19,7 +19,8 @@ registers its handlers on the shared `registry`:
                                       # raise ask.ToolError to refuse with a message
     @registry.tool_source("live")    # tools known only at runtime: async (coach, now) ->
                                       # list[Tool]; they join `coach.ask(tools=None)` and can
-                                      # be named in `tools=`; a registered tool's name wins
+                                      # be named in `tools=` one by one, or all at once by the
+                                      # source's name ("live"); a registered tool's name wins
     @registry.state("profile")        # adds a key to the state snapshot of every model
                                       # task: (coach, now) -> small JSON-able value
 

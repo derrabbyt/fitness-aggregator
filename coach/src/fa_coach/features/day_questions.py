@@ -9,8 +9,9 @@ to the MFP diary, confirmations live in the coach.
 - Each question is asked once per day, kind and kcal: if the day's kcal change
   later and it is still suspected, it is asked again.
 - Today is asked at the evening job (`ask_today`, instead of the recap). Days
-  found later, by the `day-checks` syncer (the last 7 days of the active
-  phase, today left out), wait for the next unprompted message and go out
+  found later, by the `day-checks` syncer (the last 7 days, today left out,
+  with or without a phase: confirmed days before a phase count toward the
+  maintenance estimate; without a target only partial days are asked), wait for the next unprompted message and go out
   right after it (`messaging.after_send`).
 - Questions are unprompted messages: they count toward the daily limit, and a
   question held back by it waits for the next message.
@@ -102,13 +103,8 @@ messaging.after_send.append(_after_send)
 
 @registry.syncer("day-checks", order=50)  # after the MFP sync
 async def check_recent_days(coach, now: datetime.datetime) -> None:
-    phase = phases.active(coach)
-    if phase is None:
-        return
     end = now.date() - DAY  # today is still being logged
-    start = max(Date.fromisoformat(phase["start_date"]), end - (LOOKBACK_DAYS - 1) * DAY)
-    if start <= end:
-        find(coach, start, end, now)
+    find(coach, end - (LOOKBACK_DAYS - 1) * DAY, end, now)
 
 
 # --- text and buttons ---------------------------------------------------------------

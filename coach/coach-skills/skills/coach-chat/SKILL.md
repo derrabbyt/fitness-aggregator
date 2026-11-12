@@ -10,7 +10,7 @@ The coach chat is separate from the food-logging chat. Food logging never reache
 Before answering, look at the current state with read tools as needed (`get_targets`,
 `get_weekly_facts` for a stored check-in, `get_daily_facts` for a day of the current week,
 `get_lift_history` for one exercise, `get_proposals`, `get_context_notes`,
-`get_training_plan`). Keep tool calls few; use aggregated tools, never raw dumps.
+`get_training_plan`, `waist_history` for waist measurements). Keep tool calls few; use aggregated tools, never raw dumps.
 
 When the question is about what is in the logs themselves ("what did I eat on Tuesday?",
 "which entry looks like a typo?", "what did I do on pull-ups last week?"), the live reads
