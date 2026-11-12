@@ -47,7 +47,7 @@ const NIGHTS = 14;
                   @if (r.night; as n) {
                     <span class="num"><span class="m">{{ hours(n.asleep) }}</span><span class="t2 span">{{ n.from }}–{{ n.to }}</span></span>
                   } @else {
-                    <span class="t3">–</span>
+                    <span class="t2">–</span>
                   }
                 </li>
               }

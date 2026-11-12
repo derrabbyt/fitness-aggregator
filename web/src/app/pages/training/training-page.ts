@@ -90,7 +90,7 @@ const TYPES: Record<TrainingActivity['type'], string> = {
                         <div class="t2 small num">{{ details(a) }}</div>
                       </div>
                       <div class="kcal num">
-                        @if (a.status === 'skipped') { <span class="t3 small">Skipped</span> }
+                        @if (a.status === 'skipped') { <span class="t2 small">Skipped</span> }
                         @else if (a.kcal_counted != null) { <span class="m">{{ fmt(a.kcal_counted) }}</span><span class="t2 small"> kcal</span> }
                       </div>
                     </li>
@@ -144,7 +144,7 @@ const TYPES: Record<TrainingActivity['type'], string> = {
     .tone-muted, .tone-neutral { color: var(--text-2); }
     .when { width: 76px; flex: none; }
     .kcal { flex: none; text-align: right; white-space: nowrap; }
-    .skipped .name { color: var(--text-3); font-weight: 400; }
+    .skipped .name { color: var(--text-2); font-weight: 400; }
     .more summary {
       display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
       padding: 12px 4px 4px; cursor: pointer; list-style: none;

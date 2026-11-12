@@ -28,7 +28,6 @@ export interface TrainingSession {
   minutes: number | null;
   distance_km: number | null;
   pace_s_per_km: number | null;
-  skipped: boolean;
   /** kcal this session adds to the day's target; null when it adds nothing. */
   kcal_counted: number | null;
 }

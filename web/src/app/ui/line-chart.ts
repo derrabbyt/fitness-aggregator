@@ -60,7 +60,7 @@ let nextId = 0;
     .dots { position: absolute; inset: 0 0 auto 0; pointer-events: none; }
     .dots i { position: absolute; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 99px; }
     .empty { display: grid; place-items: center; color: var(--text-2); font-size: 13px; }
-    .ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); margin-top: 2px; }
+    .ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-2); margin-top: 2px; }
   `,
 })
 export class LineChart {

@@ -8,13 +8,10 @@ import { State } from '../../ui/state';
 import { EditRow, EditState } from './edit-row';
 import { ActivityKey, ActivityResult, ActivityView } from './setup.types';
 
-const ROWS: readonly { key: ActivityKey; label: string; hint: string; unit: string; step: string }[] = [
-  { key: 'run_kcal_discount', label: 'Runs counted', hint: 'Share of a run’s kcal that counts toward the target.',
-    unit: '%', step: '1' },
-  { key: 'wrestling_kcal_per_session', label: 'Wrestling', hint: 'kcal counted per wrestling session.',
-    unit: 'kcal', step: '10' },
-  { key: 'lifting_kcal_per_session', label: 'Lifting', hint: 'kcal counted per lifting session in Hevy.',
-    unit: 'kcal', step: '10' },
+const ROWS: readonly { key: ActivityKey; label: string; unit: string; step: string }[] = [
+  { key: 'run_kcal_discount', label: 'Runs counted', unit: '%', step: '1' },
+  { key: 'wrestling_kcal_per_session', label: 'Wrestling session', unit: 'kcal', step: '10' },
+  { key: 'lifting_kcal_per_session', label: 'Lifting session', unit: 'kcal', step: '10' },
 ];
 
 /**
@@ -40,7 +37,7 @@ const ROWS: readonly { key: ActivityKey; label: string; hint: string; unit: stri
           }
           <app-card>
             @for (r of rows; track r.key) {
-              <app-edit-row [label]="r.label" [hint]="r.hint" [value]="shown(v, r.key)" [editable]="v.editable"
+              <app-edit-row [label]="r.label" [value]="shown(v, r.key)" [editable]="v.editable"
                             editLabel="Change" saveLabel="Propose"
                             [editing]="edit.open() === r.key" [busy]="edit.busy() === r.key"
                             [error]="edit.errorFor(r.key)" [notice]="edit.noticeFor(r.key)"
@@ -51,7 +48,6 @@ const ROWS: readonly { key: ActivityKey; label: string; hint: string; unit: stri
               </app-edit-row>
             }
           </app-card>
-          <p class="note">A change here becomes a proposal. Approve it in Telegram; nothing changes before that.</p>
         </div>
       } @else if (view.error(); as err) {
         <app-state kind="error" [message]="err" (retry)="view.load()" />

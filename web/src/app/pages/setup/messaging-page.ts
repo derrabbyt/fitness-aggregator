@@ -29,7 +29,7 @@ const DAYS: readonly { id: Weekday; name: string }[] = [
       @if (view.data(); as v) {
         <div class="stack">
           <app-card>
-            <app-edit-row label="Weekly check-in" hint="The day and time the coach reviews your week."
+            <app-edit-row label="Weekly check-in"
                           [value]="checkIn(v)" [editable]="v.editable"
                           [editing]="edit.open() === 'weekly_checkin'" [busy]="edit.busy() === 'weekly_checkin'"
                           [error]="edit.errorFor('weekly_checkin')" [notice]="edit.noticeFor('weekly_checkin')"
@@ -40,7 +40,7 @@ const DAYS: readonly { id: Weekday; name: string }[] = [
               <input type="time" aria-label="Check-in time" [value]="draft()" (input)="draft.set(value($event))" />
             </app-edit-row>
 
-            <app-edit-row label="Evening reminder" hint="When the coach reminds you to log, if needed."
+            <app-edit-row label="Evening reminder"
                           [value]="v.evening_reminder_time ?? ''" [editable]="v.editable"
                           [editing]="edit.open() === 'evening_reminder_time'" [busy]="edit.busy() === 'evening_reminder_time'"
                           [error]="edit.errorFor('evening_reminder_time')" [notice]="edit.noticeFor('evening_reminder_time')"
@@ -49,7 +49,7 @@ const DAYS: readonly { id: Weekday; name: string }[] = [
               <span class="unit">empty: off</span>
             </app-edit-row>
 
-            <app-edit-row label="Messages a day" hint="Most messages the coach starts on its own each day."
+            <app-edit-row label="Coach messages a day"
                           [value]="count(v.max_unprompted_messages_per_day, 'message')" [editable]="v.editable"
                           [editing]="edit.open() === 'max_unprompted_messages_per_day'"
                           [busy]="edit.busy() === 'max_unprompted_messages_per_day'"
@@ -57,12 +57,12 @@ const DAYS: readonly { id: Weekday; name: string }[] = [
                           [notice]="edit.noticeFor('max_unprompted_messages_per_day')"
                           (edit)="start('max_unprompted_messages_per_day', v)" (cancel)="edit.cancel()"
                           (save)="save('max_unprompted_messages_per_day', 'int')">
-              <input type="number" inputmode="numeric" min="1" step="1" aria-label="Messages a day"
+              <input type="number" inputmode="numeric" min="1" step="1" aria-label="Coach messages a day"
                      [value]="draft()" (input)="draft.set(value($event))" />
               <span class="unit">a day</span>
             </app-edit-row>
 
-            <app-edit-row label="Step-floor window" hint="Days under the step floor before the coach mentions it."
+            <app-edit-row label="Step-floor nudge after"
                           [value]="count(v.soft_floor_min_days, 'day')" [editable]="v.editable"
                           [editing]="edit.open() === 'soft_floor_min_days'" [busy]="edit.busy() === 'soft_floor_min_days'"
                           [error]="edit.errorFor('soft_floor_min_days')" [notice]="edit.noticeFor('soft_floor_min_days')"
@@ -73,7 +73,6 @@ const DAYS: readonly { id: Weekday; name: string }[] = [
               <span class="unit">days</span>
             </app-edit-row>
           </app-card>
-          @if (!v.editable) { <p class="note">These can be changed while a phase is active and no phase setup is open in Telegram.</p> }
         </div>
       } @else if (view.error(); as err) {
         <app-state kind="error" [message]="err" (retry)="view.load()" />

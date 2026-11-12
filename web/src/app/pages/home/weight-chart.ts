@@ -50,7 +50,7 @@ let nextId = 0;
     i.out { width: 8px; height: 8px; margin: -4px 0 0 -4px; background: var(--container);
             box-shadow: inset 0 0 0 1.5px var(--destructive); }
     .empty { display: grid; place-items: center; color: var(--text-2); font-size: 13px; }
-    .ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-3); margin-top: 4px; }
+    .ends { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-2); margin-top: 4px; }
   `,
 })
 export class WeightChart {

@@ -42,16 +42,20 @@ const ISO_WEEK = /^\d{4}-W\d{2}$/;
       <app-stale-line [freshness]="week.data()?.freshness" [refreshError]="week.refreshError()" />
 
       @if (week.data(); as w) {
-        <main class="stack">
+        <main class="grid">
           @switch (w.state) {
             @case ('decided') {
               @let d = w.decision!;
+              @if (decisionProposal(); as dp) {
+                <app-proposal-card [proposal]="dp" [decision]="d" [streak]="streak()" />
+              } @else {
               <app-card label="Decision">
                 <div class="big">{{ headline() }}</div>
                 @if (d.skip) { <p class="line m">{{ d.skip.text }}</p> }
                 <p class="line t2">{{ d.why }}</p>
                 @if (streak(); as s) { <p class="meta t2 small">{{ s }}</p> }
               </app-card>
+              }
             }
             @case ('in_progress') {
               @let s = w.so_far!;
@@ -69,16 +73,12 @@ const ISO_WEEK = /^\d{4}-W\d{2}$/;
             }
           }
 
-          @for (p of w.proposals; track p.id) {
+          @for (p of otherProposals(); track p.id) {
             <app-proposal-card [proposal]="p" />
           }
 
-          @if (blocks.length) {
-            <div class="grid">
-              @for (block of blocks; track $index) {
-                <ng-container *ngComponentOutlet="block; inputs: { view: w }" />
-              }
-            </div>
+          @for (block of blocks; track $index) {
+            <ng-container *ngComponentOutlet="block; inputs: { view: w }" />
           }
 
           @if (w.report) {
@@ -100,7 +100,7 @@ const ISO_WEEK = /^\d{4}-W\d{2}$/;
     .line.note { margin: 0; }
     .meta { margin: 12px 0 0; }
     .of { font-size: 18px; font-weight: 400; letter-spacing: 0; }
-    .report { background: var(--container); border-radius: var(--radius); box-shadow: var(--ring); }
+    .report { grid-column: 1 / -1; background: var(--container); border-radius: var(--radius); box-shadow: var(--ring); }
     .report summary { display: flex; align-items: center; justify-content: space-between; padding: 16px;
       cursor: pointer; list-style: none; }
     .report summary::-webkit-details-marker { display: none; }
@@ -125,17 +125,25 @@ export class WeekPage {
   protected readonly week = viewResource<WeekView>('week');
   protected readonly blocks = WEEK_BLOCKS;
 
-  protected readonly title = computed(() => {
-    const w = this.week.data();
-    if (!w) return 'Week';
-    return w.is_current ? 'This week' : this.range(w);
-  });
+  /** Tab name as the title, the week's range (and phase week) underneath, as on every tab. */
+  protected readonly title = computed(() => 'Week');
   protected readonly sub = computed(() => {
     const w = this.week.data();
     if (!w) return '';
-    const parts = w.is_current ? [this.range(w)] : [];
+    const parts = [this.range(w)];
     if (w.phase_week != null && w.phase_week > 0) parts.push(`Phase week ${w.phase_week}`);
     return parts.join(' · ');
+  });
+  /** The proposal the week's decision made: shown as the Decision card, not twice. */
+  protected readonly decisionProposal = computed(() => {
+    const w = this.week.data();
+    if (!w || w.state !== 'decided' || w.decision?.outcome !== 'change') return null;
+    return w.proposals.find((p) => p.source === 'weekly_decision' && p.type === 'calorie_change'
+      && p.based_on_week === w.iso_week) ?? null;
+  });
+  protected readonly otherProposals = computed(() => {
+    const merged = this.decisionProposal();
+    return (this.week.data()?.proposals ?? []).filter((p) => p !== merged);
   });
   protected readonly headline = computed(() => {
     const d = this.week.data()?.decision;

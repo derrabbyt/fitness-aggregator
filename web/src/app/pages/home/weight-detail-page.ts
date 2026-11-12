@@ -40,7 +40,7 @@ const RANGES = [{ weeks: '4', label: '4 weeks' }, { weeks: '12', label: '12 week
               <div class="top">
                 <div>
                   <div class="label">{{ weighedToday() ? 'Weigh-in' : 'Last weigh-in' }}</div>
-                  <div class="big num" [class.t3]="!d.weigh_in">{{ fmt(d.weigh_in?.kg, 1) }}<span class="unit"> kg</span></div>
+                  <div class="big num" [class.t2]="!d.weigh_in">{{ fmt(d.weigh_in?.kg, 1) }}<span class="unit"> kg</span></div>
                   @if (d.weigh_in; as wi) {
                     <div class="t2 small">
                       @if (!weighedToday()) { {{ dayLabel(wi.date) }} }
@@ -173,7 +173,7 @@ const RANGES = [{ weeks: '4', label: '4 weeks' }, { weeks: '12', label: '12 week
                border-top: 1px solid var(--divider); }
     .rows li:first-child { border-top: 0; padding-top: 0; }
     .rows li:last-child { padding-bottom: 0; }
-    .rows li.outlier .m { color: var(--text-3); text-decoration: line-through; }
+    .rows li.outlier .m { color: var(--text-2); text-decoration: line-through; }
     .tag { font-size: 11px; font-weight: 500; color: var(--destructive); margin-right: 8px; }
     .none { margin: 0; font-size: 13px; }
     p.warn { margin: -6px 2px 12px; }

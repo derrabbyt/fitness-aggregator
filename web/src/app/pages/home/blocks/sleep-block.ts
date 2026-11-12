@@ -19,7 +19,7 @@ import { Night, SleepApi } from '../sleep';
       @if (night(); as n) {
         <div class="line"><span class="big num">{{ hours(n.asleep) }}</span><span class="t2 num">· {{ n.from }}–{{ n.to }}</span></div>
       } @else {
-        <div class="line"><span class="big t3" [class.pending]="loading()">–</span></div>
+        <div class="line"><span class="big t2" [class.pending]="loading()">–</span></div>
       }
     </app-card>
   `,

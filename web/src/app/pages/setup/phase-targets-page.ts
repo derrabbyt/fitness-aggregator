@@ -32,7 +32,7 @@ import { PhaseTargetsView } from './setup.types';
               </div>
             } @else {
               <div class="mid">No active phase</div>
-              <div class="t2 small">Start one in Telegram with “start reverse”.</div>
+              <div class="t2 small">Start one in Telegram.</div>
             }
           </app-card>
 
@@ -50,7 +50,7 @@ import { PhaseTargetsView } from './setup.types';
               <div class="kv"><span class="k">Average daily target</span><span class="v num">{{ fmt(t.avg_daily_target_kcal) }} kcal</span></div>
               <div class="kv"><span class="k">MyFitnessPal goal</span><span class="v num">{{ fmt(t.mfp_goal_kcal) }} kcal</span></div>
               <div class="kv">
-                <span class="k">Base maintenance @if (t.avg_day_steps != null) { <span class="t3">at {{ fmt(t.avg_day_steps) }} steps</span> }</span>
+                <span class="k">Base maintenance @if (t.avg_day_steps != null) { <span class="t2">at {{ fmt(t.avg_day_steps) }} steps</span> }</span>
                 <span class="v num">{{ fmt(t.base_maintenance_kcal) }} kcal</span>
               </div>
               <div class="kv"><span class="k">Base at your step goal</span><span class="v num">{{ fmt(t.base_at_step_goal_kcal) }} kcal</span></div>
@@ -65,8 +65,7 @@ import { PhaseTargetsView } from './setup.types';
           }
 
           <app-card label="Steps">
-            <app-edit-row label="Step goal" hint="Where step kcal are 0. It moves the zero, not your energy."
-                          [value]="fmt(v.step_goal.value) + ' steps'" [editable]="v.step_goal.editable"
+            <app-edit-row label="Step goal" [value]="fmt(v.step_goal.value) + ' steps'" [editable]="v.step_goal.editable"
                           [editing]="edit.open() === 'step'" [busy]="edit.busy() === 'step'"
                           [error]="edit.errorFor('step')" [notice]="edit.noticeFor('step')"
                           (edit)="startStep(v.step_goal.value)" (cancel)="edit.cancel()" (save)="saveStep()">
@@ -75,8 +74,6 @@ import { PhaseTargetsView } from './setup.types';
               <span class="unit">steps · default {{ fmt(v.step_goal.default) }}</span>
             </app-edit-row>
           </app-card>
-
-          <p class="note">Targets change through proposals you approve in Telegram.</p>
         </div>
       } @else if (view.error(); as err) {
         <app-state kind="error" [message]="err" (retry)="view.load()" />

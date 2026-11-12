@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, input, output, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, inject, input, output, signal } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
 import { CoachApi } from '../../api/coach-api';
 import { Card } from '../../ui/card';
@@ -22,8 +22,10 @@ interface ReportDraft {
  * reported, and the reports themselves (chat's set_session_status through
  * `setup/training-plan/session`): skip, done (kcal, or activity + duration so
  * code estimates them), an extra session, undo. The saved plan doesn't change.
- * Keys of `edit` start with the day, so a day shows its own confirmation or
- * refusal underneath.
+ * Each session row is one tap target that opens its actions; "+ Extra session"
+ * sits once under the week, for today or an earlier day. Keys of `edit` start
+ * with the day (or are `extra`), so a confirmation or refusal shows where it
+ * was made.
  */
 @Component({
   selector: 'app-this-week-card',
@@ -37,69 +39,90 @@ interface ReportDraft {
           <div class="dh">
             <span class="m">{{ label(d.date) }}</span>
             @if (d.today) { <span class="tag">Today</span> }
-            @if (!d.sessions.length && !d.extras.length) { <span class="t3 small">Rest day</span> }
+            @if (!d.sessions.length && !d.extras.length) { <span class="t2 small">Rest day</span> }
           </div>
 
           @for (s of d.sessions; track s.id) {
-            <div class="srow">
-              <span class="time t2 small num">{{ s.time ?? '' }}</span>
-              <div class="what">
-                <div [class.t3]="s.status === 'skipped'" [class.struck]="s.status === 'skipped'">{{ s.name }}</div>
-                <div class="small" [class]="tone(s)">{{ status(s) }}</div>
-              </div>
-              @if (view().editable) {
-                <div class="acts">
-                  @if (s.status) {
-                    <button type="button" class="act" [disabled]="!!edit.busy()"
-                            (click)="send(d.date + '|act', { date: d.date, status: 'clear', session_id: s.id })">Undo</button>
-                  } @else {
-                    <button type="button" class="act" [disabled]="!!edit.busy()"
-                            (click)="send(d.date + '|act', { date: d.date, status: 'skipped', session_id: s.id })">Skip</button>
-                    @if (started(d)) {
-                      <button type="button" class="act" [disabled]="!!edit.busy()" (click)="startDone(d, s)">Done</button>
-                    }
+            <ng-container *ngTemplateOutlet="row; context: { key: d.date + '|s|' + s.id, time: s.time ?? '',
+              name: s.name, status: status(s), tone: tone(s), muted: s.status === 'skipped' }" />
+            @if (view().editable && openRow() === d.date + '|s|' + s.id) {
+              <div class="acts">
+                @if (s.status) {
+                  <button type="button" class="act" [disabled]="!!edit.busy()"
+                          (click)="send(d.date + '|act', { date: d.date, status: 'clear', session_id: s.id })">Undo</button>
+                } @else {
+                  <button type="button" class="act" [disabled]="!!edit.busy()"
+                          (click)="send(d.date + '|act', { date: d.date, status: 'skipped', session_id: s.id })">Skip</button>
+                  @if (started(d)) {
+                    <button type="button" class="act" [disabled]="!!edit.busy()" (click)="startDone(d, s)">Done</button>
                   }
-                </div>
-              }
-            </div>
+                }
+              </div>
+            }
             @if (edit.open() === d.date + '|done|' + s.id) {
               <ng-container *ngTemplateOutlet="editor; context: { d, s }" />
             }
           }
 
           @for (x of d.extras; track x.extra_id) {
-            <div class="srow">
-              <span class="time t3 small">extra</span>
-              <div class="what">
-                <div>{{ x.name || typeName(x.type) }}</div>
-                <div class="small ok">{{ extraText(x) }}</div>
+            <ng-container *ngTemplateOutlet="row; context: { key: d.date + '|x|' + x.extra_id, time: 'extra',
+              name: x.name || typeName(x.type), status: extraText(x), tone: 'ok', muted: false }" />
+            @if (view().editable && openRow() === d.date + '|x|' + x.extra_id) {
+              <div class="acts">
+                <button type="button" class="act" [disabled]="!!edit.busy()"
+                        (click)="send(d.date + '|act', { date: d.date, status: 'clear', extra_id: x.extra_id })">Remove</button>
               </div>
-              @if (view().editable) {
-                <div class="acts">
-                  <button type="button" class="act" [disabled]="!!edit.busy()"
-                          (click)="send(d.date + '|act', { date: d.date, status: 'clear', extra_id: x.extra_id })">Remove</button>
-                </div>
-              }
-            </div>
-          }
-
-          @if (edit.open() === d.date + '|extra') {
-            <ng-container *ngTemplateOutlet="editor; context: { d, s: null }" />
-          } @else if (view().editable && started(d)) {
-            <button type="button" class="add" (click)="startExtra(d)" [disabled]="!!edit.busy()">+ Extra session</button>
+            }
           }
           @if (message(d.date); as m) {
             <p class="msg small" [class.bad]="m.bad" [class.ok]="!m.bad" [attr.role]="m.bad ? 'alert' : 'status'">{{ m.text }}</p>
           }
         </div>
       }
+
+      @if (view().editable && startedDays().length) {
+        <div class="extra">
+          @if (edit.open() === 'extra') {
+            <ng-container *ngTemplateOutlet="editor; context: { d: null, s: null }" />
+          } @else {
+            <button type="button" class="add" (click)="startExtra()" [disabled]="!!edit.busy()">+ Extra session</button>
+          }
+          @if (message('extra'); as m) {
+            <p class="msg small" [class.bad]="m.bad" [class.ok]="!m.bad" [attr.role]="m.bad ? 'alert' : 'status'">{{ m.text }}</p>
+          }
+        </div>
+      }
     </app-card>
+
+    <ng-template #row let-key="key" let-time="time" let-name="name" let-status="status" let-tone="tone" let-muted="muted">
+      @if (view().editable) {
+        <button type="button" class="srow tap" (click)="toggle(key)" [attr.aria-expanded]="openRow() === key"
+                [attr.aria-label]="name + (status ? ', ' + status : '')">
+          <ng-container *ngTemplateOutlet="cells; context: { time, name, status, tone, muted }" />
+        </button>
+      } @else {
+        <div class="srow"><ng-container *ngTemplateOutlet="cells; context: { time, name, status, tone, muted }" /></div>
+      }
+    </ng-template>
+
+    <ng-template #cells let-time="time" let-name="name" let-status="status" let-tone="tone" let-muted="muted">
+      <span class="time t2 small num">{{ time }}</span>
+      <span class="what">
+        <span [class.t2]="muted">{{ name }}</span>
+        @if (status) { <span class="small" [class]="tone">{{ status }}</span> }
+      </span>
+    </ng-template>
 
     <ng-template #editor let-d="d" let-s="s">
       <form class="editor" (submit)="$event.preventDefault(); saveReport(d, s)">
         @if (!s) {
           <div class="fields">
-            <select aria-label="Type" [value]="draft().type" (change)="set('type', value($event))">
+            <select aria-label="Day" (change)="extraDay.set(value($event))">
+              @for (x of startedDays(); track x.date) {
+                <option [value]="x.date" [selected]="x.date === extraDay()">{{ label(x.date) }}</option>
+              }
+            </select>
+            <select aria-label="Type" (change)="set('type', value($event))">
               @for (t of types; track t) { <option [value]="t" [selected]="t === draft().type">{{ typeName(t) }}</option> }
             </select>
             <input class="grow" type="text" maxlength="40" placeholder="Name, e.g. Football" aria-label="Name"
@@ -114,7 +137,7 @@ interface ReportDraft {
         @if (estimable()) {
           <div class="fields">
             <span class="unit">or</span>
-            <select aria-label="Activity" [value]="draft().activity" (change)="set('activity', value($event))">
+            <select aria-label="Activity" (change)="set('activity', value($event))">
               <option value="" [selected]="!draft().activity">Activity…</option>
               @for (a of view().activities; track a) { <option [value]="a" [selected]="a === draft().activity">{{ words(a) }}</option> }
             </select>
@@ -123,7 +146,6 @@ interface ReportDraft {
             <span class="unit">min</span>
           </div>
         }
-        <p class="t2 small hint">{{ hint(s) }}</p>
         <div class="btns">
           <button type="button" class="btn" (click)="edit.cancel()" [disabled]="!!edit.busy()">Cancel</button>
           <button type="submit" class="btn primary" [disabled]="!!edit.busy()">{{ edit.busy() ? 'Saving…' : 'Save' }}</button>
@@ -135,33 +157,40 @@ interface ReportDraft {
     .day { padding: 12px 0; }
     .day + .day { border-top: 1px solid var(--divider); }
     .day:first-of-type { padding-top: 0; }
-    .day:last-of-type { padding-bottom: 0; }
     .dh { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; }
-    .tag { font-size: 12px; font-weight: 500; color: var(--info); }
-    .srow { display: flex; align-items: center; gap: 10px; min-height: 40px; }
+    .tag { font-size: 12px; font-weight: 500; color: var(--text-2); text-transform: uppercase; letter-spacing: .02em; }
+    .srow { display: flex; align-items: center; gap: 10px; min-height: 40px; width: 100%; text-align: left; }
+    .tap { margin: 0 -8px; padding: 4px 8px; width: calc(100% + 16px); border-radius: var(--radius-inner); }
+    .tap[aria-expanded="true"] { background: var(--inset); }
+    @media (hover: hover) { .tap:hover { background: var(--inset); } }
+    @media (pointer: coarse) { .srow { min-height: 44px; } }
     .time { width: 56px; flex: none; }
-    .what { flex: 1; min-width: 0; }
-    .struck { text-decoration: line-through; }
+    .what { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .ok { color: var(--success); }
     .bad { color: var(--destructive); }
-    .acts { display: flex; gap: 2px; margin-right: -8px; }
-    .act, .add { padding: 6px 8px; border-radius: var(--radius-inner); color: var(--info); font-weight: 500; }
-    .act:hover, .add:hover { background: var(--inset); }
+    .acts { display: flex; gap: 6px; margin: 6px 0 4px 66px; }
+    @media (max-width: 480px) { .acts { margin-left: 0; } }
+    .act, .add { padding: 6px 12px; border-radius: var(--radius-inner); font-weight: 500; }
+    .act { background: var(--inset); }
+    @media (hover: hover) { .add:hover { background: var(--inset); } }
     .act[disabled], .add[disabled] { opacity: .5; cursor: default; }
-    .add { margin: 2px 0 0 58px; padding-left: 0; font-size: 14px; }
+    @media (pointer: coarse) { .act, .add { min-height: 44px; padding: 0 14px; } }
+    .extra { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--divider); }
+    .add { margin-left: -12px; }
     .editor { margin: 6px 0 4px 66px; display: grid; gap: 8px; }
+    .extra .editor { margin-left: 0; }
     @media (max-width: 480px) { .editor { margin-left: 0; } }
     .fields { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .grow { flex: 1; min-width: 140px; }
     input[type="number"] { width: 104px; }
-    .hint { margin: 0; }
     .btns { display: flex; justify-content: flex-end; gap: 8px; }
     .btn { height: 36px; padding: 0 14px; border-radius: var(--radius-inner); font-weight: 500;
       background: var(--inset); color: var(--text); }
     .btn.primary { background: var(--fill); color: var(--container); }
     .btn[disabled] { opacity: .5; cursor: default; }
-    @media (pointer: coarse) { .btn { height: 44px; } .act { padding: 10px 10px; } }
+    @media (pointer: coarse) { .btn { height: 44px; } }
     .msg { margin: 6px 0 0 66px; }
+    .extra .msg { margin-left: 0; }
     @media (max-width: 480px) { .msg { margin-left: 0; } }
   `,
 })
@@ -172,6 +201,12 @@ export class ThisWeekCard {
   protected readonly edit = new EditState();
   protected readonly types: readonly SessionType[] = ['other', 'run', 'wrestling', 'lift'];
   protected readonly draft = signal<ReportDraft>({ type: 'other', name: '', kcal: '', activity: '', minutes: '' });
+  /** The row whose actions are open (one at a time). */
+  protected readonly openRow = signal<string | null>(null);
+  /** The day an extra session is added to. */
+  protected readonly extraDay = signal('');
+  /** Today and the days before it: sessions can be marked done and extras added there. */
+  protected readonly startedDays = computed(() => this.view().this_week.filter((d) => this.started(d)));
   protected readonly label = (day: string) => dayLabel(day);
   protected readonly typeName = (t: SessionType) => TYPE_NAMES[t];
 
@@ -184,7 +219,7 @@ export class ThisWeekCard {
     return s.charAt(0).toUpperCase() + s.slice(1);
   }
 
-  /** Today or earlier: sessions can be marked done and extras added (skipping works ahead too). */
+  /** Today or earlier (skipping works ahead too). */
   protected started(d: WeekDay): boolean {
     const today = this.view().this_week.find((x) => x.today)?.date;
     return !today || d.date <= today;
@@ -194,6 +229,11 @@ export class ThisWeekCard {
     this.draft.update((d) => ({ ...d, [key]: v }));
   }
 
+  protected toggle(key: string): void {
+    this.openRow.update((k) => (k === key ? null : key));
+    if (this.edit.open()?.includes('|done|')) this.edit.cancel();
+  }
+
   protected status(s: WeekSession): string {
     if (s.status === 'skipped') return 'Skipped';
     if (s.status === 'done') return s.kcal == null ? 'Done' : `Done · ${fmt(s.kcal)} kcal${source(s.kcal_source)}`;
@@ -201,7 +241,7 @@ export class ThisWeekCard {
   }
 
   protected tone(s: WeekSession): string {
-    return s.status === 'done' ? 'ok' : 't3';
+    return s.status === 'done' ? 'ok' : 't2';
   }
 
   protected extraText(x: ExtraSession): string {
@@ -215,44 +255,41 @@ export class ThisWeekCard {
     return t !== 'wrestling' && t !== 'lift';
   }
 
-  protected hint(s: WeekSession | null): string {
-    const t = this.draft().type;
-    if (t === 'wrestling' || t === 'lift') return 'Empty: counts the kcal per session from Activity values.';
-    if (s && t === 'run') return 'Empty: counts once Strava syncs it. Give kcal only if it won’t sync.';
-    return 'Your kcal win; otherwise code estimates them from the activity and duration.';
-  }
-
   protected startDone(d: WeekDay, s: WeekSession): void {
     this.draft.set({ type: s.type, name: s.name, kcal: '', activity: s.type === 'run' ? 'running' : '', minutes: '' });
     this.edit.start(`${d.date}|done|${s.id}`);
   }
 
-  protected startExtra(d: WeekDay): void {
+  protected startExtra(): void {
+    const days = this.startedDays();
     this.draft.set({ type: 'other', name: '', kcal: '', activity: '', minutes: '' });
-    this.edit.start(`${d.date}|extra`);
+    this.extraDay.set((days.find((d) => d.today) ?? days[days.length - 1])?.date ?? '');
+    this.openRow.set(null);
+    this.edit.start('extra');
   }
 
-  protected saveReport(d: WeekDay, s: WeekSession | null): void {
+  protected saveReport(d: WeekDay | null, s: WeekSession | null): void {
     const f = this.draft();
-    const body: SessionReport = s
+    const body: SessionReport = d && s
       ? { date: d.date, status: 'done', session_id: s.id }
-      : { date: d.date, status: 'extra', type: f.type, ...(f.name.trim() ? { name: f.name.trim() } : {}) };
+      : { date: this.extraDay(), status: 'extra', type: f.type, ...(f.name.trim() ? { name: f.name.trim() } : {}) };
     if (f.kcal.trim()) body.kcal = Number(f.kcal);
     else if (this.estimable()) {
       if (f.activity) body.activity = f.activity;
       if (f.minutes.trim()) body.duration_min = Number(f.minutes);
     }
-    this.send(s ? `${d.date}|done|${s.id}` : `${d.date}|extra`, body);
+    this.send(d && s ? `${d.date}|done|${s.id}` : 'extra', body);
   }
 
   protected send(key: string, body: SessionReport): void {
     this.edit.save(key, this.api.command<SessionResult>('setup/training-plan/session', body), (r) => {
+      this.openRow.set(null);
       this.changed.emit(r.section);
       return confirmation(body, r);
     });
   }
 
-  /** The day's latest confirmation or refusal. */
+  /** The latest confirmation or refusal made under a day (or under `extra`). */
   protected message(date: string): { text: string; bad: boolean } | null {
     const e = this.edit.error();
     if (e && e.key.startsWith(date)) return { text: e.text, bad: true };
@@ -269,7 +306,7 @@ function source(s: string | null): string {
 /** The one-line confirmation, as chat would give it: the kcal counted and whether they were estimated. */
 function confirmation(body: SessionReport, r: SessionResult): string {
   if (body.status === 'clear') return body.extra_id ? 'Removed.' : 'Undone.';
-  if (body.status === 'skipped') return 'Skipped for this week. The saved plan stays.';
+  if (body.status === 'skipped') return 'Skipped for this week.';
   const rep = r.reported;
   if (!rep) return 'Saved.';
   if (rep.kcal == null) {

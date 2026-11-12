@@ -48,7 +48,7 @@ import { StepsDetail } from './home.types';
                       @if (r.kcal != null) { <span class="t2 kcal">{{ signed(r.kcal) }} kcal</span> }
                     </span>
                   } @else {
-                    <span class="t3">Not tracked</span>
+                    <span class="t2">Not tracked</span>
                   }
                 </li>
               }

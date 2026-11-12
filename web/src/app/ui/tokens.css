@@ -13,7 +13,7 @@
   --track: #E7E7E7;            /* meter track */
   --text: #171717;
   --text-2: #737373;           /* labels, secondary */
-  --text-3: #9E9E9E;           /* faint */
+  --text-3: #9E9E9E;           /* faint: chevrons, tracks, dashed marks; never text (2.7:1 on white) */
   --divider: rgba(11, 11, 11, .08);
   --ring: 0 1px 2px rgba(11, 11, 11, .06), 0 0 0 1px rgba(11, 11, 11, .05);
   --success: #078C52;
@@ -80,7 +80,6 @@ a { color: inherit; text-decoration: none; }
 .num { font-variant-numeric: tabular-nums; }
 .m { font-weight: 500; }
 .t2 { color: var(--text-2); }
-.t3 { color: var(--text-3); }
 .ok { color: var(--success); }
 .bad { color: var(--destructive); }
 .warn { color: var(--warning); }

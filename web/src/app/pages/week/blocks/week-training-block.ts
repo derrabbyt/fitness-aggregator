@@ -23,7 +23,7 @@ import { WeekView } from '../week.types';
               <div class="big num">{{ l.progressing }}<span class="of"> of {{ l.counted }}</span></div>
               <div class="t2 small">lifts progressing</div>
             } @else {
-              <div class="big num t3">–</div>
+              <div class="big num t2">–</div>
               <div class="t2 small">no lifts judged</div>
             }
           </div>

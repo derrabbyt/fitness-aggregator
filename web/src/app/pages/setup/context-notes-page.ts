@@ -32,18 +32,17 @@ export function tagLabel(tag: string): string {
       <app-page-header title="Context notes" back="/setup" />
       @if (view.data(); as v) {
         <div class="stack">
-          <app-card label="New note">
-            @if (edit.open() !== 'add') {
-              <div class="row">
-                <p class="t2 small grow">Something the coach should know: illness, travel, a heavy week, pain.</p>
-                <button type="button" class="btn primary" (click)="startAdd(v)">Add note</button>
-              </div>
+          @if (edit.open() !== 'add') {
+            <div class="add">
+              <button type="button" class="btn" (click)="startAdd(v)">Add note</button>
               @if (edit.noticeFor('add')) { <p class="msg ok small" role="status">{{ edit.noticeFor('add') }}</p> }
-            } @else {
+            </div>
+          } @else {
+            <app-card label="New note">
               <form class="form" (submit)="$event.preventDefault(); add()">
                 <label class="field"><span>Note, in your words</span>
                   <textarea rows="3" [value]="text()" (input)="text.set(value($event))"
-                            placeholder="e.g. Wrestling camp next week, two sessions a day"></textarea>
+                            placeholder="e.g. illness, travel, a heavy week, pain"></textarea>
                 </label>
                 <div class="pair">
                   <label class="field"><span>From</span>
@@ -76,12 +75,12 @@ export function tagLabel(tag: string): string {
                 </div>
                 @if (edit.errorFor('add')) { <p class="msg bad small" role="alert">{{ edit.errorFor('add') }}</p> }
               </form>
-            }
-          </app-card>
+            </app-card>
+          }
 
           <app-card [label]="'Notes · ' + v.notes.length">
             @if (!v.notes.length) {
-              <p class="t3 small empty">No notes yet.</p>
+              <p class="t2 small empty">No notes yet.</p>
             }
             <ul class="rows">
               @for (n of v.notes; track n.id) {
@@ -100,7 +99,7 @@ export function tagLabel(tag: string): string {
                       }
                     </div>
                     @if (edit.open() !== 'del:' + n.id) {
-                      <button type="button" class="link danger small" (click)="edit.start('del:' + n.id)"
+                      <button type="button" class="link small" (click)="edit.start('del:' + n.id)"
                               [disabled]="!!edit.busy()" aria-label="Delete this note">Delete</button>
                     }
                   </div>
@@ -131,6 +130,7 @@ export function tagLabel(tag: string): string {
     .row { display: flex; align-items: center; gap: 12px; }
     .row.top { align-items: flex-start; }
     .row p { margin: 0; }
+    .add { display: grid; justify-items: start; gap: 4px; }
     .grow { flex: 1; min-width: 0; }
     .txt { display: grid; gap: 6px; }
     .note-text { overflow-wrap: anywhere; }

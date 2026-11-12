@@ -23,7 +23,7 @@ import { rateText, rateTone, toneClass } from '../weight-format';
               <div class="big num">{{ fmt(wi.kg, 1) }}<span class="unit"> kg</span></div>
               @if (wi.outlier) { <div class="t2 small">Outlier · not in the trend</div> }
             } @else {
-              <div class="big num t3">–<span class="unit"> kg</span></div>
+              <div class="big num t2">–<span class="unit"> kg</span></div>
               <div class="t2 small">
                 @if (w.weigh_in; as last) { Last {{ fmt(last.kg, 1) }} kg · {{ dayLabel(last.date) }} }
                 @else { No weigh-ins yet }

@@ -32,7 +32,7 @@ import { HomeView } from '../home.types';
         } @else {
           <div class="top"><div class="mid t2">Not tracked</div></div>
           <app-meter [value]="0" [max]="s.goal" label="Steps not tracked" />
-          <div class="foot t3 num">Goal {{ fmt(s.goal) }}</div>
+          <div class="foot t2 num">Goal {{ fmt(s.goal) }}</div>
         }
       </app-card>
     }

@@ -23,9 +23,9 @@ import { SectionSummary, SetupView } from './setup.types';
       @if (setup.data(); as s) {
         <div class="stack">
           @if (s.setup_open) {
-            <p class="info small" role="status">A phase setup is open in Telegram. Finish or cancel it there; until then nothing here can be changed.</p>
+            <p class="info small" role="status">Phase setup open in Telegram. Finish it there to edit here.</p>
           } @else if (!s.phase_active) {
-            <p class="info small" role="status">No phase is active. Start one in Telegram with “start reverse”; then these values can be changed here.</p>
+            <p class="info small" role="status">No active phase. Start one in Telegram.</p>
           }
           <nav class="list" aria-label="Setup sections">
             @for (r of rows(); track r.key) {
@@ -41,13 +41,12 @@ import { SectionSummary, SetupView } from './setup.types';
                 <div class="row soon" aria-disabled="true">
                   <span class="txt">
                     <span class="m">{{ r.title }}</span>
-                    <span class="t3 small sum">Coming soon</span>
+                    <span class="t2 small sum">Coming soon</span>
                   </span>
                 </div>
               }
             }
           </nav>
-          <p class="note">Starting a phase and approving changes stay in Telegram.</p>
         </div>
       } @else if (setup.error(); as err) {
         <app-state kind="error" [message]="err" (retry)="setup.load()" />
@@ -63,7 +62,7 @@ import { SectionSummary, SetupView } from './setup.types';
     .row:first-child { border-top: 0; }
     a.row { cursor: pointer; }
     @media (hover: hover) { a.row:hover { background: var(--inset); } }
-    .soon .m { color: var(--text-3); }
+    .soon .m { color: var(--text-2); }
     .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
     .chev { --icon: 16px; color: var(--text-3); }
     @media (min-width: 900px) { .list, .stack { max-width: 640px; } }

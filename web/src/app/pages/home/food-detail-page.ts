@@ -46,7 +46,7 @@ import { FoodDetail } from './home.types';
                   <div class="row">
                     <span class="m">{{ r.name }}</span>
                     <span class="num">
-                      @if (r.later) { <span class="t3">–</span> }
+                      @if (r.later) { <span class="t2">–</span> }
                       @else {
                         <span class="m">{{ fmt(r.eaten) }}</span>
                         @if (r.target != null) { <span class="t2"> / {{ fmt(r.target) }}</span> }
@@ -59,7 +59,7 @@ import { FoodDetail } from './home.types';
                                  [label]="r.name + ' eaten of target'" />
                     }
                     @if (r.logged === 'partial') { <div class="note t2 small">Partly logged</div> }
-                    @if (r.logged === 'missing' && !r.isDay) { <div class="note t3 small">Nothing logged</div> }
+                    @if (r.logged === 'missing' && !r.isDay) { <div class="note t2 small">Nothing logged</div> }
                   }
                 </li>
               }
@@ -80,7 +80,7 @@ import { FoodDetail } from './home.types';
     .days li:first-child { border-top: 0; padding-top: 0; }
     .days li:last-child { padding-bottom: 0; }
     .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
-    .later .row { margin-bottom: 0; color: var(--text-3); }
+    .later .row { margin-bottom: 0; color: var(--text-2); }
     .note { margin-top: 4px; }
     p.warn { margin: -6px 2px 12px; }
   `,

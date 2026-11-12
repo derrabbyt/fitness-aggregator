@@ -11,6 +11,7 @@ import { StaleLine } from '../../shell/stale-line';
 import { Card } from '../../ui/card';
 import { dayLabel } from '../../ui/format';
 import { State } from '../../ui/state';
+import { Switch } from '../../ui/switch';
 import { EditRow, EditState } from '../setup/edit-row';
 import { LiftChart } from './lift-chart';
 import { LIFT_STATUS, NOT_JUDGED, RESET_REASONS, kg, setText } from './lift-format';
@@ -28,7 +29,7 @@ const MORE = 10; // sessions per "show more"
  */
 @Component({
   selector: 'app-lift-page',
-  imports: [PageHeader, RefreshButton, StaleLine, Card, State, EditRow, LiftChart],
+  imports: [PageHeader, RefreshButton, StaleLine, Card, State, EditRow, LiftChart, Switch],
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrl: '../setup/setup-forms.css',
   template: `
@@ -49,7 +50,7 @@ const MORE = 10; // sessions per "show more"
                 </div>
                 <span class="status m small" [class]="'tone-' + status(v).tone">{{ status(v).text }}</span>
               </div>
-              <app-lift-chart [points]="v.chart" [label]="v.name + ' estimated 1RM history'" />
+              <app-lift-chart [points]="v.chart" [tone]="status(v).tone" [label]="v.name + ' estimated 1RM history'" />
               @if (v.bodyweight_exercise) { <p class="foot t2 small">On bodyweight plus added weight.</p> }
             </app-card>
 
@@ -68,7 +69,7 @@ const MORE = 10; // sessions per "show more"
                 }
               </ul>
               @if (next() != null) {
-                <button type="button" class="more" (click)="showMore(v)" [disabled]="moreBusy()">
+                <button type="button" class="more m" (click)="showMore(v)" [disabled]="moreBusy()">
                   {{ moreBusy() ? 'Loading…' : 'Show more' }}
                 </button>
               }
@@ -78,26 +79,25 @@ const MORE = 10; // sessions per "show more"
 
           <div class="stack">
             <app-card label="Controls">
-              <app-edit-row label="Counts for progress" hint="Whether it decides the weekly progress check."
-                            [value]="v.counts ? 'Counts' : 'Not counted'" [editable]="true" editLabel="Change"
-                            [editing]="edit.open() === 'counts'" [busy]="edit.busy() === 'counts'"
-                            [error]="edit.errorFor('counts')" [notice]="edit.noticeFor('counts')"
-                            (edit)="edit.start('counts')" (cancel)="edit.cancel()" (save)="saveCounts(v)"
-                            [saveLabel]="v.counts ? 'Don’t count it' : 'Count it'">
-                <span class="t2">{{ v.counts ? 'It will sit under Not counted and get no stall flags.' : 'It will decide the weekly progress check again.' }}</span>
-              </app-edit-row>
+              <div class="ctl">
+                <div class="row">
+                  <span class="grow">Counts for progress</span>
+                  <app-switch [on]="v.counts" [label]="'Counts for progression: ' + v.name"
+                              [disabled]="!!edit.busy()" (toggle)="saveCounts(v)" />
+                </div>
+                @if (edit.errorFor('counts'); as err) { <p class="msg bad small" role="alert">{{ err }}</p> }
+                @if (edit.noticeFor('counts'); as ok) { <p class="msg ok small" role="status">{{ ok }}</p> }
+              </div>
 
               <app-edit-row label="Paused"
-                            [hint]="v.paused && v.controls.paused_reason ? 'Reason: ' + v.controls.paused_reason + '.' : 'A paused lift is logged but not judged.'"
+                            [hint]="v.paused && v.controls.paused_reason ? v.controls.paused_reason : ''"
                             [value]="v.paused ? 'Paused' : 'No'"
-                            [editable]="true" [editLabel]="v.paused ? 'Unpause' : 'Pause'"
+                            [editable]="true" [editLabel]="v.paused ? 'Resume' : 'Pause'"
                             [editing]="edit.open() === 'pause'" [busy]="edit.busy() === 'pause'"
                             [error]="edit.errorFor('pause')" [notice]="edit.noticeFor('pause')"
                             (edit)="startPause()" (cancel)="edit.cancel()" (save)="savePause(v)"
-                            [saveLabel]="v.paused ? 'Unpause' : 'Pause'">
-                @if (v.paused) {
-                  <span class="t2">Judge it again from the next session.</span>
-                } @else {
+                            [saveLabel]="v.paused ? 'Resume' : 'Pause'">
+                @if (!v.paused) {
                   <input type="text" class="wide" aria-label="Reason for the pause" placeholder="Reason, e.g. left shoulder"
                          maxlength="80" [value]="pauseReason()" (input)="pauseReason.set(text($event))" />
                 }
@@ -113,7 +113,6 @@ const MORE = 10; // sessions per "show more"
                     <option [value]="r" [selected]="r === resetReason()">{{ reasonText(r) }}</option>
                   }
                 </select>
-                <span class="t2">The next session starts a new history; older ones are no longer compared.</span>
               </app-edit-row>
             </app-card>
           </div>
@@ -128,7 +127,6 @@ const MORE = 10; // sessions per "show more"
   styles: `
     .cols { display: grid; gap: 12px; }
     .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
-    .big { font-size: 28px; line-height: 32px; font-weight: 500; }
     .status { white-space: nowrap; padding-top: 6px; }
     .tone-ok { color: var(--success); }
     .tone-bad { color: var(--destructive); }
@@ -142,14 +140,17 @@ const MORE = 10; // sessions per "show more"
     .set { flex: 1; min-width: 0; }
     .pr { margin-left: 6px; color: var(--success); }
     .st { flex: none; text-align: right; white-space: nowrap; }
-    .more { margin-top: 8px; width: 100%; height: 40px; border-radius: var(--radius-inner); background: var(--inset);
-      color: var(--text); font-weight: 500; }
+    .more { margin: 8px 0 0 -10px; padding: 6px 10px; border-radius: var(--radius-inner); }
     .more[disabled] { opacity: .5; }
+    @media (hover: hover) { .more:not([disabled]):hover { background: var(--inset); } }
+    .ctl { padding-bottom: 12px; border-bottom: 1px solid var(--divider); margin-bottom: 12px; }
+    .ctl .row { display: flex; align-items: center; gap: 12px; min-height: 32px; }
+    .grow { flex: 1; min-width: 0; font-weight: 500; }
     .msg { margin: 8px 0 0; }
     .bad { color: var(--destructive); }
     input.wide { width: 100%; flex: 1; }
     select { max-width: 100%; }
-    @media (pointer: coarse) { .more { height: 44px; } }
+    @media (pointer: coarse) { .more { min-height: 44px; } }
     @media (min-width: 900px) {
       .cols { grid-template-columns: 3fr 2fr; gap: 16px; align-items: start; }
     }
@@ -251,8 +252,7 @@ export class LiftPage {
 
   protected resetHint(v: LiftView): string {
     const last = v.resets[v.resets.length - 1];
-    return last ? `Last: ${this.reasonText(last.reason).toLowerCase()}.`
-      : 'After a technique change or swap, the next session starts a new history.';
+    return last ? this.reasonText(last.reason) : '';
   }
 
   protected text(e: Event): string {
@@ -284,7 +284,7 @@ export class LiftPage {
     const body = paused && reason ? { exercise_id: v.exercise_id, paused, reason } : { exercise_id: v.exercise_id, paused };
     this.edit.save('pause', this.api.command('setup/exercises/pause', body), () => {
       this.reload();
-      return paused ? 'Paused.' : 'Unpaused.';
+      return paused ? 'Paused.' : 'Resumed.';
     });
   }
 

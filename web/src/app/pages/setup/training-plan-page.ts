@@ -39,12 +39,7 @@ const TYPES: readonly SessionType[] = ['lift', 'run', 'wrestling', 'other'];
         } @else {
           <div class="cols">
             <div class="stack">
-              <app-section-header title="Saved week" [aside]="v.valid_from ? 'Since ' + label(v.valid_from) : ''" />
-              @if (v.upcoming.length) {
-                <div class="info small" role="status">
-                  A change starts {{ label(v.upcoming[0].valid_from) }}. Shown here: the plan in force today.
-                </div>
-              }
+              <app-section-header title="Saved week" [aside]="savedAside(v)" />
               <app-card>
                 @for (d of v.days; track d.weekday) {
                   <app-edit-row [label]="name(d.weekday)" [hint]="line(d.sessions)" [value]="count(d.sessions)"
@@ -55,7 +50,7 @@ const TYPES: readonly SessionType[] = ['lift', 'run', 'wrestling', 'other'];
                     <div class="sessions">
                       @for (s of draft(); track $index; let i = $index) {
                         <div class="sess">
-                          <input class="t" type="text" maxlength="9" placeholder="06:30" aria-label="Time"
+                          <input class="t" type="text" maxlength="9" placeholder="06:30 / evening" aria-label="Time"
                                  [value]="s.time" (input)="patch(i, 'time', value($event))" />
                           <input class="n" type="text" maxlength="40" placeholder="Name" aria-label="Name"
                                  [value]="s.name" (input)="patch(i, 'name', value($event))" />
@@ -78,12 +73,10 @@ const TYPES: readonly SessionType[] = ['lift', 'run', 'wrestling', 'other'];
                                  [value]="from()" (input)="from.set(value($event))" />
                         </label>
                       </div>
-                      <p class="t2 small none">Time: HH:MM, morning, midday, afternoon or evening; empty for any time.</p>
                     </div>
                   </app-edit-row>
                 }
               </app-card>
-              <p class="note">A change here is for good, from the day you pick. For one day only, use This week.</p>
             </div>
             <div class="stack">
               <app-section-header title="This week" aside="For this week only" />
@@ -101,19 +94,18 @@ const TYPES: readonly SessionType[] = ['lift', 'run', 'wrestling', 'other'];
   styles: `
     .cols { display: grid; gap: 12px; align-items: start; }
     @media (min-width: 900px) { .cols { grid-template-columns: 1fr 1fr; gap: 24px; } }
-    .info { display: block; }
     .sessions { display: grid; gap: 8px; width: 100%; }
-    .sess { display: grid; grid-template-columns: 84px 1fr; gap: 8px; align-items: center;
+    .sess { display: grid; grid-template-columns: 132px 1fr; gap: 8px; align-items: center;
       padding-bottom: 8px; border-bottom: 1px solid var(--divider); }
-    .sess .t { width: 84px; }
+    .sess .t { width: 132px; }
     .sess .n { width: 100%; }
     .row2 { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
     .opt { display: inline-flex; align-items: center; gap: 6px; color: var(--text-2); }
     .opt input { height: auto; box-shadow: none; padding: 0; }
     .rm, .more { padding: 6px 8px; border-radius: var(--radius-inner); font-weight: 500; justify-self: end; }
-    .rm { color: var(--destructive); }
-    .more { color: var(--info); padding-left: 0; }
-    .rm:hover, .more:hover { background: var(--inset); }
+    .more { padding-left: 0; }
+    @media (hover: hover) { .rm:hover, .more:hover { background: var(--inset); } }
+    @media (pointer: coarse) { .rm, .more { min-height: 44px; } }
     .more[disabled] { opacity: .5; cursor: default; }
     .foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
     .from { display: inline-flex; align-items: center; gap: 8px; }
@@ -149,6 +141,13 @@ export class TrainingPlanPage {
 
   protected asType(v: string): SessionType {
     return TYPES.find((t) => t === v) ?? 'other';
+  }
+
+  /** "Since 9 Nov", plus when a saved change starts ("· changes 16 Nov"); the rows show the plan in force today. */
+  protected savedAside(v: TrainingPlanView): string {
+    const since = v.valid_from ? `Since ${dayLabel(v.valid_from, false)}` : '';
+    const next = v.upcoming.length ? `changes ${dayLabel(v.upcoming[0].valid_from, false)}` : '';
+    return [since, next].filter(Boolean).join(' · ');
   }
 
   protected line(sessions: PlanSession[]): string {

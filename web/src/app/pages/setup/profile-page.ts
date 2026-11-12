@@ -23,7 +23,7 @@ import { ProfileView } from './setup-records.types';
       @if (view.data(); as v) {
         <div class="stack">
           <app-card [label]="'Entries · ' + v.entries.length">
-            @if (!v.entries.length) { <p class="t3 small empty">Your coach profile is empty.</p> }
+            @if (!v.entries.length) { <p class="t2 small empty">Empty.</p> }
             <ul class="rows">
               @for (e of v.entries; track e.key) {
                 <li>
@@ -35,14 +35,14 @@ import { ProfileView } from './setup-records.types';
                       </div>
                       <button type="button" class="link small" (click)="startEdit(e.key, e.value)" [disabled]="!!edit.busy()"
                               [attr.aria-label]="'Change ' + e.key">Edit</button>
-                      <button type="button" class="link danger small" (click)="remove(e.key)" [disabled]="!!edit.busy()"
+                      <button type="button" class="link small" (click)="remove(e.key)" [disabled]="!!edit.busy()"
                               [attr.aria-label]="'Remove ' + e.key">
                         {{ edit.busy() === 'rm:' + e.key ? 'Removing…' : 'Remove' }}
                       </button>
                     </div>
                   } @else {
                     <form class="form" (submit)="$event.preventDefault(); save(e.key)">
-                      <label class="field"><span>{{ e.key }}</span>
+                      <label class="field"><span class="label">{{ e.key }}</span>
                         <textarea rows="2" [attr.maxlength]="v.max_value" [value]="draftValue()"
                                   (input)="draftValue.set(value($event))"></textarea>
                       </label>
@@ -64,15 +64,14 @@ import { ProfileView } from './setup-records.types';
             @if (noticeAfter('rm:')) { <p class="msg ok small" role="status">{{ noticeAfter('rm:') }}</p> }
           </app-card>
 
-          <app-card label="New entry">
-            @if (edit.open() !== 'add') {
-              <div class="row">
-                <p class="t2 small grow">A preference or something the coach should know, e.g. quiet hours.</p>
-                <button type="button" class="btn primary" (click)="startAdd()"
-                        [disabled]="v.entries.length >= v.max_entries">Add entry</button>
-              </div>
+          @if (edit.open() !== 'add') {
+            <div class="add">
+              <button type="button" class="btn" (click)="startAdd()"
+                      [disabled]="v.entries.length >= v.max_entries">Add entry</button>
               @if (edit.noticeFor('add')) { <p class="msg ok small" role="status">{{ edit.noticeFor('add') }}</p> }
-            } @else {
+            </div>
+          } @else {
+            <app-card label="New entry">
               <form class="form" (submit)="$event.preventDefault(); add()">
                 <label class="field"><span>Name (up to {{ v.max_key }} characters)</span>
                   <input type="text" [attr.maxlength]="v.max_key" [value]="draftKey()" (input)="draftKey.set(value($event))"
@@ -90,9 +89,8 @@ import { ProfileView } from './setup-records.types';
                 </div>
                 @if (edit.errorFor('add')) { <p class="msg bad small" role="alert">{{ edit.errorFor('add') }}</p> }
               </form>
-            }
-          </app-card>
-          <p class="note">The coach reads this profile in every conversation. Changes you ask for in Telegram show here too.</p>
+            </app-card>
+          }
         </div>
       } @else if (view.error(); as err) {
         <app-state kind="error" [message]="err" (retry)="view.load()" />
@@ -103,7 +101,7 @@ import { ProfileView } from './setup-records.types';
   `,
   styles: `
     .row { display: flex; align-items: center; gap: 4px; }
-    .row p { margin: 0; margin-right: 8px; }
+    .add { display: grid; justify-items: start; gap: 4px; }
     .grow { flex: 1; min-width: 0; }
     .txt { display: grid; gap: 2px; }
     .val { overflow-wrap: anywhere; }

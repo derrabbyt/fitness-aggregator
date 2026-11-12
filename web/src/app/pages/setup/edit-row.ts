@@ -1,4 +1,5 @@
 import { ChangeDetectionStrategy, Component, DestroyRef, inject, input, output, signal } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
 import { Observable, Subscription } from 'rxjs';
 import { errorMessage } from '../../api/coach-api';
 
@@ -62,9 +63,10 @@ export class EditState {
 }
 
 /**
- * One editable value in a Setup card: label (+ hint) and the value, an edit
- * button, and when editing the projected editor with Cancel / Save. The
- * confirmation or the coach's reason for refusing shows inline underneath.
+ * One editable value in a Setup card: label (+ a data line) and the value;
+ * when editable the whole row is one tap target (labelled "Change <label>")
+ * that opens the projected editor with Cancel / Save. The confirmation or the
+ * coach's reason for refusing shows inline underneath.
  *
  *   <app-edit-row label="Step goal" [value]="'10,000'" [editable]="true"
  *                 [editing]="edit.open() === 'step'" [busy]="edit.busy() === 'step'"
@@ -75,22 +77,26 @@ export class EditState {
  */
 @Component({
   selector: 'app-edit-row',
+  imports: [NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <div class="row">
-      <div class="txt">
-        <div class="m">{{ label() }}</div>
-        @if (hint()) { <div class="t2 small">{{ hint() }}</div> }
-      </div>
+    @if (editable() && !editing()) {
+      <button type="button" class="row tap" (click)="edit.emit()" [attr.aria-label]="'Change ' + label()">
+        <ng-container *ngTemplateOutlet="main" />
+        <span class="edit">{{ editLabel() }}</span>
+      </button>
+    } @else {
+      <div class="row"><ng-container *ngTemplateOutlet="main" /></div>
+    }
+    <ng-template #main>
+      <span class="txt">
+        <span class="m">{{ label() }}</span>
+        @if (hint()) { <span class="t2 small">{{ hint() }}</span> }
+      </span>
       @if (!editing()) {
-        <span class="val m num" [class.t3]="!value()">{{ value() || 'Not set' }}</span>
-        @if (editable()) {
-          <button type="button" class="edit" (click)="edit.emit()" [attr.aria-label]="'Change ' + label()">
-            {{ editLabel() }}
-          </button>
-        }
+        <span class="val m num" [class.t2]="!value()">{{ value() || 'Not set' }}</span>
       }
-    </div>
+    </ng-template>
     @if (editing()) {
       <form class="editor" (submit)="$event.preventDefault(); save.emit()">
         <div class="fields"><ng-content /></div>
@@ -105,11 +111,13 @@ export class EditState {
   `,
   styles: `
     :host { display: block; }
-    .row { display: flex; align-items: center; gap: 12px; min-height: 32px; }
-    .txt { flex: 1; min-width: 0; }
+    .row { display: flex; align-items: center; gap: 12px; min-height: 32px; width: 100%; text-align: left; }
+    .tap { margin: -6px -8px; padding: 6px 8px; width: calc(100% + 16px); border-radius: var(--radius-inner); }
+    @media (hover: hover) { .tap:hover { background: var(--inset); } }
+    @media (pointer: coarse) { .tap { min-height: 44px; } }
+    .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .val { text-align: right; }
-    .edit { padding: 6px 10px; margin-right: -6px; border-radius: var(--radius-inner); color: var(--info); font-weight: 500; }
-    .edit:hover { background: var(--inset); }
+    .edit { color: var(--text-2); font-weight: 500; }
     .editor { margin-top: 10px; display: grid; gap: 10px; }
     .fields { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
     .btns { display: flex; justify-content: flex-end; gap: 8px; }

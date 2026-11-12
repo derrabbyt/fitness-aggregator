@@ -46,7 +46,7 @@ const MACROS: { key: 'protein' | 'carbs' | 'fat' | 'fiber'; label: string; favor
               <span class="d small t2">{{ weekday(d.date) }}</span>
               @if (d.logged === 'missing') {
                 <span class="track"></span>
-                <span class="v small t3 num">– / {{ fmt(d.target_kcal) }}</span>
+                <span class="v small t2 num">– / {{ fmt(d.target_kcal) }}</span>
               } @else {
                 <app-meter size="thin" [value]="d.eaten_kcal" [max]="d.target_kcal" tone="muted"
                            [label]="weekday(d.date) + ' eaten of target'" />

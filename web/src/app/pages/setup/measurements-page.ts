@@ -39,7 +39,7 @@ import { MeasurementsView, Photo, PhotoSet } from './setup-records.types';
               <ul class="rows hist">
                 @for (w of history(v); track $index) {
                   <li class="kv">
-                    <span class="k">{{ day(w.date) }}@if (w.start) { <span class="t3"> · phase start</span> }</span>
+                    <span class="k">{{ day(w.date) }}@if (w.start) { <span class="t2"> · phase start</span> }</span>
                     <span class="v num">{{ cmText(w.cm) }}</span>
                   </li>
                 }
@@ -48,9 +48,9 @@ import { MeasurementsView, Photo, PhotoSet } from './setup-records.types';
           </app-card>
 
           <app-card label="Progress photos">
-            <p class="t2 small sub">{{ photoLine(v) }}</p>
+            @if (photoLine(v); as line) { <p class="t2 small sub">{{ line }}</p> }
             @if (!v.photos.sets.length) {
-              <p class="t3 small empty">No photo sets yet. Send photos to the coach in Telegram.</p>
+              <p class="t2 small empty">No photos yet. Send them to the coach in Telegram.</p>
             }
             @for (s of v.photos.sets; track s.date) {
               <section class="set" [attr.aria-label]="'Photo set of ' + day(s.date)">
@@ -67,7 +67,6 @@ import { MeasurementsView, Photo, PhotoSet } from './setup-records.types';
               </section>
             }
           </app-card>
-          <p class="note">Photos stay with the coach. They are shown here, never changed.</p>
         </div>
 
         <dialog #viewer class="viewer" (close)="shown.set(null)" (click)="closeOnBackdrop($event)" aria-label="Photo">
@@ -155,14 +154,14 @@ export class MeasurementsPage {
   }
 
   protected waistDue(v: MeasurementsView): string {
-    return v.waist.next_due ? `Next due ${dayLabel(v.waist.next_due)}` : 'No check-in scheduled without a phase';
+    return v.waist.next_due ? `Next due ${dayLabel(v.waist.next_due)}` : '';
   }
 
   protected photoLine(v: MeasurementsView): string {
     const p = v.photos;
-    if (p.enabled === null) return 'No phase is active, so no photo check-ins are scheduled.';
-    if (!p.enabled) return 'Photo check-ins are off. Photos you send are still kept.';
-    return p.next_due ? `Next set due ${dayLabel(p.next_due)}, in the morning, fasted.` : 'Photo check-ins are on.';
+    if (p.enabled === null) return '';
+    if (!p.enabled) return 'Photo check-ins off';
+    return p.next_due ? `Next set due ${dayLabel(p.next_due)}` : '';
   }
 
   protected startWaist(v: MeasurementsView): void {
