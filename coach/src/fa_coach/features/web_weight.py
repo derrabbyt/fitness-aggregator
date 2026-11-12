@@ -25,7 +25,7 @@ WAIST = 12  # waist values listed in the detail
 @registry.view_part("home", "weight", schema="web_home_weight", order=20)
 def home_weight(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any]:
     day = views.day(query, now)
-    rate = weekly_rate(coach, day)
+    rate = weekly_facts.weekly_rate(coach, day)
     return {
         "weigh_in": latest_weigh_in(coach, day),
         "weekly_rate_kg": rate,
@@ -44,7 +44,7 @@ def weight_detail(coach, query: dict[str, str], now: datetime.datetime) -> dict[
     if raw not in DETAIL_WEEKS:
         raise views.WebError(400, "Weeks must be 4 or 12.")
     weeks = int(raw)
-    rate = weekly_rate(coach, day)
+    rate = weekly_facts.weekly_rate(coach, day)
     bands = Bands(coach)
     return {
         "date": day.isoformat(),
@@ -134,11 +134,6 @@ def latest_weigh_in(coach, day: Date) -> dict[str, Any] | None:
     return {"date": row["date"], "kg": row["weight_kg"], "outlier": bool(row["outlier"])} if row else None
 
 
-def weekly_rate(coach, day: Date) -> float | None:
-    now, before = phases.trend_weight(coach, day), phases.trend_weight(coach, day - 7 * DAY)
-    return round(now - before, 2) if now is not None and before is not None else None
-
-
 class Bands:
     """The active phase's weight band by day (read once per view)."""
 
@@ -153,7 +148,7 @@ class Bands:
         if self.phase is None or not self.params.get("weight_band_kg_per_week"):
             return None
         week = phases.phase_week(self.phase, day)
-        return weekly_facts._band(self.params, week) if week >= 1 else None
+        return weekly_facts.weight_band(self.params, week) if week >= 1 else None
 
     def judged(self, day: Date) -> bool:
         """`day` has a band and is past the glycogen window."""
@@ -166,7 +161,7 @@ class Bands:
         band = self.on(day)
         if rate is None or band is None:
             return None
-        if not self.judged(day - 6 * DAY):
+        if weekly_facts.in_glycogen_window(self.phase, day, self.params):
             return "not_evaluated"
-        return weekly_facts._vs_band(rate, band)
+        return weekly_facts.vs_band(rate, band)
 

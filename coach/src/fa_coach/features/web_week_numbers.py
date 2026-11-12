@@ -64,7 +64,7 @@ def weight(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, An
         # So far: the 7-day rate ending today, as Home shows it.
         bands = web_weight.Bands(coach)
         band = bands.on(w.end)
-        rate = web_weight.weekly_rate(coach, last)
+        rate = weekly_facts.weekly_rate(coach, last)
         out = {
             "source": "so_far",
             "trend_kg": phases.trend_weight(coach, last),
@@ -103,7 +103,7 @@ def intake(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, An
         if not food["days"]:
             return None
         summary = weekdata.intake_summary(food["days"], p)
-        section = weekly_facts._intake(food, summary, p)
+        section = weekly_facts.intake(food, summary, p)
     days = section["daily"]
     counted = [d for d in days if d["logged"] == "complete"]
 
@@ -161,7 +161,7 @@ def training(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, 
             "deload_signal": section["deload_signal"],
         }
     p = phases.params(coach)
-    steps = [web_home_steps._day(coach, d, p) for d in weekdata.dates(w.start, last)]
+    steps = [web_home_steps.day_steps(coach, d, p) for d in weekdata.dates(w.start, last)]
     tracked = [d["steps"] for d in steps if d["tracked"]]
     goal = p["steps"]["step_goal"]
     return {

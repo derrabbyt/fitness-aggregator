@@ -39,7 +39,7 @@ STATUS = {"improved": "progressing", "declined": "declining", "stale": "not_rece
 def training(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any]:
     day = views.day(query, now)
     lifts = progression.lifts(coach, day)
-    listed = [_lift(row, lifts[row["exercise_id"]])
+    listed = [lift_row(row, lifts[row["exercise_id"]])
               for row in progression.week(coach, day - 6 * DAY, day, Date.min)["tracked_lifts"]]
     listed.sort(key=lambda x: (x["name"].casefold(), x["exercise_id"]))
     counts = {x["exercise_id"]: x.pop("counts") for x in listed}
@@ -94,7 +94,7 @@ def _day(coach, day: Date, params: dict[str, Any]) -> list[dict[str, Any]]:
     return out
 
 
-def _lift(row: dict[str, Any], lift: dict[str, Any]) -> dict[str, Any]:
+def lift_row(row: dict[str, Any], lift: dict[str, Any]) -> dict[str, Any]:
     status = "stall" if row["stalled"] else STATUS.get(row["status"], row["status"])
     entries = [e for e in lift["entries"] if e["top"] is not None and e["not_judged_reason"] not in IGNORED]
     resets = [k for k, e in enumerate(entries) if e["not_judged_reason"] == "baseline_reset"]
