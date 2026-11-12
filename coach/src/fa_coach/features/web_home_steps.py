@@ -5,7 +5,7 @@ Day steps are MFP's steps minus run steps (`phases.day_steps`); a day under
 `steps.not_tracked_below` isn't tracked (no steps, no kcal). The step kcal
 is the step part of the day's target, k x (day steps - goal), under the
 targets valid that day; null without a step model (before a phase or its
-start). The step goal is the current one: setup values keep no history, as
+start). The step goal is the one in force that day (`phases.params_on`), as
 in `phases.daily_target`.
 """
 
@@ -23,7 +23,7 @@ DETAIL_DAYS = 14
 @registry.view_part("home", "steps", schema="web_home_steps", order=30)
 def steps(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any]:
     day = views.day(query, now)
-    d = day_steps(coach, day, phases.params(coach))
+    d = day_steps(coach, day)
     to_go = max(0, d["goal"] - d["steps"]) if d["tracked"] else None
     return {"tracked": d["tracked"], "steps": d["steps"], "goal": d["goal"], "to_go": to_go, "kcal": d["kcal"],
             "run_steps_removed": d["run_steps_removed"], "provisional": day == now.date()}
@@ -32,12 +32,11 @@ def steps(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any
 @registry.view("home/steps", schema="web_home_steps_detail")
 def steps_detail(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any]:
     day = views.day(query, now)
-    p = phases.params(coach)
-    days = [day_steps(coach, d, p) for d in weekdata.dates(day - (DETAIL_DAYS - 1) * DAY, day)]
+    days = [day_steps(coach, d) for d in weekdata.dates(day - (DETAIL_DAYS - 1) * DAY, day)]
     tracked = [d["steps"] for d in days if d["tracked"]]
     return {
         "date": day.isoformat(),
-        "goal": p["steps"]["step_goal"],
+        "goal": days[-1]["goal"],
         "days": [{k: d[k] for k in ("date", "tracked", "steps", "kcal", "run_steps_removed")} for d in days],
         "average_steps": round(sum(tracked) / len(tracked)) if tracked else None,
         "days_tracked": len(tracked),
@@ -45,8 +44,10 @@ def steps_detail(coach, query: dict[str, str], now: datetime.datetime) -> dict[s
     }
 
 
-def day_steps(coach, day: Date, p: dict[str, Any]) -> dict[str, Any]:
-    """The day's steps and its step kcal (None when not tracked or without a step model)."""
+def day_steps(coach, day: Date) -> dict[str, Any]:
+    """The day's steps, its step goal and its step kcal (None when not
+    tracked or without a step model), with the values in force that day."""
+    p = phases.params_on(coach, day)
     target = phases.daily_target(coach, day)
     part = target["steps"] if target else None
     d = part or {**phases.day_steps(coach, day, p), "goal": p["steps"]["step_goal"]}

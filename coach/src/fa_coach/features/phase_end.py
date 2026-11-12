@@ -61,7 +61,7 @@ def end(coach: "Coach", phase: dict[str, Any], now: datetime.datetime) -> list[s
 
 
 def erase(coach: "Coach", phase: dict[str, Any], today: Date) -> dict[str, int]:
-    """Delete `phase` and what hangs on it: its setup, targets, proposals (and
+    """Delete `phase` and what hangs on it: its setup (and setup history), targets, proposals (and
     their cards and counter taps), weekly verdicts and reports, and the day
     questions and confirmations from its days (start_date..end_date, today
     while active). Other phases stay. Returns the deleted rows per kind. Call
@@ -77,6 +77,7 @@ def erase(coach: "Coach", phase: dict[str, Any], today: Date) -> dict[str, int]:
         "proposals": coach.db.execute("DELETE FROM proposals WHERE phase_row_id = ?", pid).rowcount,
         "weekly_checkins": coach.db.execute("DELETE FROM weekly_checkins WHERE phase_row_id = ?", pid).rowcount,
         "targets": coach.db.execute("DELETE FROM targets WHERE phase_row_id = ?", pid).rowcount,
+        "setup_changes": coach.db.execute("DELETE FROM setup_changes WHERE phase_row_id = ?", pid).rowcount,
         "day_questions": coach.db.execute("DELETE FROM day_questions WHERE date BETWEEN ? AND ?", days).rowcount,
         "day_confirmations": coach.db.execute("DELETE FROM day_confirmations WHERE date BETWEEN ? AND ?",
                                               days).rowcount,

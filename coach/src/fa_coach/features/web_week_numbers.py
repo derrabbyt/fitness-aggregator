@@ -37,6 +37,19 @@ def _last(w: web_week.Week) -> Date:
     return min(w.today, w.end)
 
 
+def _in_phase(coach, w: web_week.Week, day: Date) -> Date:
+    """`day`, or the last day of the week's phase when it ended before."""
+    phase = web_week.phase_during(coach, w)
+    if phase and phase["end_date"] and phase["end_date"] < day.isoformat():
+        return Date.fromisoformat(phase["end_date"])
+    return day
+
+
+def _params(coach, w: web_week.Week) -> dict[str, Any]:
+    """The params in force on the week's last day so far inside its phase."""
+    return phases.params_on(coach, _in_phase(coach, w, _last(w)))
+
+
 # --- weight --------------------------------------------------------------------------------
 
 
@@ -63,7 +76,7 @@ def weight(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, An
     else:
         # So far: the 7-day rate ending today, as Home shows it.
         bands = web_weight.Bands(coach)
-        band = bands.on(w.end)
+        band = bands.on(_in_phase(coach, w, w.end))
         rate = weekly_facts.weekly_rate(coach, last)
         out = {
             "source": "so_far",
@@ -74,7 +87,7 @@ def weight(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, An
             "band": {"low": band["low"], "high": band["high"]} if band else None,
             "vs_band": bands.vs_band(last, rate),
             "weigh_ins": len(history.weigh_ins(coach.db, w.start.isoformat(), last.isoformat())),
-            "weigh_ins_needed": phases.params(coach)["data"]["min_weighins_per_week"],
+            "weigh_ins_needed": _params(coach, w)["data"]["min_weighins_per_week"],
         }
     out["days"] = (last - w.start).days + 1
     judged = out["band"] is not None and out["vs_band"] != "not_evaluated"
@@ -95,7 +108,7 @@ def intake(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, An
         section, p, source = facts["intake"], facts["params"], "check_in"
         result = "pass" if section["adherence_ok"] else "fail"
     else:
-        p, source, result = phases.params(coach), "so_far", "not_judged"
+        p, source, result = _params(coach, w), "so_far", "not_judged"
         food = weekdata.intake(coach, w.start, _last(w))
         for day in food["days"]:
             if day["date"] == w.today.isoformat() and day["logged"] == "partial":
@@ -161,10 +174,9 @@ def training(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, 
             "deload_signal": section["deload_signal"],
         }
     lifting = [s for s in sessions if s["type"] == "lift"]
-    p = phases.params(coach)
-    steps = [web_home_steps.day_steps(coach, d, p) for d in weekdata.dates(w.start, last)]
+    steps = [web_home_steps.day_steps(coach, d) for d in weekdata.dates(w.start, last)]
     tracked = [d["steps"] for d in steps if d["tracked"]]
-    goal = p["steps"]["step_goal"]
+    goal = steps[-1]["goal"]  # the goal on the week's last day so far; each day is judged by its own
     return {
         "source": source,
         "lifts": lifts,
@@ -172,7 +184,7 @@ def training(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, 
                      "planned": _planned(coach, w),
                      "skipped": sum(1 for s in lifting if s["status"] == "skipped")},
         "steps": {"goal": goal, "average": round(sum(tracked) / len(tracked)) if tracked else None,
-                  "days_at_goal": sum(1 for s in tracked if s >= goal),
+                  "days_at_goal": sum(1 for d in steps if d["tracked"] and d["steps"] >= d["goal"]),
                   "days": [{"date": d["date"], "tracked": d["tracked"], "steps": d["steps"] if d["tracked"] else None}
                            for d in steps]},
     }

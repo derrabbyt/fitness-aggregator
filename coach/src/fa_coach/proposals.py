@@ -431,6 +431,8 @@ def _apply_calibration(coach, phase, proposal, current, today: Date, now) -> dic
     before = {k: phase["setup"].get(k) for k in proposal["new_values"]}
     new = _calibrated(coach, phase, proposal["new_values"], current, today)
     coach.db.execute("UPDATE phases SET setup = ? WHERE id = ?", (json.dumps(new["setup"]), phase["id"]))
+    phases.record_setup_change(coach, phase["id"], proposal["new_values"], valid_from=today,
+                               source=phases.CALIBRATION_SOURCE, now=now, ref=proposal["id"])
     average = new["avg_daily_target_kcal"]
     was, now_avg = round(current["avg_daily_target_kcal"]), round(average)
     old_goal = round(current["mfp_goal"]["kcal"])

@@ -253,8 +253,12 @@ def _change_active_phase(coach, key: str, value: Any, now: datetime.datetime) ->
         problems = coach.skills.errors(setup, "phase_setup")
     if problems:
         raise ToolError(f"{key}: " + "; ".join(problems))
-    coach.db.execute("UPDATE phases SET setup = ? WHERE id = ?", (json.dumps(setup), phase["id"]))
-    return {"updated": {key: value}, "phase_id": phase["phase_id"]}
+    with coach.db.transaction():
+        coach.db.execute("UPDATE phases SET setup = ? WHERE id = ?", (json.dumps(setup), phase["id"]))
+        # from today on; earlier days keep the value they had (phases.params_on)
+        phases.record_setup_change(coach, phase["id"], {key: value}, valid_from=now.date(), source="setup_value",
+                                   now=now)
+    return {"updated": {key: value}, "phase_id": phase["phase_id"], "applies_from": now.date().isoformat()}
 
 
 def _with(values: dict[str, Any], key: str, value: Any) -> dict[str, Any]:
@@ -465,6 +469,8 @@ async def confirm_phase_start(coach, ref_id: str, now: datetime.datetime) -> Non
         )
         phases.set_targets(coach, phase_row_id, stored["targets"], valid_from=now.date(), source="phase_start",
                            now=now)
+        phases.record_setup_change(coach, phase_row_id, phases.flat_setup(full), valid_from=now.date(),
+                                   source="phase_start", now=now, ref=setup_id)
         coach.db.execute("UPDATE phase_setups SET status = 'confirmed', confirmed_at = ? WHERE id = ?", (at, setup_id))
     started = f"{render_card(stored)}\n\n✅ Started {full['start_date']}. These targets apply from today."
     coach.edit(_ref(setup), started)
