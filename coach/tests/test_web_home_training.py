@@ -228,8 +228,8 @@ async def test_a_rising_trend_steps_with_the_sessions(coach, api, clock):
     assert [p["date"] for p in trend["points"]][:2] == ["2026-11-16", "2026-11-17"]
     # 16-22 Nov: Bench 105, Squat trained once (doesn't count yet); from 23 Nov Squat 104.
     assert pcts(trend) == [105.0] * 7 + [104.5] * 7
-    # +4.5 % over 28 days = 1.1 % per week, above the 1 % band.
-    assert (trend["rate_pct_per_week"], trend["direction"], trend["lifts"]) == (1.1, "rising", 2)
+    # Each lift over its own span: Bench +5 % in 14 days (2.5 %/wk), Squat +4 % in 14 days (2.0 %/wk).
+    assert (trend["rate_pct_per_week"], trend["direction"], trend["lifts"]) == (2.2, "rising", 2)
 
 
 async def test_within_the_one_percent_band_the_trend_is_flat(coach, api, clock):
@@ -238,7 +238,8 @@ async def test_within_the_one_percent_band_the_trend_is_flat(coach, api, clock):
                          session("f2", "2026-11-24", exercise("Bench Press", (100, 5)), exercise("Squat", (101, 5))))
 
     assert pcts(trend) == [None] * 8 + [100.5] * 6  # one session per lift until 24 Nov: no change to show
-    assert (trend["rate_pct_per_week"], trend["direction"]) == (0.1, "flat")
+    # Bench 0 %, Squat +1 % in 21 days (0.33 %/wk): mean 0.17 %/wk, inside the 1 % band.
+    assert (trend["rate_pct_per_week"], trend["direction"]) == (0.2, "flat")
 
 
 async def test_a_falling_trend(coach, api, clock):
@@ -246,20 +247,39 @@ async def test_a_falling_trend(coach, api, clock):
                          session("d2", "2026-11-17", exercise("Bench Press", (95, 5))))
 
     assert pcts(trend) == [None] + [95.0] * 13
-    assert (trend["rate_pct_per_week"], trend["direction"]) == (-1.2, "falling")
+    assert (trend["rate_pct_per_week"], trend["direction"]) == (-2.5, "falling")  # -5 % in 14 days
 
 
 async def test_a_reset_lift_starts_at_its_reset(coach, api, clock):
     api.sessions = [session("x1", "2026-11-02", exercise("Bench Press", (100, 5))),
-                    session("x2", "2026-11-09", exercise("Bench Press", (80, 5))),
-                    session("x3", "2026-11-16", exercise("Bench Press", (84, 5)))]
+                    session("x2", "2026-11-22", exercise("Bench Press", (80, 5))),
+                    session("x3", "2026-11-29", exercise("Bench Press", (84, 5)))]
     await synced(coach, api, clock, "2026-11-29")
-    progression.mark_reset(coach, "bench-press", datetime.date(2026, 11, 9), clock.now(), reason="shoulder")
+    progression.mark_reset(coach, "bench-press", datetime.date(2026, 11, 22), clock.now(), reason="shoulder")
 
     trend = home(coach)["training"]["workouts"]["strength_trend"]
 
-    assert pcts(trend) == [105.0] * 14  # from 80 kg, not 84 % of 100 kg
-    assert (trend["rate_pct_per_week"], trend["direction"]) == (1.2, "rising")
+    # Reset a week ago: one session since then until today's 84 kg, 105 % of 80 kg (not 84 % of 100 kg).
+    assert pcts(trend) == [None] * 13 + [105.0]
+    # +5 % in the 7 days since the reset, not spread over the 28-day window.
+    assert (trend["rate_pct_per_week"], trend["direction"]) == (5.0, "rising")
+
+
+async def test_a_lift_trained_only_lately_is_measured_over_its_own_span(coach, api, clock):
+    trend = await lifted(coach, api, clock, session("n1", "2026-11-20", exercise("Bench Press", (100, 5))),
+                         session("n2", "2026-11-27", exercise("Bench Press", (104, 5))))
+
+    assert pcts(trend) == [None] * 11 + [104.0] * 3
+    # +4 % in 7 days: 4 %/wk, not +4 % over 28 days (1 %/wk, flat).
+    assert (trend["rate_pct_per_week"], trend["direction"]) == (4.0, "rising")
+
+
+async def test_a_span_shorter_than_a_week_counts_as_a_week(coach, api, clock):
+    trend = await lifted(coach, api, clock, session("w1", "2026-11-23", exercise("Bench Press", (100, 5))),
+                         session("w2", "2026-11-26", exercise("Bench Press", (103, 5))))
+
+    assert pcts(trend)[-1] == 103.0
+    assert (trend["rate_pct_per_week"], trend["direction"]) == (3.0, "rising")  # 3 days count as 7
 
 
 async def test_old_sessions_leave_the_window(coach, api, clock):
@@ -279,7 +299,7 @@ async def test_the_strength_trend_on_a_past_day_ends_that_day(coach, api, clock)
 
     assert (trend["start"], trend["end"]) == ("2026-11-09", "2026-11-22")
     assert pcts(trend) == [None] * 7 + [105.0] * 7  # Squat has one session; its 104 kg on 23 Nov hasn't happened
-    assert (trend["rate_pct_per_week"], trend["direction"]) == (1.2, "rising")
+    assert (trend["rate_pct_per_week"], trend["direction"]) == (2.5, "rising")  # Bench +5 % in 14 days
 
 
 async def test_before_any_lift_there_is_no_trend_and_no_workout(coach):

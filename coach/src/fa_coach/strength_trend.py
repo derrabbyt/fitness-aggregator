@@ -14,9 +14,13 @@ Schema: coach-skills/schemas/web_strength_trend.schema.json.
   2 sessions there (since its last reset) to count, so a new lift doesn't pull
   the line toward 100 %. D's point is the mean over those lifts (null without any), so
   the line steps when sessions happen and when old sessions leave the window.
-- The rate is the last point's change over the window in % per week
-  ((point - 100) / (window days / 7)): within ±`training.e1rm_same_band_pct`
-  it is flat, above rising, below falling.
+- The rate measures each counting lift as of the last day over its real span:
+  its change (latest as % of first, as above) divided by the weeks from its
+  first session in the window (or its reset) to its latest one, at least
+  `MIN_SPAN_DAYS` (7), so a lift trained only lately or reset a week ago isn't
+  spread over the whole window. The rate is the mean of those % per week:
+  within ±`training.e1rm_same_band_pct` it is flat, above rising, below
+  falling. The chart points stay % vs the window start.
 """
 
 import datetime
@@ -31,6 +35,7 @@ Date = datetime.date
 DAY = datetime.timedelta(days=1)
 IGNORED = ("no_working_sets", "other_location")
 SERIES_DAYS = 14
+MIN_SPAN_DAYS = 7
 
 
 def compute(coach: "Coach", day: Date, *, days: int = SERIES_DAYS,
@@ -41,14 +46,15 @@ def compute(coach: "Coach", day: Date, *, days: int = SERIES_DAYS,
     window, band = p["strength_trend_days"], p["e1rm_same_band_pct"]
     histories = [_values(lift["entries"]) for lift in (lifts or progression.lifts(coach, day)).values()
                  if lift["counts"]]
-    points, trained = [], 0
+    points, rates = [], []
     for n in range(days - 1, -1, -1):
         d = day - n * DAY
-        pcts = [pct for pct in (_pct(h, d - (window - 1) * DAY, d) for h in histories) if pct is not None]
+        changes = [c for c in (_change(h, d - (window - 1) * DAY, d) for h in histories) if c is not None]
+        pcts = [pct for pct, _ in changes]
         points.append({"date": d.isoformat(), "pct": round(sum(pcts) / len(pcts), 1) if pcts else None})
-        trained = len(pcts)
-    last = points[-1]["pct"]
-    rate = None if last is None else round((last - 100) / (window / 7), 1)
+        rates = [(pct - 100) / (max(span, MIN_SPAN_DAYS) / 7) for pct, span in changes]
+    trained = len(rates)
+    rate = round(sum(rates) / trained, 1) if rates else None
     direction = None if rate is None else "rising" if rate > band else "falling" if rate < -band else "flat"
     return {"window_days": window, "start": points[0]["date"], "end": day.isoformat(), "points": points,
             "rate_pct_per_week": rate, "direction": direction, "lifts": trained}
@@ -60,13 +66,14 @@ def _values(entries: list[dict[str, Any]]) -> list[tuple[str, float, bool]]:
             if e["top"] is not None and e["top"]["e1rm_kg"] and e["not_judged_reason"] not in IGNORED]
 
 
-def _pct(history: list[tuple[str, float, bool]], start: Date, end: Date) -> float | None:
-    """The lift's latest value in start..end as % of its first one there (after a reset); None with fewer
-    than 2 sessions."""
+def _change(history: list[tuple[str, float, bool]], start: Date, end: Date) -> tuple[float, int] | None:
+    """The lift's latest value in start..end as % of its first one there (after a reset), and the days
+    between those two sessions; None with fewer than 2 sessions."""
     window = [v for v in history if start.isoformat() <= v[0] <= end.isoformat()]
     resets = [n for n, v in enumerate(window) if v[2]]
     if resets:
         window = window[resets[-1]:]
     if len(window) < 2:  # a lift needs two sessions in the window to show a change
         return None
-    return window[-1][1] / window[0][1] * 100
+    span = (Date.fromisoformat(window[-1][0]) - Date.fromisoformat(window[0][0])).days
+    return window[-1][1] / window[0][1] * 100, span

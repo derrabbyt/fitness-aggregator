@@ -60,7 +60,7 @@
         "number",
         "null"
       ],
-      "description": "(last point - 100) / (window_days / 7), 1 decimal; null with the last point null."
+      "description": "As of the last day, the mean over the counting lifts of each lift's change (latest as % of first in the window, after its reset) per week of its own span (first to latest session, at least 7 days), 1 decimal; null without a counting lift."
     },
     "direction": {
       "enum": [

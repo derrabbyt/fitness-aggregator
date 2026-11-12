@@ -62,7 +62,8 @@ async def test_the_strength_trend_is_a_four_week_line_with_its_weekly_rate(coach
 
     assert (trend["start"], trend["end"], len(trend["points"])) == ("2026-11-03", "2026-11-30", 28)
     assert trend["points"][-1]["pct"] == 106.0
-    assert (trend["rate_pct_per_week"], trend["direction"], trend["lifts"]) == (1.5, "rising", 2)
+    # Bench +8 % in 21 days (2.67 %/wk), Squat +4 % in 14 days (2.0 %/wk).
+    assert (trend["rate_pct_per_week"], trend["direction"], trend["lifts"]) == (2.3, "rising", 2)
 
 
 async def test_a_past_day_shows_the_strength_trend_as_it_stood_that_day(coach, api, clock):
@@ -72,6 +73,7 @@ async def test_a_past_day_shows_the_strength_trend_as_it_stood_that_day(coach, a
 
     assert trend["end"] == "2026-11-18"
     assert (trend["points"][-1]["pct"], trend["lifts"]) == (105.0, 1)  # squat has one session by then
+    assert trend["rate_pct_per_week"] == 2.5  # Bench +5 % in 14 days
 
 
 # --- the lift list -----------------------------------------------------------------------
