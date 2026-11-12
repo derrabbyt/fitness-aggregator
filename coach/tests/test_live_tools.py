@@ -99,6 +99,30 @@ async def test_large_results_are_truncated_before_they_reach_the_model(coach, mo
     assert len(content["text"]) == live_tools.MAX_RESULT_CHARS
 
 
+async def test_phase_start_gets_the_allowed_live_tools_and_no_write_tool(coach, model, listed):
+    model.script(reply("Here is what I read from your history."))
+
+    await coach.on_message("start reverse")
+
+    names = {t["name"] for t in model.requests[-1].tools}
+    assert {n for n in names if n.startswith(("fitness_", "hevy_"))} == EXPECTED
+    assert not [n for n in names if n.startswith(("fitness_", "hevy_")) and any(w in n for w in WRITES)]
+    assert {"record_setup_value", "start_phase"} <= names  # its own tools are still there
+    assert "propose_change" not in names  # and only its own: not every registered tool
+
+
+async def test_a_phase_start_lookup_goes_through_the_api(coach, model, listed):
+    listed.tool_results["hevy_list_workouts"] = {"workouts": [{"id": "w1", "title": "Push"}]}
+    model.script(reply("Here is what I read from your history."))
+    await coach.on_message("start reverse")
+    model.script(tool_call("hevy_list_workouts", limit=5), reply("Your last workout was Push."))
+
+    await coach.on_message("what was my last workout?")
+
+    assert listed.read_calls() == [("hevy", "hevy_list_workouts", {"limit": 5})]
+    assert not model.results(len(model.requests) - 2)[0].is_error
+
+
 async def test_tasks_without_tools_get_no_live_tools(coach, model, listed):
     model.script(reply("{}"))
 

@@ -161,7 +161,8 @@ class Coach:
         now: datetime.datetime | None = None,
     ) -> Answer:
         """Run one model task to its end. `tools`: names of registered tools
-        the model may call (None = all of them, () = none); code validates and
+        the model may call (None = all of them, () = none; a tool source's
+        name, "live", adds all of its runtime tools); code validates and
         executes each call once. `phase`: the phase whose skill goes in the
         cached prefix instead of the active one (phase start loads the target
         phase). With `output_schema`, `answer.data` is the schema-valid JSON
