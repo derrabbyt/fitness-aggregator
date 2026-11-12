@@ -158,6 +158,29 @@ async def test_the_detail_shows_12_weeks_on_request(phase, api, clock):
     assert s[0]["kg"] is None and s[0]["trend_kg"] is None  # before the synced history
 
 
+@pytest.mark.parametrize("range_,days", [("1", 7), ("2", 14), ("26", 182)])
+async def test_the_detail_takes_the_ranges_of_its_dropdown(phase, api, clock, range_, days):
+    await weeks(phase, api, clock, 1, 2, 3)
+
+    d = detail(phase, weeks=range_)
+
+    assert (d["weeks"], len(d["series"]), d["series"][-1]["date"]) == (int(range_), days, "2026-11-29")
+
+
+async def test_all_time_starts_at_the_first_weigh_in(phase, api, clock):
+    await weeks(phase, api, clock, 1, 2, 3)
+
+    d = detail(phase, weeks="all")
+
+    first = min(w["date"] for w in d["recent"])
+    assert (d["weeks"], d["series"][0]["date"], d["series"][-1]["date"]) == ("all", first, "2026-11-29")
+
+
+async def test_an_unknown_range_is_refused(phase):
+    with pytest.raises(views.WebError):
+        phase.view("home/weight", {"weeks": "5"})
+
+
 async def test_recent_weigh_ins_newest_first_with_outliers_marked(phase, api, clock):
     fill_week(api, 1)
     fill_week(api, 2)
@@ -168,11 +191,11 @@ async def test_recent_weigh_ins_newest_first_with_outliers_marked(phase, api, cl
 
     recent = detail(phase)["recent"]
 
-    assert len(recent) == 14
+    assert len(recent) > 14 and recent[-1]["date"] < "2026-11-09"  # all of them, the diet history too
+    assert [r["date"] for r in recent] == sorted((r["date"] for r in recent), reverse=True)
     assert recent[:3] == [{"date": "2026-11-28", "kg": 82.0, "outlier": False},
                           {"date": "2026-11-27", "kg": 92.0, "outlier": True},
                           {"date": "2026-11-26", "kg": 82.0, "outlier": False}]
-    assert recent[-1]["date"] == "2026-11-15"
 
 
 async def test_waist_values_up_to_the_day_newest_first_with_the_phase_start(phase, api, clock):
@@ -212,3 +235,4 @@ async def test_the_detail_refuses_other_ranges(phase):
     with pytest.raises(views.WebError) as e:
         phase.view("home/weight", {"weeks": "5"})
     assert e.value.status == 400
+

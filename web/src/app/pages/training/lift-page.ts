@@ -4,7 +4,6 @@ import { ActivatedRoute } from '@angular/router';
 import { map, Subscription } from 'rxjs';
 import { CoachApi, errorMessage } from '../../api/coach-api';
 import { viewResource } from '../../api/view-resource';
-import { injectDay } from '../../shell/day-param';
 import { PageHeader } from '../../shell/page-header';
 import { RefreshButton } from '../../shell/refresh-button';
 import { StaleLine } from '../../shell/stale-line';
@@ -20,7 +19,7 @@ import { LiftSession, LiftView } from './lift.types';
 const MORE = 10; // sessions per "show more"
 
 /**
- * Training › a lift, as of the day: its estimated-1RM history (PRs and
+ * Training › a lift, as of today: its estimated-1RM history (PRs and
  * baseline resets marked; bodyweight lifts on bodyweight + added weight),
  * the last 3 sessions with "show more", and its controls. Each control runs
  * the chat tool behind it (Setup › Exercises' `setup/exercises/classify` and
@@ -34,8 +33,8 @@ const MORE = 10; // sessions per "show more"
   styleUrl: '../setup/setup-forms.css',
   template: `
     <div class="page">
-      <app-page-header [title]="lift.data()?.name ?? 'Lift'" [sub]="sub()" back="/training" [backQuery]="day.query()">
-        <app-refresh-button actions [busy]="lift.refreshing()" (refresh)="lift.refresh()" />
+      <app-page-header [title]="lift.data()?.name ?? 'Lift'" [sub]="sub()" back="/training">
+        <app-refresh-button actions [busy]="lift.refreshing()" [done]="lift.refreshed()" (refresh)="lift.refresh()" />
       </app-page-header>
       <app-stale-line [freshness]="lift.data()?.freshness" [refreshError]="lift.refreshError()" />
       @if (lift.data(); as v) {
@@ -158,7 +157,6 @@ const MORE = 10; // sessions per "show more"
 })
 export class LiftPage {
   private readonly api = inject(CoachApi);
-  protected readonly day = injectDay();
   private readonly id = toSignal(inject(ActivatedRoute).paramMap.pipe(map((p) => p.get('id') ?? '')), {
     initialValue: '',
   });
@@ -182,7 +180,7 @@ export class LiftPage {
   protected readonly sub = computed(() => {
     const v = this.lift.data();
     if (!v) return '';
-    return [v.counts ? '' : 'Not counted', this.day.isToday() ? '' : 'As of ' + dayLabel(v.date)].filter(Boolean).join(' · ');
+    return v.counts ? '' : 'Not counted';
   });
 
   protected readonly kg = kg;
@@ -192,7 +190,7 @@ export class LiftPage {
   constructor() {
     inject(DestroyRef).onDestroy(() => this.moreSub?.unsubscribe());
     effect(() => {
-      const query = { exercise_id: this.id(), ...this.day.query() };
+      const query = { exercise_id: this.id() };
       untracked(() => this.reload(query));
     });
   }
@@ -212,7 +210,7 @@ export class LiftPage {
     this.moreBusy.set(true);
     this.moreError.set('');
     this.moreSub = this.api.view<LiftView>('lift', {
-      exercise_id: v.exercise_id, ...this.day.query(), offset: String(offset), limit: String(MORE),
+      exercise_id: v.exercise_id, offset: String(offset), limit: String(MORE),
     }).subscribe({
       next: (page) => {
         this.extra.update((items) => [...items, ...page.sessions.items]);

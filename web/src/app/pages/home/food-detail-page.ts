@@ -19,12 +19,12 @@ import { FoodDetail } from './home.types';
     <div class="page">
       <app-day-nav heading="Food" [day]="day.value()" back="/home" [backQuery]="day.query()"
                    (dayChange)="day.go($event)">
-        <app-refresh-button actions [busy]="detail.refreshing()" (refresh)="detail.refresh()" />
+        <app-refresh-button actions [busy]="detail.refreshing()" [done]="detail.refreshed()" (refresh)="detail.refresh()" />
       </app-day-nav>
       @if (detail.refreshError(); as err) { <p class="warn small m">Sync failed: {{ err }}</p> }
       @if (detail.data(); as d) {
         <div class="stack">
-          <app-card label="Week so far">
+          <app-card [label]="'Week so far · ' + range()">
             <div class="sum">
               <div>
                 <span class="big num">{{ fmt(d.so_far.eaten_kcal) }}</span>
@@ -35,10 +35,10 @@ import { FoodDetail } from './home.types';
                 <div class="mid num t2">{{ signed(d.so_far.deviation_pct, 1) }} %</div>
               }
             </div>
-            <div class="t2 small">{{ d.so_far.days_logged }} of {{ rows().length }} days logged · {{ range() }}</div>
+            <div class="t2 small">{{ d.so_far.days_logged }} of {{ rows().length }} days logged</div>
           </app-card>
 
-          <app-section-header title="Days" [aside]="d.iso_week" />
+          <app-section-header title="Days" />
           <app-card>
             <ul class="days">
               @for (r of rows(); track r.date) {

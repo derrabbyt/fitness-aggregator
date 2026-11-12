@@ -17,8 +17,7 @@ from . import measurements, web_home
 Date = datetime.date
 DAY = datetime.timedelta(days=1)
 HOME_DAYS = 14
-DETAIL_WEEKS = ("4", "12")
-RECENT = 14  # weigh-ins listed in the detail
+DETAIL_WEEKS = ("1", "2", "4", "12", "26", "all")  # the detail's range dropdown
 WAIST = 12  # waist values listed in the detail
 
 
@@ -37,13 +36,20 @@ def home_weight(coach, query: dict[str, str], now: datetime.datetime) -> dict[st
 
 @registry.view("home/weight", schema="web_home_weight_detail")
 def weight_detail(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any]:
-    """The weight detail: `?weeks=4` (default) or 12 of weigh-ins, trend and
-    band ending the day."""
+    """The weight detail: `?weeks=` 1, 2, 4 (default), 12 or 26 weeks, or `all`
+    (from the first weigh-in) of weigh-ins, trend and band ending the day, and
+    every weigh-in up to the day (the page shows the latest and expands)."""
     day = views.day(query, now)
     raw = query.get("weeks") or "4"
     if raw not in DETAIL_WEEKS:
-        raise views.WebError(400, "Weeks must be 4 or 12.")
-    weeks = int(raw)
+        raise views.WebError(400, "Weeks must be one of " + ", ".join(DETAIL_WEEKS) + ".")
+    if raw == "all":
+        first = coach.db.one("SELECT MIN(date) AS d FROM weigh_ins WHERE date <= ?", (day.isoformat(),))["d"]
+        start = min(Date.fromisoformat(first), day - 6 * DAY) if first else day - 6 * DAY
+        weeks: int | str = "all"
+    else:
+        weeks = int(raw)
+        start = day - (weeks * 7 - 1) * DAY
     rate = weekly_facts.weekly_rate(coach, day)
     bands = Bands(coach)
     return {
@@ -54,10 +60,10 @@ def weight_detail(coach, query: dict[str, str], now: datetime.datetime) -> dict[
         "weekly_rate_kg": rate,
         "vs_band": bands.vs_band(day, rate),
         "band": bands.on(day),
-        "series": _series(coach, day - (weeks * 7 - 1) * DAY, day),
+        "series": _series(coach, start, day),
         "recent": [{"date": r["date"], "kg": r["weight_kg"], "outlier": bool(r["outlier"])} for r in coach.db.all(
-            "SELECT date, weight_kg, outlier FROM weigh_ins WHERE date <= ? ORDER BY date DESC LIMIT ?",
-            (day.isoformat(), RECENT))],
+            "SELECT date, weight_kg, outlier FROM weigh_ins WHERE date <= ? ORDER BY date DESC",
+            (day.isoformat(),))],
         "waist": _waist(coach, day),
         "prediction": _prediction(coach, day),
     }

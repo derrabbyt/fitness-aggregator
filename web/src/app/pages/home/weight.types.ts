@@ -37,16 +37,17 @@ export interface WeightDay {
   band_high_kg: number | null;
 }
 
-/** web_home_weight_detail.schema.json (GET /api/coach/home/weight?day=&weeks=4|12). */
+/** web_home_weight_detail.schema.json (GET /api/coach/home/weight?day=&weeks=1|2|4|12|26|all). */
 export interface WeightDetail {
   date: string;
-  weeks: 4 | 12;
+  weeks: 1 | 2 | 4 | 12 | 26 | 'all';
   weigh_in: WeighIn | null;
   trend_kg: number | null;
   weekly_rate_kg: number | null;
   vs_band: VsBand | null;
   band: WeightBand | null;
   series: WeightDay[];
+  /** Every weigh-in up to the day, newest first. */
   recent: WeighIn[];
   waist: { date: string; cm: number }[];
   prediction: {

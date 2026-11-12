@@ -21,9 +21,14 @@ export interface StrengthTrend {
   lifts_trained: number;
 }
 
-/** The text when the trend has no value: nothing trained, or lifts trained but none twice yet. */
+/** The text when the trend has no line: nothing trained, or lifts trained but none twice yet. */
 export function strengthEmptyText(trend: StrengthTrend | null | undefined): string {
   return trend?.lifts_trained ? 'Not enough sessions yet' : 'No lifts in the last 4 weeks';
+}
+
+/** Whether there is a line to draw (two days with a value); the rate is shown only with it. */
+export function hasStrengthLine(trend: StrengthTrend | null | undefined): boolean {
+  return (trend?.points ?? []).filter((p) => p.pct != null).length >= 2 && trend?.rate_pct_per_week != null;
 }
 
 /** Rising green, within the ±1 % band neutral, falling red. */
@@ -48,7 +53,7 @@ export function strengthRate(trend: StrengthTrend | null | undefined): string {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (trend(); as t) {
-      @if (t.rate_pct_per_week != null) {
+      @if (hasLine()) {
         <div class="large">
           <div><span class="big num" [class.ok]="tone() === 'ok'" [class.bad]="tone() === 'bad'">{{ rate() }}</span>
             <span class="t2"> over {{ t.window_days }} days</span></div>
@@ -66,6 +71,7 @@ export class StrengthTrendChart {
   readonly trend = input<StrengthTrend | null | undefined>(null);
 
   protected readonly points = computed(() => (this.trend()?.points ?? []).map((p) => p.pct));
+  protected readonly hasLine = computed(() => hasStrengthLine(this.trend()));
   protected readonly rate = computed(() => strengthRate(this.trend()));
   protected readonly tone = computed(() => strengthTone(this.trend()));
 }

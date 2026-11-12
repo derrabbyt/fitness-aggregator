@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, computed, effect, inject, untracked } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal, untracked } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { viewResource } from '../../api/view-resource';
@@ -9,18 +9,23 @@ import { Card } from '../../ui/card';
 import { dayLabel, fmt, signed } from '../../ui/format';
 import { SectionHeader } from '../../ui/section-header';
 import { State } from '../../ui/state';
-import { toneColor } from '../../ui/tone';
 import { WeightChart } from './weight-chart';
 import { rateText, rateTone, toneClass } from './weight-format';
 import { WeightDetail } from './weight.types';
 
-const RANGES = [{ weeks: '4', label: '4 weeks' }, { weeks: '12', label: '12 weeks' }];
+const RANGES = [
+  { weeks: '1', label: '1 week' }, { weeks: '2', label: '2 weeks' }, { weeks: '4', label: '4 weeks' },
+  { weeks: '12', label: '12 weeks' }, { weeks: '26', label: '6 months' }, { weeks: 'all', label: 'All time' },
+];
+const DEFAULT_WEEKS = '4';
+const WEIGH_INS_SHOWN = 7;
 
 /**
- * Weight detail: the weigh-in, the 7-day trend and the weekly rate against the
- * band (in words here, unlike Home), a 4- or 12-week chart (`?weeks=12`) with
- * the band shaded, this week's predicted vs actual trend, recent weigh-ins
- * with outliers marked, and waist values. All as of the day shown.
+ * Weight detail: the weigh-in, the 7-day average and the weekly rate with
+ * its goal, the chart for a range from a dropdown (`?weeks=`, 4 weeks by
+ * default), this week's predicted vs actual average, the latest weigh-ins
+ * (all of them on "Show all") with outliers marked, and waist values. All as
+ * of the day shown.
  */
 @Component({
   selector: 'app-weight-detail-page',
@@ -30,7 +35,7 @@ const RANGES = [{ weeks: '4', label: '4 weeks' }, { weeks: '12', label: '12 week
     <div class="page">
       <app-day-nav heading="Weight" [day]="day.value()" back="/home" [backQuery]="day.query()"
                    (dayChange)="day.go($event)">
-        <app-refresh-button actions [busy]="detail.refreshing()" (refresh)="detail.refresh()" />
+        <app-refresh-button actions [busy]="detail.refreshing()" [done]="detail.refreshed()" (refresh)="detail.refresh()" />
       </app-day-nav>
       @if (detail.refreshError(); as err) { <p class="warn small m">Sync failed: {{ err }}</p> }
       @if (detail.data(); as d) {
@@ -49,34 +54,25 @@ const RANGES = [{ weeks: '4', label: '4 weeks' }, { weeks: '12', label: '12 week
                   }
                 </div>
                 <div class="right">
-                  <div class="label">7-day trend</div>
+                  <div class="label">7-day avg</div>
                   <div class="mid num">{{ fmt(d.trend_kg, 2) }}<span class="unit sm"> kg</span></div>
                 </div>
               </div>
               <div class="rate-row">
                 <span class="num m" [class]="toneClass(tone())">{{ rateText(d.weekly_rate_kg) }}</span>
-                <span class="t2">{{ bandText() }}</span>
+                @if (d.band; as b) { <span class="t2 num">goal {{ signed(b.low, 2) }} to {{ signed(b.high, 2) }} kg/wk</span> }
               </div>
             </app-card>
 
             <app-card>
               <div class="chart-head">
-                <div class="seg" role="tablist" aria-label="Range">
+                <select aria-label="Range" [value]="weeks()" (change)="setWeeks($any($event.target).value)">
                   @for (r of ranges; track r.weeks) {
-                    <button role="tab" [attr.aria-selected]="r.weeks === weeks()" [class.on]="r.weeks === weeks()"
-                            (click)="setWeeks(r.weeks)">{{ r.label }}</button>
+                    <option [value]="r.weeks" [selected]="r.weeks === weeks()">{{ r.label }}</option>
                   }
-                </div>
+                </select>
               </div>
-              <app-weight-chart [days]="d.series" [tone]="tone()" [startLabel]="startLabel()"
-                                [endLabel]="day.isToday() ? 'today' : dayLabel(d.date, false)"
-                                [label]="'Weight, last ' + d.weeks + ' weeks'" />
-              <div class="legend t2">
-                <span><i class="k line" [style.background]="lineColor()"></i>7-day trend</span>
-                <span><i class="k dot"></i>Weigh-in</span>
-                @if (hasBand()) { <span><i class="k band"></i>Target band</span> }
-                @if (hasOutlier()) { <span><i class="k out"></i>Outlier</span> }
-              </div>
+              <app-weight-chart [days]="d.series" [tone]="tone()" [label]="'Weight, ' + rangeLabel()" />
             </app-card>
 
             @if (d.prediction; as p) {
@@ -95,17 +91,16 @@ const RANGES = [{ weeks: '4', label: '4 weeks' }, { weeks: '12', label: '12 week
                     <div class="mid num">{{ signed(p.difference_kg, 2) }}</div>
                   </div>
                 </div>
-                <div class="t2 small foot">7-day trend · {{ dayLabel(p.start, false) }} – {{ dayLabel(p.end, false) }}</div>
               </app-card>
             }
           </div>
 
           <div class="stack">
-            <app-section-header title="Weigh-ins" [aside]="d.recent.length ? 'last ' + d.recent.length : ''" />
+            <app-section-header title="Weigh-ins" />
             <app-card>
               @if (d.recent.length) {
                 <ul class="rows">
-                  @for (w of d.recent; track w.date) {
+                  @for (w of weighIns(); track w.date) {
                     <li [class.outlier]="w.outlier">
                       <span>{{ dayLabel(w.date) }}</span>
                       <span class="num">
@@ -115,6 +110,11 @@ const RANGES = [{ weeks: '4', label: '4 weeks' }, { weeks: '12', label: '12 week
                     </li>
                   }
                 </ul>
+                @if (d.recent.length > shown) {
+                  <button type="button" class="more" (click)="allWeighIns.set(!allWeighIns())">
+                    {{ allWeighIns() ? 'Show fewer' : 'Show all ' + d.recent.length }}
+                  </button>
+                }
               } @else {
                 <p class="none t2">No weigh-ins yet</p>
               }
@@ -156,18 +156,11 @@ const RANGES = [{ weeks: '4', label: '4 weeks' }, { weeks: '12', label: '12 week
                 padding-top: 12px; border-top: 1px solid var(--divider); }
     .rate-row .m:not(.ok):not(.bad):not(.warn) { color: var(--text); }
     .chart-head { display: flex; justify-content: flex-end; margin-bottom: 14px; }
-    .seg { display: inline-flex; background: var(--inset); padding: 3px; border-radius: 9px; gap: 2px; }
-    .seg button { font-size: 13px; font-weight: 500; padding: 4px 12px; border-radius: 7px; color: var(--text-2); }
-    .seg button.on { background: var(--container); color: var(--text); box-shadow: var(--ring); }
-    .legend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; margin-top: 10px; }
-    .legend span { display: inline-flex; align-items: center; gap: 6px; }
-    .k { display: inline-block; flex: none; }
-    .k.line { width: 12px; height: 2px; border-radius: 2px; }
-    .k.dot { width: 5px; height: 5px; border-radius: 99px; background: var(--text-3); }
-    .k.band { width: 12px; height: 8px; border-radius: 2px; background: var(--text); opacity: .1; }
-    .k.out { width: 8px; height: 8px; border-radius: 99px; box-shadow: inset 0 0 0 1.5px var(--destructive); }
+    select { font: inherit; font-size: 13px; font-weight: 500; color: var(--text); background: var(--inset);
+             border: 0; border-radius: 8px; padding: 6px 10px; }
     .pred { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-    .foot { margin-top: 10px; }
+    .more { display: block; width: 100%; margin-top: 12px; padding: 8px 0 0; border-top: 1px solid var(--divider);
+            font-size: 13px; font-weight: 500; color: var(--text-2); text-align: center; }
     .rows { list-style: none; margin: 0; padding: 0; }
     .rows li { display: flex; justify-content: space-between; align-items: baseline; padding: 9px 0;
                border-top: 1px solid var(--divider); }
@@ -192,46 +185,32 @@ export class WeightDetailPage {
   protected readonly toneClass = toneClass;
 
   private readonly params = toSignal(this.route.queryParamMap, { initialValue: this.route.snapshot.queryParamMap });
-  protected readonly weeks = computed(() => (this.params().get('weeks') === '12' ? '12' : '4'));
+  protected readonly weeks = computed(() => {
+    const raw = this.params().get('weeks');
+    return RANGES.some((r) => r.weeks === raw) ? raw! : DEFAULT_WEEKS;
+  });
+  protected readonly rangeLabel = computed(() => RANGES.find((r) => r.weeks === this.weeks())!.label.toLowerCase());
   protected readonly tone = computed(() => rateTone(this.detail.data()?.vs_band ?? null));
-  protected readonly lineColor = computed(() => toneColor(this.tone()));
+  protected readonly shown = WEIGH_INS_SHOWN;
+  protected readonly allWeighIns = signal(false);
+  protected readonly weighIns = computed(() => {
+    const all = this.detail.data()?.recent ?? [];
+    return this.allWeighIns() ? all : all.slice(0, WEIGH_INS_SHOWN);
+  });
   protected readonly weighedToday = computed(() => {
     const d = this.detail.data();
     return !!d?.weigh_in && d.weigh_in.date === d.date;
   });
-  protected readonly hasBand = computed(() => !!this.detail.data()?.series.some((x) => x.band_low_kg != null));
-  protected readonly hasOutlier = computed(() => !!this.detail.data()?.series.some((x) => x.outlier && x.kg != null));
-  protected readonly startLabel = computed(() => {
-    const d = this.detail.data();
-    return d?.series.length ? dayLabel(d.series[0].date, false) : '';
-  });
-  /** The band in words, with the verdict ("in the band 0.10–0.30 kg/wk"). */
-  protected readonly bandText = computed(() => {
-    const d = this.detail.data();
-    if (!d) return '';
-    if (!d.band) return 'No target band';
-    const band = `${signed(d.band.low, 2)} to ${signed(d.band.high, 2)} kg/wk`;
-    switch (d.vs_band) {
-      case 'in_band': return `in the band, ${band}`;
-      case 'below_band': return `below the band, ${band}`;
-      case 'above_band': return `above the band, ${band}`;
-      case 'below_limit': return `below the limit of ${signed(d.band.lower_limit, 2)} kg/wk`;
-      case 'above_limit': return `above the limit of ${signed(d.band.upper_limit, 2)} kg/wk`;
-      case 'not_evaluated': return `not judged yet (glycogen weeks) · band ${band}`;
-      default: return `band ${band}`;
-    }
-  });
-
   constructor() {
     effect(() => {
       const day = this.day.query().day;
       const weeks = this.weeks();
-      untracked(() => this.detail.load({ day, weeks: weeks === '4' ? null : weeks }));
+      untracked(() => this.detail.load({ day, weeks: weeks === DEFAULT_WEEKS ? null : weeks }));
     });
   }
 
   protected setWeeks(weeks: string): void {
-    void this.router.navigate([], { relativeTo: this.route, queryParams: { weeks: weeks === '4' ? null : weeks },
+    void this.router.navigate([], { relativeTo: this.route, queryParams: { weeks: weeks === DEFAULT_WEEKS ? null : weeks },
       queryParamsHandling: 'merge', replaceUrl: true });
   }
 }

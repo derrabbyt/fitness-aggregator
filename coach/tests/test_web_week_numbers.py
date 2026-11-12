@@ -120,7 +120,8 @@ async def test_the_week_in_progress_shows_intake_so_far_with_today_never_partial
 # The lifts of test_web_home_training (TWO_WEEKS, 10-18 Nov): in W47 (16-22 Nov) Bench and Row
 # improved, Squat stalled (its third session without progress); PRs: Bench and Row on 16 Nov,
 # Bench on 18 Nov. The seeded plan has 8 sessions a week that aren't optional (Mon Pull, Tue
-# Push and a workout run, Wed Legs, Thu Upper, Fri Wrestling, Sat Legs, Sun long run).
+# Push and a workout run, Wed Legs, Thu Upper, Fri Wrestling, Sat Legs, Sun long run); 5 of
+# them are lifting, the only ones the Week's session count looks at.
 
 
 def lifts_known(coach, clock) -> None:
@@ -142,8 +143,8 @@ async def test_a_judged_weeks_training_is_lifts_progressing_stalls_prs_sessions_
     assert lifts["stalls"] == [{"exercise_id": "squat", "name": "Squat"}]
     assert [(pr["name"], pr["date"]) for pr in lifts["prs"]] == [
         ("Bench Press", "2026-11-16"), ("Row", "2026-11-16"), ("Bench Press", "2026-11-18")]
-    # Done: the Hevy sessions on Mon 16 and Wed 18 and Friday's wrestling (counted as planned).
-    assert t["sessions"] == {"done": 3, "planned": 8, "skipped": 0}
+    # Lifting only: the Hevy sessions on Mon 16 and Wed 18 of the plan's 5 (not Friday's wrestling).
+    assert t["sessions"] == {"done": 2, "planned": 5, "skipped": 0}
     s = t["steps"]
     assert (s["goal"], s["average"], s["days_at_goal"]) == (10000, 9000, 0)
     assert [d["steps"] for d in s["days"]] == [9000] * 7
@@ -160,7 +161,7 @@ async def test_the_week_in_progress_shows_training_so_far(phase, api, clock, mod
     assert t["source"] == "so_far"
     assert (t["lifts"]["progressing"], t["lifts"]["counted"], t["lifts"]["stalls"]) == (1, 1, [])
     assert [(pr["name"], pr["date"]) for pr in t["lifts"]["prs"]] == [("Bench Press", "2026-12-01")]
-    assert t["sessions"] == {"done": 1, "planned": 8, "skipped": 0}
+    assert t["sessions"] == {"done": 1, "planned": 5, "skipped": 0}
     assert len(t["steps"]["days"]) == 3
 
 

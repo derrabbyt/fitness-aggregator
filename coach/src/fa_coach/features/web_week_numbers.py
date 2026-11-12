@@ -160,6 +160,7 @@ def training(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, 
                      "e1rm_kg": pr["top_set"]["e1rm_kg"] if pr["top_set"] else None} for pr in section["prs"]],
             "deload_signal": section["deload_signal"],
         }
+    lifting = [s for s in sessions if s["type"] == "lift"]
     p = phases.params(coach)
     steps = [web_home_steps.day_steps(coach, d, p) for d in weekdata.dates(w.start, last)]
     tracked = [d["steps"] for d in steps if d["tracked"]]
@@ -167,9 +168,9 @@ def training(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, 
     return {
         "source": source,
         "lifts": lifts,
-        "sessions": {"done": sum(1 for s in sessions if s["status"] != "skipped"),
+        "sessions": {"done": sum(1 for s in lifting if s["status"] != "skipped"),
                      "planned": _planned(coach, w),
-                     "skipped": sum(1 for s in sessions if s["status"] == "skipped")},
+                     "skipped": sum(1 for s in lifting if s["status"] == "skipped")},
         "steps": {"goal": goal, "average": round(sum(tracked) / len(tracked)) if tracked else None,
                   "days_at_goal": sum(1 for s in tracked if s >= goal),
                   "days": [{"date": d["date"], "tracked": d["tracked"], "steps": d["steps"] if d["tracked"] else None}
@@ -178,11 +179,12 @@ def training(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, 
 
 
 def _planned(coach, w: web_week.Week) -> int:
-    """The week's sessions in the plan in force each day, optional ones left out."""
+    """The week's lifting sessions in the plan in force each day, optional ones left out."""
     count = 0
     for day in weekdata.dates(w.start, w.end):
         plan = training_plan.plan_for(coach, day)
-        count += sum(1 for s in plan["days"][training_plan.WEEKDAYS[day.weekday()]] if not s["optional"]) if plan else 0
+        count += sum(1 for s in plan["days"][training_plan.WEEKDAYS[day.weekday()]]
+                     if s["type"] == "lift" and not s["optional"]) if plan else 0
     return count
 
 
