@@ -153,10 +153,7 @@
       "photos_enabled": true
     },
     "reviews": {
-      "block_length_weeks": [
-        4,
-        6
-      ],
+      "block_weeks": 5,
       "phase_review_every_weeks": [
         8,
         12

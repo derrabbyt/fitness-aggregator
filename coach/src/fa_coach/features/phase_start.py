@@ -54,11 +54,11 @@ LOGISTICS = ("weekly_checkin", "evening_reminder_time", "max_unprompted_messages
 KEYS = ("starting_calories_kcal", "starting_trend_weight_kg", "maintenance_estimate_kcal",
         "maintenance_includes_activity", "run_kcal_discount", "wrestling_kcal_per_session",
         "lifting_kcal_per_session", "fat_g_per_kg_start", "week1_increase_kcal", "time_goal_weeks",
-        "photos_enabled", "waist_cm_start", "step_goal") + tuple(f"logistics.{k}" for k in LOGISTICS) \
+        "photos_enabled", "waist_cm_start", "step_goal", "block_weeks") + tuple(f"logistics.{k}" for k in LOGISTICS) \
     + cut.SETUP_KEYS
 # Have a default (maintenance includes activity; the step goal from core params): never need asking.
 # A cut needs a level or a goal (`still_needed`); its end date is optional.
-OPTIONAL = ("maintenance_includes_activity", "step_goal", "goal", "end_date")
+OPTIONAL = ("maintenance_includes_activity", "step_goal", "block_weeks", "goal", "end_date")
 CLASSIFY = "exercise_classification"  # not a setup value: every Hevy exercise classified (features/lifts.py)
 
 
@@ -220,10 +220,10 @@ def _fixed_fat(p: dict[str, Any]) -> float | None:
     "phase-setup schema and the phase's params). Logistics keys: logistics.weekly_checkin ('sun 18:00'), "
     "logistics.evening_reminder_time ('20:30'), logistics.max_unprompted_messages_per_day, "
     "logistics.soft_floor_min_days. step_goal (default 10,000 steps: where step kcal are 0; it doesn't change "
-    "the energy the user gets). A cut only: cut_level (conservative / moderate / aggressive) or goal "
+    "the energy the user gets). block_weeks (default 5: weeks per training block, a block review after each). A cut only: cut_level (conservative / moderate / aggressive) or goal "
     "({weight_kg, date} or {body_fat_pct, current_body_fat_pct, date}; code derives the deficit), and end_date "
     "(optional, a mini-cut's last day). Optional values the user declines are recorded as null. After the phase "
-    "started, changes logistics, photos_enabled, time_goal_weeks, waist_cm_start, step_goal and end_date of the "
+    "started, changes logistics, photos_enabled, time_goal_weeks, waist_cm_start, step_goal, block_weeks and end_date of the "
     "active phase. "
     "Returns what is still needed (exercise_classification: classify the exercises with classify_exercises).",
     {

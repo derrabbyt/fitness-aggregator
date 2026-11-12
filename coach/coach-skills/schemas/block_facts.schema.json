@@ -1,0 +1,175 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "block_facts.schema.json",
+  "title": "Block facts",
+  "description": "Computed by code for the block-review skill at the end of each training block (every reviews.block_weeks weeks from the phase start, or when the user ends a block with end_block). Every number here is code's.",
+  "type": "object",
+  "required": ["schema_version", "block", "lifts", "training", "sessions", "volume", "context_notes", "params"],
+  "additionalProperties": false,
+  "$defs": {
+    "point": {
+      "type": ["object", "null"],
+      "required": ["date", "top_set"],
+      "additionalProperties": false,
+      "properties": {
+        "date": { "type": "string", "format": "date" },
+        "top_set": {
+          "type": "object",
+          "required": ["load_kg", "reps", "effective_load_kg", "e1rm_kg"],
+          "additionalProperties": false,
+          "properties": {
+            "load_kg": { "type": "number" },
+            "reps": { "type": "integer" },
+            "effective_load_kg": { "type": "number", "description": "Bodyweight lifts: bodyweight plus added load (minus assistance)." },
+            "e1rm_kg": { "type": "number" }
+          }
+        }
+      }
+    }
+  },
+  "properties": {
+    "schema_version": { "const": 1 },
+    "block": {
+      "type": "object",
+      "required": ["number", "start_date", "end_date", "days", "block_weeks", "ended_early", "reason"],
+      "additionalProperties": false,
+      "properties": {
+        "number": { "type": "integer", "minimum": 1, "description": "Block number within the phase." },
+        "start_date": { "type": "string", "format": "date" },
+        "end_date": { "type": "string", "format": "date" },
+        "days": { "type": "integer", "minimum": 1 },
+        "block_weeks": { "type": "integer", "description": "The block length in force (setup value block_weeks)." },
+        "ended_early": { "type": "boolean", "description": "The user ended the block (end_block)." },
+        "reason": { "type": ["string", "null"], "description": "The user's reason for ending it, else null." }
+      }
+    },
+    "lifts": {
+      "type": "array",
+      "description": "Every exercise with a session in the block, counting ones first.",
+      "items": {
+        "type": "object",
+        "required": ["exercise_id", "name", "counts", "paused", "sessions", "first", "last", "change_pct", "statuses", "prs", "baseline_resets", "no_progress_streak_at_end", "decline_streak_at_end", "stalled_at_end"],
+        "additionalProperties": false,
+        "properties": {
+          "exercise_id": { "type": "string" },
+          "name": { "type": "string" },
+          "counts": { "type": "boolean", "description": "false: excluded (prehab, slow movers): no stall or deload votes." },
+          "paused": { "type": "boolean", "description": "Injury pause at the block's end: not judged." },
+          "sessions": { "type": "integer" },
+          "first": { "$ref": "#/$defs/point", "description": "First session with a working set in the block." },
+          "last": { "$ref": "#/$defs/point" },
+          "change_pct": { "type": ["number", "null"], "description": "Estimated 1RM, last vs first session in the block (after a baseline reset in it); null with fewer than 2." },
+          "statuses": {
+            "type": "object",
+            "required": ["improved", "same", "declined"],
+            "additionalProperties": false,
+            "properties": {
+              "improved": { "type": "integer" },
+              "same": { "type": "integer" },
+              "declined": { "type": "integer" }
+            }
+          },
+          "prs": { "type": "array", "items": { "type": "string", "format": "date" } },
+          "baseline_resets": { "type": "array", "items": { "type": "string", "format": "date" } },
+          "no_progress_streak_at_end": { "type": "integer" },
+          "decline_streak_at_end": { "type": "integer" },
+          "stalled_at_end": { "type": "boolean" }
+        }
+      }
+    },
+    "training": {
+      "type": "object",
+      "required": ["strength_trend", "stalls", "declining_lifts", "deload_signal", "prs"],
+      "additionalProperties": false,
+      "properties": {
+        "strength_trend": {
+          "type": "object",
+          "required": ["change_pct", "lifts", "direction"],
+          "additionalProperties": false,
+          "properties": {
+            "change_pct": { "type": ["number", "null"], "description": "Mean change_pct of the counting, unpaused lifts that have one." },
+            "lifts": { "type": "integer" },
+            "direction": { "enum": ["rising", "flat", "falling", null], "description": "flat within ±params.e1rm_same_band_pct." }
+          }
+        },
+        "stalls": { "type": "array", "items": { "type": "string" }, "description": "Counting lifts stalled at the block's end (params.stall_sessions)." },
+        "declining_lifts": { "type": "array", "items": { "type": "string" }, "description": "Counting lifts declining params.decline_sessions_for_deload sessions in a row at the block's end." },
+        "deload_signal": { "type": "boolean", "description": "At least params.deload_min_lifts_declining declining lifts." },
+        "prs": {
+          "type": "array",
+          "items": {
+            "type": "object", "required": ["name", "date"], "additionalProperties": false,
+            "properties": { "name": { "type": "string" }, "date": { "type": "string", "format": "date" } }
+          }
+        }
+      }
+    },
+    "sessions": {
+      "type": "object",
+      "required": ["done", "planned", "skipped"],
+      "additionalProperties": false,
+      "properties": {
+        "done": { "type": "integer", "description": "Hevy lifting sessions in the block." },
+        "planned": { "type": "integer", "description": "Non-optional lifting sessions in the training plan over the block." },
+        "skipped": { "type": "integer", "description": "Planned lifting sessions the user reported skipped." }
+      }
+    },
+    "volume": {
+      "type": "object",
+      "required": ["max_sets_per_session", "max_sets_per_muscle_per_session", "sessions"],
+      "additionalProperties": false,
+      "properties": {
+        "max_sets_per_session": { "type": "integer" },
+        "max_sets_per_muscle_per_session": { "type": "integer", "description": "Hevy sends no muscle groups: judge it from the exercise titles, as an estimate." },
+        "sessions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["date", "name", "working_sets", "over_limit", "exercises"],
+            "additionalProperties": false,
+            "properties": {
+              "date": { "type": "string", "format": "date" },
+              "name": { "type": ["string", "null"] },
+              "working_sets": { "type": "integer" },
+              "over_limit": { "type": "boolean", "description": "More than max_sets_per_session working sets." },
+              "exercises": {
+                "type": "array",
+                "items": {
+                  "type": "object", "required": ["name", "working_sets"], "additionalProperties": false,
+                  "properties": { "name": { "type": "string" }, "working_sets": { "type": "integer" } }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "context_notes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["applies_from", "applies_to", "tags", "text"],
+        "additionalProperties": false,
+        "properties": {
+          "applies_from": { "type": "string", "format": "date" },
+          "applies_to": { "type": ["string", "null"], "format": "date" },
+          "tags": { "type": "array", "items": { "type": "string" } },
+          "text": { "type": "string" }
+        }
+      }
+    },
+    "params": {
+      "type": "object",
+      "required": ["stall_sessions", "decline_sessions_for_deload", "deload_min_lifts_declining", "e1rm_same_band_pct", "volume_note_max_sets_per_session", "volume_note_max_sets_per_muscle_per_session"],
+      "additionalProperties": false,
+      "properties": {
+        "stall_sessions": { "type": "integer" },
+        "decline_sessions_for_deload": { "type": "integer" },
+        "deload_min_lifts_declining": { "type": "integer" },
+        "e1rm_same_band_pct": { "type": "number" },
+        "volume_note_max_sets_per_session": { "type": "integer" },
+        "volume_note_max_sets_per_muscle_per_session": { "type": "integer" }
+      }
+    }
+  }
+}

@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "block": {
+    "number": 1,
+    "start_date": "2026-11-09",
+    "end_date": "2026-12-13",
+    "days": 35,
+    "block_weeks": 5,
+    "ended_early": false,
+    "reason": null
+  },
+  "lifts": [
+    {
+      "exercise_id": "79D0BB3A",
+      "name": "Bench Press (Barbell)",
+      "counts": true,
+      "paused": false,
+      "sessions": 4,
+      "first": { "date": "2026-11-16", "top_set": { "load_kg": 80, "reps": 5, "effective_load_kg": 80, "e1rm_kg": 93.33 } },
+      "last": { "date": "2026-12-07", "top_set": { "load_kg": 80, "reps": 5, "effective_load_kg": 80, "e1rm_kg": 93.33 } },
+      "change_pct": 0.0,
+      "statuses": { "improved": 0, "same": 3, "declined": 0 },
+      "prs": [],
+      "baseline_resets": [],
+      "no_progress_streak_at_end": 3,
+      "decline_streak_at_end": 0,
+      "stalled_at_end": true
+    },
+    {
+      "exercise_id": "D04AC939",
+      "name": "Squat (Barbell)",
+      "counts": true,
+      "paused": false,
+      "sessions": 4,
+      "first": { "date": "2026-11-16", "top_set": { "load_kg": 100, "reps": 5, "effective_load_kg": 100, "e1rm_kg": 116.67 } },
+      "last": { "date": "2026-11-30", "top_set": { "load_kg": 95, "reps": 5, "effective_load_kg": 95, "e1rm_kg": 110.83 } },
+      "change_pct": -5.0,
+      "statuses": { "improved": 1, "same": 0, "declined": 2 },
+      "prs": ["2026-11-19"],
+      "baseline_resets": [],
+      "no_progress_streak_at_end": 2,
+      "decline_streak_at_end": 2,
+      "stalled_at_end": false
+    },
+    {
+      "exercise_id": "37FCC2BB",
+      "name": "Bicep Curl (Dumbbell)",
+      "counts": false,
+      "paused": false,
+      "sessions": 1,
+      "first": { "date": "2026-11-30", "top_set": { "load_kg": 15, "reps": 10, "effective_load_kg": 15, "e1rm_kg": 20.0 } },
+      "last": { "date": "2026-11-30", "top_set": { "load_kg": 15, "reps": 10, "effective_load_kg": 15, "e1rm_kg": 20.0 } },
+      "change_pct": null,
+      "statuses": { "improved": 0, "same": 0, "declined": 0 },
+      "prs": [],
+      "baseline_resets": [],
+      "no_progress_streak_at_end": 0,
+      "decline_streak_at_end": 0,
+      "stalled_at_end": false
+    }
+  ],
+  "training": {
+    "strength_trend": { "change_pct": -2.5, "lifts": 2, "direction": "falling" },
+    "stalls": ["Bench Press (Barbell)"],
+    "declining_lifts": ["Squat (Barbell)"],
+    "deload_signal": false,
+    "prs": [{ "name": "Squat (Barbell)", "date": "2026-11-19" }]
+  },
+  "sessions": { "done": 19, "planned": 25, "skipped": 2 },
+  "volume": {
+    "max_sets_per_session": 20,
+    "max_sets_per_muscle_per_session": 4,
+    "sessions": [
+      {
+        "date": "2026-11-30",
+        "name": "Legs",
+        "working_sets": 22,
+        "over_limit": true,
+        "exercises": [
+          { "name": "Squat (Barbell)", "working_sets": 6 },
+          { "name": "Leg Press", "working_sets": 6 },
+          { "name": "Romanian Deadlift (Barbell)", "working_sets": 4 },
+          { "name": "Bicep Curl (Dumbbell)", "working_sets": 6 }
+        ]
+      }
+    ]
+  },
+  "context_notes": [
+    { "applies_from": "2026-11-27", "applies_to": "2026-11-29", "tags": ["sport_load"], "text": "Wrestling camp this weekend" }
+  ],
+  "params": {
+    "stall_sessions": 3,
+    "decline_sessions_for_deload": 2,
+    "deload_min_lifts_declining": 2,
+    "e1rm_same_band_pct": 1,
+    "volume_note_max_sets_per_session": 20,
+    "volume_note_max_sets_per_muscle_per_session": 4
+  }
+}
