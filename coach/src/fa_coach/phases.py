@@ -12,9 +12,18 @@ Read API for features:
 - `params(coach)`: coach-core params merged with the active phase's params
   and its setup values (run discount, wrestling/lifting kcal, fat start,
   photos, time goal, logistics -> `messaging` and `activity.soft_floor_min_days`).
-  This is the `params` block facts carry.
+  This is the `params` block facts carry. Today's values.
+- `params_on(coach, day)`: the same for `day`: the params of the phase of
+  that day (`on`) with the setup values in force that day (`setup_on`; core
+  params alone outside a phase). Every computation for a specific day uses
+  it, so a later change never rewrites a past day.
+- Setup history (migrations/23_setup_history.sql): `record_setup_change`
+  adds changed values from the day they take effect (phase start, chat and
+  web through `record_setup_value`, approved calibration); `phases.setup`
+  keeps the latest values.
 - `setup_value(coach, "logistics.weekly_checkin")`: one setup value of the active phase.
-- `targets(coach, day)`: the targets row in force on `day` (base maintenance,
+- `targets(coach, day)`: the targets row in force on `day` in the phase of
+  that day, active or ended (base maintenance,
   surplus, expected counted activity, average daily target, MFP goal =
   base + surplus, `mfp_goal_for`).
   `set_targets(...)` adds a row (phase start, approved proposals).
@@ -128,6 +137,62 @@ def params(coach: "Coach") -> dict[str, Any]:
     return params_for(coach.skills, phase["phase_id"], phase["setup"])
 
 
+def params_on(coach: "Coach", day: Date) -> dict[str, Any]:
+    """Core params merged with the params of the phase of `day` (`on`) and
+    its setup values in force that day (core params alone outside a phase)."""
+    phase = on(coach, day)
+    if phase is None:
+        return coach.skills.params()
+    return params_for(coach.skills, phase["phase_id"], setup_on(coach, phase, day))
+
+
+# --- setup history ----------------------------------------------------------------
+
+
+def flat_setup(setup: dict[str, Any]) -> dict[str, Any]:
+    """Setup values by key as `setup_changes` stores them (logistics as `logistics.<field>`)."""
+    out = {k: v for k, v in setup.items() if k != "logistics"}
+    out.update({f"logistics.{k}": v for k, v in (setup.get("logistics") or {}).items()})
+    return out
+
+
+def _nested(flat: dict[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for key, value in flat.items():
+        if key.startswith("logistics."):
+            out.setdefault("logistics", {})[key.split(".", 1)[1]] = value
+        else:
+            out[key] = value
+    return out
+
+
+def record_setup_change(coach: "Coach", phase_row_id: str, values: dict[str, Any], *, valid_from: Date,
+                        source: str, now: datetime.datetime, ref: str | None = None) -> None:
+    """Store setup values (`flat_setup` keys) in force from `valid_from`; a
+    later row for the same key and day wins. Call inside the caller's
+    transaction, next to the update of `phases.setup` (the latest values)."""
+    at = now.isoformat(timespec="seconds")
+    for key, value in values.items():
+        coach.db.execute(
+            "INSERT INTO setup_changes (phase_row_id, key, value, valid_from, source, ref, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (phase_row_id, key, json.dumps(value), valid_from.isoformat(), source, ref, at))
+
+
+def setup_on(coach: "Coach", phase: dict[str, Any], day: Date) -> dict[str, Any]:
+    """`phase`'s setup values in force on `day`: per key the latest change
+    valid on or before `day` (a key first set later is absent); keys with no
+    history at all come from `phase["setup"]`."""
+    rows = coach.db.all("SELECT key, value, valid_from FROM setup_changes WHERE phase_row_id = ?"
+                        " ORDER BY valid_from, id", (phase["id"],))
+    known = {r["key"] for r in rows}
+    flat = {k: v for k, v in flat_setup(phase["setup"]).items() if k not in known}
+    for r in rows:
+        if r["valid_from"] <= day.isoformat():
+            flat[r["key"]] = json.loads(r["value"])
+    return _nested(flat)
+
+
 def params_for(skills, phase_id: str, setup: dict[str, Any]) -> dict[str, Any]:
     merged = skills.params(phase_id)
     activity = merged["activity"]
@@ -157,11 +222,11 @@ def phase_week(phase: dict[str, Any], day: Date) -> int:
 
 
 def in_glycogen_window(coach: "Coach", day: Date) -> bool:
-    phase = active(coach)
+    phase = on(coach, day)
     if phase is None:
         return False
     week = phase_week(phase, day)
-    return 1 <= week <= params(coach).get("glycogen_window_weeks", 0)
+    return 1 <= week <= params_on(coach, day).get("glycogen_window_weeks", 0)
 
 
 # --- targets --------------------------------------------------------------------
@@ -186,11 +251,12 @@ def set_targets(coach: "Coach", phase_row_id: str, values: dict[str, Any], *, va
 
 
 def targets(coach: "Coach", day: Date | None = None) -> dict[str, Any] | None:
-    """The active phase's targets in force on `day` (default today)."""
-    phase = active(coach)
+    """The targets in force on `day` (default today) in the phase of that
+    day (`on`: the active phase, or an ended one for its days)."""
+    day = day or coach.clock.now().date()
+    phase = on(coach, day)
     if phase is None:
         return None
-    day = day or coach.clock.now().date()
     row = coach.db.one(
         "SELECT * FROM targets WHERE phase_row_id = ? AND valid_from <= ? ORDER BY valid_from DESC, id DESC LIMIT 1",
         (phase["id"], day.isoformat()),
@@ -223,16 +289,18 @@ def daily_target(coach: "Coach", day: Date) -> dict[str, Any] | None:
     """`day`'s target: base at the step goal + step kcal + counted activity
     + surplus, with macros at the macro reference weight. `steps` is the step
     part (None for a targets row without a step model); today's steps are
-    provisional until the day ends. None without an active phase or before
-    its start."""
+    provisional until the day ends. Phase, targets and setup values are
+    those of `day`, so an ended phase's days keep theirs. None outside a
+    phase."""
     from .features import training_plan  # features import this module
 
-    phase = active(coach)
+    phase = on(coach, day)
     current = targets(coach, day)
     if phase is None or current is None or phase_week(phase, day) < 1:
         return None
-    p = params(coach)
-    activity = training_plan.counted_activity_on(coach, day, p["activity"])
+    p = params_on(coach, day)
+    activity = training_plan.counted_activity_on(coach, day, p["activity"],
+                                                 planned_from=Date.fromisoformat(phase["start_date"]))
     steps = step_part(coach, day, current, p)
     base_at_goal = steps["base_at_goal_kcal"] if steps else current["base_maintenance_kcal"]
     # = base at goal + k x (steps - goal): exact, so an average-steps day is base + sessions + surplus
@@ -322,8 +390,9 @@ def trend_weight(coach: "Coach", day: Date) -> float | None:
 def macro_reference_weight(coach: "Coach", day: Date) -> float:
     """The weight macros use on `day`: the starting trend weight in phase week
     1, then the 7-day trend at the end of the previous phase week
-    (recalculated weekly), falling back to the starting trend weight."""
-    phase = active(coach)
+    (recalculated weekly), falling back to the starting trend weight. The
+    phase is the one of `day`, else the active one."""
+    phase = on(coach, day) or active(coach)
     start_weight = phase["setup"]["starting_trend_weight_kg"]
     week = phase_week(phase, day)
     if week <= 1:

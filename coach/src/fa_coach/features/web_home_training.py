@@ -58,7 +58,9 @@ def _kcal_per_line(coach, day: Date) -> dict[tuple, float]:
     """Counted kcal per line ref ({} without a target that day)."""
     if phases.daily_target(coach, day) is None:
         return {}
-    activity = training_plan.counted_activity_on(coach, day, phases.params(coach)["activity"], refs=True)
+    start = Date.fromisoformat(phases.on(coach, day)["start_date"])  # the day's phase, as in the target
+    activity = training_plan.counted_activity_on(coach, day, phases.params_on(coach, day)["activity"],
+                                                 planned_from=start, refs=True)
     return {s["ref"]: s["kcal_counted"] for s in activity["sessions"] if s["status"] != "skipped"}
 
 

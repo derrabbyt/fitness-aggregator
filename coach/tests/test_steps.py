@@ -61,12 +61,12 @@ async def test_days_above_and_below_the_goal(phase, api, clock):
 
 
 async def test_a_day_at_the_goal_after_the_goal_changed_in_chat(phase, api, clock, model):
-    await steps_on(phase, api, clock, {"2026-11-10": {"steps": 11000}})
+    await steps_on(phase, api, clock, {"2026-11-15": {"steps": 11000}})
 
-    await set_step_goal(phase, model, 11000)
+    await set_step_goal(phase, model, 11000)  # on Sun 15 Nov: from that day on (test_setup_history)
 
     assert phases.params(phase)["steps"]["step_goal"] == 11000
-    day = target(phase, "2026-11-10")
+    day = target(phase, "2026-11-15")
     assert (day["steps"]["kcal"], day["base_at_step_goal_kcal"], day["kcal"]) == (0, 2605, 2369)
     assert phases.targets(phase)["mfp_goal_kcal"] == 2300  # the goal only moves where 0 is shown
 

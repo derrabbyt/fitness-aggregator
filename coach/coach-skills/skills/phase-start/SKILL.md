@@ -79,4 +79,5 @@ the input:
   you read live is offered like a prefill, never recorded on your own.
 - **PS-CHANGE-MIDWAY** – After the start, `record_setup_value` changes logistics, photos,
   time goal and waist at start; `classify_exercises` flips an exercise any time. Calibration values (run discount, wrestling
-  kcal, lifting kcal) go through `propose_change`; start values are fixed for the phase.
+  kcal, lifting kcal) go through `propose_change`; start values are fixed for the phase. A
+  change applies from today; earlier days keep the values they had.

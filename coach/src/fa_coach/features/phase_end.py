@@ -82,6 +82,7 @@ def _erase_parts(coach: "Coach", phase: dict[str, Any], today: Date) -> list[tup
         ("targets", "targets WHERE phase_row_id = ?", pid),
         ("day_questions", "day_questions WHERE date BETWEEN ? AND ?", days),
         ("day_confirmations", "day_confirmations WHERE date BETWEEN ? AND ?", days),
+        ("setup_changes", "setup_changes WHERE phase_row_id = ?", pid),  # "its setup" on the card
         ("phases", "phases WHERE id = ?", pid),
         ("phase_setups", "phase_setups WHERE id = ?", setup),
     ]
@@ -94,7 +95,7 @@ def erase_counts(coach: "Coach", phase: dict[str, Any], today: Date) -> dict[str
 
 
 def erase(coach: "Coach", phase: dict[str, Any], today: Date) -> dict[str, int]:
-    """Delete `phase` and what hangs on it: its setup, targets, proposals (and
+    """Delete `phase` and what hangs on it: its setup (and setup history), targets, proposals (and
     their cards and counter taps), weekly verdicts and reports, and the day
     questions and confirmations from its days (start_date..end_date, today
     while active). Other phases stay. Returns the deleted rows per kind. Call

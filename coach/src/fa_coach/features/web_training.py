@@ -54,14 +54,18 @@ def training(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, 
 
 
 def activities(coach, start: Date, end: Date) -> list[dict[str, Any]]:
-    """Runs and other sessions from `start` to `end`, newest first (module docstring)."""
-    params = phases.params(coach)["activity"]
-    known = all(params.get(k) is not None for k in training_plan.SETUP_KCAL.values()) \
-        and params.get("run_kcal_discount") is not None
-    if not known:  # list the sessions anyway; kcal only once the setup values exist
-        params = {**params, **{k: params.get(k) or 0 for k in ("run_kcal_discount", *training_plan.SETUP_KCAL.values())}}
+    """Runs and other sessions from `start` to `end`, newest first (module
+    docstring), each day of a phase counted with the setup values in force
+    that day (days outside a phase with today's)."""
+    current = phases.params(coach)
     out: list[dict[str, Any]] = []
     for day in reversed(weekdata.dates(start, end)):
+        params = (phases.params_on(coach, day) if phases.on(coach, day) else current)["activity"]
+        known = all(params.get(k) is not None for k in training_plan.SETUP_KCAL.values()) \
+            and params.get("run_kcal_discount") is not None
+        if not known:  # list the sessions anyway; kcal only once the setup values exist
+            params = {**params, **{k: params.get(k) or 0
+                                   for k in ("run_kcal_discount", *training_plan.SETUP_KCAL.values())}}
         out += [{**item, "kcal_counted": item["kcal_counted"] if known else None}
                 for item in _day(coach, day, params)]
     return out
