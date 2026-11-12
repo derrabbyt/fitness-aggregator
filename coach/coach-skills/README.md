@@ -53,7 +53,7 @@ result as `params` inside the facts.
 | Evening (after reminder time, active phase only) | evening-recap | `daily_facts` (evening) | `coach_message` |
 | Lifting session synced (with or without a phase) | training-feedback | `daily_facts` (training) | `coach_message` |
 | Unclassified exercise in a synced session (during a phase) | new-exercise | new exercises + those already classified, tool `classify_exercises` | text (counts toward the daily limit, else deferred to the weekly report) |
-| End of training block | block-review | block's `weekly_facts` list | `coach_message` |
+| End of training block (every `reviews.block_weeks` weeks from the phase start; `end_block` ends one early) | block-review | `block_facts` | `coach_message` (code sends `text` once, no buttons; its own summary without a usable answer) |
 | Every few weeks / phase end | phase-review | `phase_summary` | `coach_message` (+ calibration proposals via tool) |
 | Photo set received (active phase, photos on; no new photo for 10 min) | photo-review | the new set + the like-for-like set code picked (images), latest estimate, waist trend | `photo_review` (code stores the estimate, sends `notes` + the range as the photo review; code sends the body-fat advice) |
 | Coach chat message | coach-chat + context-log (others via `load_skill`) | message + tools | text reply |
@@ -73,7 +73,8 @@ short history.
 
 | Schema | Producer → consumer |
 | --- | --- |
-| `weekly_facts` | code → weekly-decision, weekly-report, block-review |
+| `weekly_facts` | code → weekly-decision, weekly-report |
+| `block_facts` | code → block-review |
 | `weekly_verdict` | weekly-decision → code (stored with its facts; drives confirmation counting) |
 | `proposal` | `propose_change` tool → store → buttons |
 | `daily_facts` | code → evening-recap, training-feedback |

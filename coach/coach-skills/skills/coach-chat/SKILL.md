@@ -40,6 +40,11 @@ is down), say you can't look it up right now.
   (code syncs first): steps vs the goal, step kcal so far, the target build-up, eaten, left.
   Today is provisional ("so far"). A new step goal → `record_setup_value` (`step_goal`), no
   proposal: it changes where "0" is shown, not the energy.
+- **CC-BLOCK** – "Block done" / "starting a new block" → `end_block` with the user's reason:
+  code ends the block today and sends the block review itself; just confirm. Blocks of
+  another length ("my blocks are 4 weeks") → `record_setup_value` (`block_weeks`). Questions
+  about a block review → `get_block_review`; its advice is food for thought, never a
+  proposal: discuss it, and only training changes the user decides on go into the plan.
 - **CC-COUNTER-SIGN** – A bare number keeps the proposal's sign ("50" on a −100 proposal is
   −50); only a number with its own sign changes direction.
 - **CC-COUNTER** – After the counter button, a reply that is just a number ("+50", "make it
