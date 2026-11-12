@@ -70,15 +70,10 @@ def weight_detail(coach, query: dict[str, str], now: datetime.datetime) -> dict[
 
 
 def _waist(coach, day: Date) -> list[dict[str, Any]]:
-    """Waist values up to `day`, newest first, with the active phase's start
-    value (a setup value) on its start date."""
-    values = [w for w in measurements.waist_values(coach) if w["date"] <= day.isoformat()]
-    phase = phases.active(coach)
-    start = phase["setup"].get("waist_cm_start") if phase else None
-    if start is not None and phase["start_date"] <= day.isoformat() \
-            and all(w["date"] != phase["start_date"] for w in values):
-        values.append({"date": phase["start_date"], "cm": start})
-    return sorted(values, key=lambda w: w["date"], reverse=True)[:WAIST]
+    """Waist values up to `day`, newest first, with each phase's start value
+    (a setup value, active or ended phase) on its start date: the chat's
+    `waist_history` without its source."""
+    return [{"date": w["date"], "cm": w["cm"]} for w in measurements.waist_history(coach, day)[:WAIST]]
 
 
 def _prediction(coach, day: Date) -> dict[str, Any] | None:

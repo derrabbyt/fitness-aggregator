@@ -14,8 +14,8 @@
 - Confirm (`confirm_phase_end`) claims the card once (one conditional UPDATE
   in the same transaction as the change) and then:
   - effect `end`: the phase gets status 'ended', `ended_at` and `end_date` =
-    yesterday (`phases.on(day)` reads the span); its open proposals are
-    withdrawn (`proposals.withdraw_open`) and their cards edited.
+    yesterday (`phases.end_active`; `phases.on(day)` reads the span); its open
+    proposals are withdrawn (`proposals.withdraw_open`) and their cards edited.
   - effect `erase` (an undo card, or an end card on the phase's start day,
     where an end would leave an empty phase): `erase` deletes the phase and
     everything that hangs on it in the same transaction; its open proposals'
@@ -23,6 +23,10 @@
   The effect is fixed on the card; a tap when it would be different (an end
   card after the phase ended or on another day, an undo card once another
   phase is the target) changes nothing.
+- Day questions and confirmations belong to the days, not the phase: an
+  erase keeps them (they run without a phase since ticket 06).
+- `last_erase_at`: when the latest erase was confirmed (training feedback's
+  cut-off without a phase).
 - Jobs: the weekly check-in, the evening reminder/recap and the measurement
   reminders return without an active phase; training feedback and day
   questions don't.
@@ -45,7 +49,10 @@ if TYPE_CHECKING:
 
 Date = datetime.date
 DAY = datetime.timedelta(days=1)
-MODES = ("end", "undo")
+# What a card was asked for (`mode`) and what Confirm does (`effect`).
+MODE_END, MODE_UNDO = "end", "undo"
+MODES = (MODE_END, MODE_UNDO)
+EFFECT_END, EFFECT_ERASE = "end", "erase"
 ERASED = "⏹ Phase erased. Nothing changed from this proposal."
 
 
@@ -53,25 +60,23 @@ ERASED = "⏹ Phase erased. Nothing changed from this proposal."
 
 
 def effect(phase: dict[str, Any], today: Date) -> str:
-    """What ending `phase` today does: 'end', or 'erase' on its start day."""
-    return "erase" if today <= Date.fromisoformat(phase["start_date"]) else "end"
+    """What ending `phase` today does: EFFECT_END, or EFFECT_ERASE on its start day."""
+    return EFFECT_ERASE if today <= Date.fromisoformat(phase["start_date"]) else EFFECT_END
 
 
 def end(coach: "Coach", phase: dict[str, Any], now: datetime.datetime) -> list[str]:
     """End the active `phase` today: its last day is yesterday. Withdraws its
     open proposals and returns their ids (edit their cards after the
     transaction). Call inside the caller's transaction."""
-    coach.db.execute("UPDATE phases SET status = 'ended', ended_at = ?, end_date = ? WHERE id = ?",
-                     (now.isoformat(timespec="seconds"), (now.date() - DAY).isoformat(), phase["id"]))
+    phases.end_active(coach, now, now.date() - DAY)
     return proposals.withdraw_open(coach, phase["id"], now)
 
 
-def _erase_parts(coach: "Coach", phase: dict[str, Any], today: Date) -> list[tuple[str, str, tuple]]:
+def _erase_parts(coach: "Coach", phase: dict[str, Any]) -> list[tuple[str, str, tuple]]:
     """What erasing `phase` deletes, in delete order: (kind, `FROM table WHERE
     ...`, params). Add a row here for a new table that hangs on a phase; give
     it a LABELS entry if the undo card should show it."""
     pid = (phase["id"],)
-    days = (phase["start_date"], phase["end_date"] or today.isoformat())
     setup = (coach.db.value("SELECT setup_id FROM phases WHERE id = ?", pid),)
     in_phase = "SELECT id FROM proposals WHERE phase_row_id = ?"
     return [
@@ -80,28 +85,33 @@ def _erase_parts(coach: "Coach", phase: dict[str, Any], today: Date) -> list[tup
         ("proposals", "proposals WHERE phase_row_id = ?", pid),
         ("weekly_checkins", "weekly_checkins WHERE phase_row_id = ?", pid),
         ("targets", "targets WHERE phase_row_id = ?", pid),
-        ("day_questions", "day_questions WHERE date BETWEEN ? AND ?", days),
-        ("day_confirmations", "day_confirmations WHERE date BETWEEN ? AND ?", days),
         ("setup_changes", "setup_changes WHERE phase_row_id = ?", pid),  # "its setup" on the card
         ("phases", "phases WHERE id = ?", pid),
         ("phase_setups", "phase_setups WHERE id = ?", setup),
     ]
 
 
-def erase_counts(coach: "Coach", phase: dict[str, Any], today: Date) -> dict[str, int]:
+def erase_counts(coach: "Coach", phase: dict[str, Any]) -> dict[str, int]:
     """The rows `erase` would delete now, per kind."""
     return {kind: coach.db.value(f"SELECT COUNT(*) FROM {rows}", params)
-            for kind, rows, params in _erase_parts(coach, phase, today)}
+            for kind, rows, params in _erase_parts(coach, phase)}
 
 
-def erase(coach: "Coach", phase: dict[str, Any], today: Date) -> dict[str, int]:
-    """Delete `phase` and what hangs on it: its setup (and setup history), targets, proposals (and
-    their cards and counter taps), weekly verdicts and reports, and the day
-    questions and confirmations from its days (start_date..end_date, today
-    while active). Other phases stay. Returns the deleted rows per kind. Call
-    inside the caller's transaction."""
+def erase(coach: "Coach", phase: dict[str, Any]) -> dict[str, int]:
+    """Delete `phase` and what hangs on it: its setup (and setup history),
+    targets, proposals (and their cards and counter taps), weekly verdicts and
+    reports. Other phases, and the day questions and confirmations of its days,
+    stay. Returns the deleted rows per kind. Call inside the caller's
+    transaction."""
     return {kind: coach.db.execute(f"DELETE FROM {rows}", params).rowcount
-            for kind, rows, params in _erase_parts(coach, phase, today)}
+            for kind, rows, params in _erase_parts(coach, phase)}
+
+
+def last_erase_at(coach: "Coach") -> datetime.datetime | None:
+    """When the latest confirmed erase happened (the claim's `decided_at`), or None."""
+    at = coach.db.value("SELECT MAX(decided_at) FROM phase_end_requests WHERE effect = ? AND status = 'confirmed'",
+                        (EFFECT_ERASE,))
+    return datetime.datetime.fromisoformat(at) if at else None
 
 
 # --- the card ---------------------------------------------------------------------------
@@ -111,7 +121,7 @@ def _day(d: Date) -> str:
     return f"{d:%a} {d.day} {d:%b}"
 
 
-def _name(coach, phase: dict[str, Any]) -> str:
+def _name(coach: "Coach", phase: dict[str, Any]) -> str:
     return coach.skills.params(phase["phase_id"]).get("name") or phase["phase_id"]
 
 
@@ -121,8 +131,6 @@ LABELS = {
     "targets": ("target", "targets"),
     "proposals": ("proposal", "proposals"),
     "weekly_checkins": ("weekly verdict and report", "weekly verdicts and reports"),
-    "day_questions": ("day question", "day questions"),
-    "day_confirmations": ("day confirmation", "day confirmations"),
 }
 
 
@@ -151,9 +159,9 @@ def _keep(coach: "Coach", today: Date) -> str:
 def render_undo_card(coach: "Coach", phase: dict[str, Any], today: Date) -> str:
     lines = [f"Erase the phase “{_name(coach, phase)}” ({_span(phase)})?",
              "This deletes it as if it never ran:"]
-    lines += [f"- {item}" for item in _counted(erase_counts(coach, phase, today))]
-    lines.append("Kept: everything synced from MyFitnessPal and Hevy, waist and photos, your profile, notes and "
-                 "exercise settings, and other phases.")
+    lines += [f"- {item}" for item in _counted(erase_counts(coach, phase))]
+    lines.append("Kept: everything synced from MyFitnessPal and Hevy, day questions and confirmations, waist and "
+                 "photos, your profile, notes and exercise settings, and other phases.")
     if phase["status"] == "active":
         lines.append("From today there's no target. Weekly check-ins, evening reminders and waist/photo reminders "
                      "stop; training feedback and day questions keep running.")
@@ -166,7 +174,7 @@ def render_card(coach: "Coach", phase: dict[str, Any], kind: str, today: Date) -
     name = _name(coach, phase)
     open_count = len(proposals.open_proposals(coach, phase))
     keep = _keep(coach, today)
-    if kind == "erase":
+    if kind == EFFECT_ERASE:
         lines = [
             f"End the phase “{name}”?",
             f"It started today ({_day(today)}), so ending it erases it, as if it never started: the phase, its "
@@ -194,7 +202,7 @@ def render_card(coach: "Coach", phase: dict[str, Any], kind: str, today: Date) -
 def target(coach: "Coach", mode: str) -> dict[str, Any] | None:
     """The phase a card of this mode is about: the active one to end; the
     active one, else the latest ended one, to undo."""
-    return phases.latest(coach) if mode == "undo" else phases.active(coach)
+    return phases.latest(coach) if mode == MODE_UNDO else phases.active(coach)
 
 
 def _ref(request_id: str) -> str:
@@ -207,9 +215,9 @@ def send_card(coach: "Coach", mode: str, reason: str | None, now: datetime.datet
     Raises ToolError when there is no such phase."""
     phase = target(coach, mode)
     if phase is None:
-        raise ToolError("there is no phase to erase" if mode == "undo" else "there is no active phase to end")
-    if mode == "undo":
-        kind, text = "erase", render_undo_card(coach, phase, now.date())
+        raise ToolError("there is no phase to erase" if mode == MODE_UNDO else "there is no active phase to end")
+    if mode == MODE_UNDO:
+        kind, text = EFFECT_ERASE, render_undo_card(coach, phase, now.date())
     else:
         kind = effect(phase, now.date())
         text = render_card(coach, phase, kind, now.date())
@@ -234,9 +242,9 @@ def send_card(coach: "Coach", mode: str, reason: str | None, now: datetime.datet
 
 
 @registry.command("endphase", "End the active phase (asks to confirm first)")
-async def endphase_command(coach, args: str, now: datetime.datetime) -> None:
+async def endphase_command(coach: "Coach", args: str, now: datetime.datetime) -> None:
     try:
-        send_card(coach, "end", args or None, now)
+        send_card(coach, MODE_END, args or None, now)
     except ToolError:
         coach.say("No phase is active, so there's nothing to end.")
 
@@ -248,7 +256,7 @@ async def endphase_command(coach, args: str, now: datetime.datetime) -> None:
     "are withdrawn, check-ins and reminders stop, and the phase stays in the history. Mode undo only when the "
     "user's message explicitly asks to undo or erase a phase (e.g. 'undo it, that was a test'), never to end one: "
     "its card offers to delete the active phase, else the latest ended one, with its setup, targets, proposals, "
-    "weekly verdicts and reports and its days' day questions, listing the counts. The MFP goal is untouched either "
+    "weekly verdicts and reports, listing the counts. The MFP goal is untouched either "
     "way. This tool itself changes nothing; tell the user the card is below.",
     {
         "type": "object",
@@ -260,12 +268,12 @@ async def endphase_command(coach, args: str, now: datetime.datetime) -> None:
         },
     },
 )
-async def request_phase_end(coach, args: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
+async def request_phase_end(coach: "Coach", args: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
     sent = send_card(coach, args["mode"], args["reason"], now)
-    if args["mode"] == "undo":
+    if args["mode"] == MODE_UNDO:
         return {**sent, "say": f"The card to erase “{sent['phase']}” is below with what gets deleted; nothing "
                                "changes until you tap Confirm."}
-    erase_note = " It started today, so the card says Confirm erases it." if sent["effect"] == "erase" else ""
+    erase_note = " It started today, so the card says Confirm erases it." if sent["effect"] == EFFECT_ERASE else ""
     return {**sent, "say": f"The card to end “{sent['phase']}” is below; nothing changes until you tap Confirm."
                            + erase_note}
 
@@ -274,7 +282,7 @@ async def request_phase_end(coach, args: dict[str, Any], now: datetime.datetime)
 
 
 @registry.button("confirm_phase_end")
-async def confirm_phase_end(coach, ref_id: str, now: datetime.datetime) -> None:
+async def confirm_phase_end(coach: "Coach", ref_id: str, now: datetime.datetime) -> None:
     at = now.isoformat(timespec="seconds")
     withdrawn: list[str] = []
     card_edits: list[tuple[str, str]] = []
@@ -285,7 +293,7 @@ async def confirm_phase_end(coach, ref_id: str, now: datetime.datetime) -> None:
         if not claimed:
             return  # a second tap, a cancelled or replaced card
         request = coach.db.one("SELECT * FROM phase_end_requests WHERE id = ?", (ref_id,))
-        undo = request["mode"] == "undo"
+        undo = request["mode"] == MODE_UNDO
         phase = target(coach, request["mode"])
         if (phase is None or phase["id"] != request["phase_row_id"]
                 or (not undo and effect(phase, now.date()) != request["effect"])):
@@ -293,10 +301,10 @@ async def confirm_phase_end(coach, ref_id: str, now: datetime.datetime) -> None:
             outcome = ("This card is out of date. Nothing changed; ask again if you still want to erase a phase."
                        if undo else
                        "This card is out of date. Nothing changed; send /endphase again if you still want to end it.")
-        elif request["effect"] == "erase":
+        elif request["effect"] == EFFECT_ERASE:
             card_edits = [edit for p in proposals.open_proposals(coach, phase)
                           for edit in proposals.card_edits(coach, p["id"], ERASED)]
-            counts = erase(coach, phase, now.date())
+            counts = erase(coach, phase)
             outcome = f"✅ Erased: {', '.join(_counted(counts))}."
             if phase["status"] == "active":
                 outcome += " There's no phase now and no target from today."
@@ -315,7 +323,7 @@ async def confirm_phase_end(coach, ref_id: str, now: datetime.datetime) -> None:
 
 
 @registry.button("cancel_phase_end")
-async def cancel_phase_end(coach, ref_id: str, now: datetime.datetime) -> None:
+async def cancel_phase_end(coach: "Coach", ref_id: str, now: datetime.datetime) -> None:
     claimed = coach.db.execute(
         "UPDATE phase_end_requests SET status = 'cancelled', decided_at = ? WHERE id = ? AND status = 'open'",
         (now.isoformat(timespec="seconds"), ref_id)).rowcount == 1

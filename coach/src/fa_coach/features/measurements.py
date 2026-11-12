@@ -198,9 +198,8 @@ def _waist_reminder_open(coach: "Coach", now: datetime.datetime) -> bool:
                                                today) if d["kind"] == "waist"]
     if not due:
         return False
-    sent = coach.db.value("SELECT 1 FROM once_keys WHERE key = ?",
-                          (f"measurement-reminder:{phase['id']}:waist:{due[-1]}",))
-    return bool(sent) and not received_since(coach, "waist", due[-1])
+    sent = coach.db.once_at(f"measurement-reminder:{phase['id']}:waist:{due[-1]}") is not None
+    return sent and not received_since(coach, "waist", due[-1])
 
 
 def waist_values(coach: "Coach") -> list[dict[str, Any]]:

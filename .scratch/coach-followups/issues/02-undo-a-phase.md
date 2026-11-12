@@ -23,3 +23,4 @@ Spec: `.scratch/coach-followups/spec.md`.
 - **End card (ticket 06 merged):** now says training feedback and day questions keep running.
 - **Skills:** coach-chat CC-PHASE-UNDO; TOOLS.md row covers `undo`.
 - **Atomicity test** makes the `DELETE FROM phases` fail and checks every table is unchanged and the card still open (monkeypatching `db.execute`: the only way to force a mid-transaction failure through the seam).
+- **Review fixes:** an erase keeps day questions and confirmations (they belong to the days, and run without a phase since ticket 06); the undo card lists them under Kept. `_erase_parts` no longer takes `today`.

@@ -10,8 +10,9 @@ The reverse from test_weekly_checkin starts Mon 9 Nov 2026 09:00.
 import datetime
 
 from fa_coach import phases
-from fakes import reply, tool_call
-from test_phase_end import at, button, end_card
+from fa_coach.features import training_feedback
+from fakes import reply, reply_json, session, tool_call
+from test_phase_end import at, bench, button, end_card, feedback, lifted, message
 from test_phase_start import card as start_card
 from test_phase_start import start_and_collect
 from test_proposals import last_card, two_c_weeks
@@ -56,9 +57,10 @@ async def test_the_undo_card_lists_what_goes_with_counts_and_changes_nothing(pha
 
     text = end_card(outbox).text
     assert "Erase" in text and "Reverse" in text
-    for line in ("- 4 weekly verdicts and reports", "- 1 proposal", "- 1 day question", "- 2 day confirmations",
-                 "- 1 target"):
+    for line in ("- 4 weekly verdicts and reports", "- 1 proposal", "- 1 target"):
         assert line in text, line
+    assert "- 1 day question" not in text and "- 2 day confirmations" not in text  # they belong to the days
+    assert "day questions and confirmations" in text  # on the Kept line
     assert "MyFitnessPal goal" in text and "Nothing changes until you tap Confirm" in text
     assert phases.active(phase) is not None and count(phase, "weekly_checkins") == 4
     result = model.results(len(model.requests) - 2)[0]
@@ -68,15 +70,14 @@ async def test_the_undo_card_lists_what_goes_with_counts_and_changes_nothing(pha
 # --- confirm ------------------------------------------------------------------------------
 
 
-TABLES = ("phases", "phase_setups", "targets", "proposals", "proposal_cards", "weekly_checkins", "day_questions",
-          "day_confirmations")
+TABLES = ("phases", "phase_setups", "targets", "proposals", "proposal_cards", "weekly_checkins")
 
 
 async def test_confirm_erases_the_active_phase_once_and_closes_its_proposal_cards(phase, api, clock, model, outbox):
     await two_c_weeks(phase, api, clock, model)
     day_question(phase, "2026-11-20")
     day_confirmation(phase, "2026-11-21")
-    day_confirmation(phase, "2026-11-01")  # before the phase: stays
+    day_confirmation(phase, "2026-11-01")  # before the phase
     report = last_card(outbox)
     writes = list(api.goal_writes())
     await ask_undo(phase, model, at("2026-12-07", 10))
@@ -84,8 +85,9 @@ async def test_confirm_erases_the_active_phase_once_and_closes_its_proposal_card
     await confirm(phase, outbox, at("2026-12-07", 11), taps=2)
 
     assert phases.latest(phase) is None
-    assert {t: count(phase, t) for t in TABLES} == {t: 0 for t in TABLES} | {"day_confirmations": 1}
-    assert phase.db.value("SELECT date FROM day_confirmations") == "2026-11-01"
+    assert {t: count(phase, t) for t in TABLES} == {t: 0 for t in TABLES}
+    # Day questions and confirmations belong to the days, not the phase: they stay.
+    assert (count(phase, "day_questions"), count(phase, "day_confirmations")) == (1, 2)
     assert api.goal_writes() == writes
     edits = [e for e in outbox.edits if e.ref == end_card(outbox).ref]
     assert len(edits) == 1 and edits[0].buttons == ()
@@ -101,20 +103,16 @@ async def test_undo_erases_only_its_phase(phase, clock, model, outbox):
     confirm_start = start_card(outbox).buttons[0][0]
     await phase.on_button(confirm_start.action, confirm_start.ref_id, at("2026-11-20", 13))
     older = phases.on(phase, datetime.date(2026, 11, 19))
-    day_question(phase, "2026-11-19")
-    day_question(phase, "2026-11-21")
     before = {t: count(phase, t) for t in TABLES}
 
     await ask_undo(phase, model, at("2026-11-22", 10))
-    assert "- 1 day question\n" in end_card(outbox).text
     await confirm(phase, outbox, at("2026-11-22", 11))
 
     assert phases.active(phase) is None
     assert phases.latest(phase) == older
-    assert {t: count(phase, t) for t in ("phases", "phase_setups", "targets", "day_questions")} == {
+    assert {t: count(phase, t) for t in ("phases", "phase_setups", "targets")} == {
         "phases": before["phases"] - 1, "phase_setups": before["phase_setups"] - 1,
-        "targets": before["targets"] - 1, "day_questions": 1}
-    assert phase.db.value("SELECT date FROM day_questions") == "2026-11-19"
+        "targets": before["targets"] - 1}
 
 
 async def test_undo_erases_the_latest_ended_phase(phase, clock, model, outbox):
@@ -180,3 +178,20 @@ async def test_without_any_phase_there_is_nothing_to_undo(coach, model, outbox):
     result = model.results(0)[0]
     assert result.is_error and "no phase to erase" in str(result.content)
     assert not [m for m in outbox.sent if (m.ref or "").startswith("phase-end:")]
+
+
+async def test_after_an_erase_training_feedback_starts_with_sessions_seen_after_it(phase, api, clock, model, outbox):
+    phase.db.once(training_feedback.NO_PHASE_SINCE, at("2026-11-01"))  # the job ran before there was a phase
+    # n1 (dated before the phase start) is synced during the phase: no feedback then, nor after the erase.
+    await lifted(phase, api, clock, "2026-11-10", session("n0", "2026-11-07", bench(80)),
+                 session("n1", "2026-11-08", bench(85)))
+    await ask_undo(phase, model, at("2026-11-10", 13))
+    await confirm(phase, outbox, at("2026-11-10", 14))
+    clock.current = at("2026-11-10", 15)
+    await phase.run_due_jobs()
+    assert feedback(outbox) == [] and not [r for r in model.requests if r.task_skills == ("training-feedback",)]
+
+    model.script(reply_json(message("PR: bench 87.5 × 5.")))
+    await lifted(phase, api, clock, "2026-11-11", session("n2", "2026-11-11", bench(87.5)))
+
+    assert [m.text for m in feedback(outbox)] == ["PR: bench 87.5 × 5."]

@@ -3,8 +3,9 @@
 The `training-feedback` job looks at every Hevy session dated within the
 last `FRESH_DAYS` days and first synced after a cut-off (`_since`), once per
 session (`once`). The cut-off is the active phase's start; without an
-active phase it is the moment the latest phase ended, or, when there never
-was a phase, the job's first run (so no backlog floods in after a deploy):
+active phase it is the latest of: the moment the latest phase ended, the
+latest erase of a phase, and the job's first run without any phase (so no
+backlog floods in after a deploy or an erase):
 
 - Code judges it (progression.session). A session where no exercise was
   judged or started a baseline (after a break, another gym, paused, no
@@ -30,13 +31,16 @@ the user decides).
 
 import datetime
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .. import messaging, phases, progression
 from ..ask import ToolError
 from ..ports import Button, Buttons, ModelError
 from ..registry import registry
-from . import context_notes
+from . import context_notes, phase_end
+
+if TYPE_CHECKING:
+    from ..core import Coach
 
 logger = logging.getLogger("fa-coach")
 
@@ -51,29 +55,30 @@ RESET_REASONS = ("technique_change", "rom_change", "exercise_swap", "other")
 
 
 @registry.job("training-feedback", order=35)  # after new-exercises classified any new lift
-async def training_feedback(coach, now: datetime.datetime) -> None:
+async def training_feedback(coach: "Coach", now: datetime.datetime) -> None:
     phase = phases.active(coach)
     for session_id in _new_sessions(coach, phase, now):
         if coach.db.once(f"training-feedback:{session_id}", now):
             await _feedback(coach, phase, session_id, now)
 
 
-NO_PHASE_SINCE = "training-feedback-without-phase-since"  # once_keys: the job's first run without any phase
+NO_PHASE_SINCE = "training-feedback-without-phase-since"  # once key: the job's first run without any phase
 
 
-def _since(coach, phase: dict[str, Any] | None, now: datetime.datetime) -> tuple[Date, datetime.datetime]:
+def _since(coach: "Coach", phase: dict[str, Any] | None, now: datetime.datetime) -> tuple[Date, datetime.datetime]:
     """(first session date, first-seen cut-off) for feedback."""
     fresh = now.date() - FRESH_DAYS * DAY
     if phase is not None:
         return max(Date.fromisoformat(phase["start_date"]), fresh), datetime.datetime.fromisoformat(phase["started_at"])
     ended = coach.db.value("SELECT MAX(ended_at) FROM phases")
-    if ended is None:
+    marks = [datetime.datetime.fromisoformat(ended) if ended else None, phase_end.last_erase_at(coach)]
+    if not any(marks):  # never a phase: from the first run on
         coach.db.once(NO_PHASE_SINCE, now)
-        ended = coach.db.value("SELECT at FROM once_keys WHERE key = ?", (NO_PHASE_SINCE,))
-    return fresh, datetime.datetime.fromisoformat(ended)
+    # An older first run never moves the cut-off back before an end or an erase.
+    return fresh, max(m for m in (*marks, coach.db.once_at(NO_PHASE_SINCE)) if m is not None)
 
 
-def _new_sessions(coach, phase: dict[str, Any] | None, now: datetime.datetime) -> list[str]:
+def _new_sessions(coach: "Coach", phase: dict[str, Any] | None, now: datetime.datetime) -> list[str]:
     since, cutoff = _since(coach, phase, now)
     rows = coach.db.all("SELECT id, first_seen_at FROM lift_sessions WHERE date BETWEEN ? AND ? ORDER BY start_at, id",
                         (since.isoformat(), now.date().isoformat()))
@@ -84,7 +89,7 @@ def _noteworthy(ex: dict[str, Any]) -> bool:
     return ex["is_pr"] or ex["new_stall"] or ex["possible_reset"]
 
 
-async def _feedback(coach, phase: dict[str, Any] | None, session_id: str, now: datetime.datetime) -> None:
+async def _feedback(coach: "Coach", phase: dict[str, Any] | None, session_id: str, now: datetime.datetime) -> None:
     judged = progression.session(coach, session_id)
     if judged is None or not any(e["status"] in (*progression.JUDGED, "new_baseline") for e in judged["exercises"]):
         return
@@ -114,7 +119,7 @@ async def _feedback(coach, phase: dict[str, Any] | None, session_id: str, now: d
                    ref=_ref(session_id), exempt=True)
 
 
-async def _model_text(coach, phase: dict[str, Any] | None, judged: dict[str, Any], now: datetime.datetime) -> str:
+async def _model_text(coach: "Coach", phase: dict[str, Any] | None, judged: dict[str, Any], now: datetime.datetime) -> str:
     """The skill's message text ('' when it sends nothing); stores its deferred items."""
     facts = daily_facts(coach, phase, judged, now)
     problems = coach.skills.errors(facts, "daily_facts")
@@ -135,7 +140,7 @@ async def _model_text(coach, phase: dict[str, Any] | None, judged: dict[str, Any
     return answer.data["text"].strip() if answer.data["send"] else ""
 
 
-def daily_facts(coach, phase: dict[str, Any] | None, judged: dict[str, Any],
+def daily_facts(coach: "Coach", phase: dict[str, Any] | None, judged: dict[str, Any],
                 now: datetime.datetime) -> dict[str, Any]:
     """Daily facts (kind training) for one judged session, per
     daily_facts.schema.json (phase_id and phase_week null without an active phase)."""
