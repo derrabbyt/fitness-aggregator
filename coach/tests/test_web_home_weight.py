@@ -207,6 +207,18 @@ async def test_waist_values_up_to_the_day_newest_first_with_the_phase_start(phas
                                       {"date": "2026-11-09", "cm": 84.5}]  # the phase setup's start value
 
 
+async def test_an_ended_phase_keeps_its_start_waist(phase, api, clock, outbox):
+    await phase.on_message("waist 84", at("2026-11-23", 6, 30))
+    clock.current = at("2026-11-25", 12)
+    await phase.on_message("/endphase")
+    tap = [b for m in outbox.sent if (m.ref or "").startswith("phase-end:") for row in m.buttons for b in row
+           if b.action == "confirm_phase_end"][-1]
+    await phase.on_button(tap.action, tap.ref_id, at("2026-11-25", 13))
+    await weeks(phase, api, clock, 1, 2, 3)
+
+    assert detail(phase)["waist"] == [{"date": "2026-11-23", "cm": 84.0}, {"date": "2026-11-09", "cm": 84.5}]
+
+
 async def test_no_waist_values_before_any_phase(coach):
     assert detail(coach)["waist"] == []
 

@@ -104,7 +104,7 @@ def _eaten(coach, day: Date, now: datetime.datetime) -> dict[str, Any]:
                            for k in ("kcal", "protein_g", "carbs_g", "fat_g", "fiber_g")}
     status = "missing"
     if logged:
-        check = daycheck.status(coach, day, phases.params(coach)) if day < now.date() else None
+        check = daycheck.status(coach, day, phases.params_on(coach, day)) if day < now.date() else None
         status = "partial" if check and check["incomplete"] else "complete"
     out["logged"] = status
     return out
@@ -114,7 +114,7 @@ def _fiber_target(coach, target: dict[str, Any] | None) -> tuple[int | None, int
     """Fiber in g/kg of the macro reference weight (a range), None without a target."""
     if target is None:
         return None, None
-    low, high = phases.params(coach)["nutrition"]["fiber_g_per_kg"]
+    low, high = phases.params_on(coach, Date.fromisoformat(target["date"]))["nutrition"]["fiber_g_per_kg"]
     weight = target["macros"]["reference_weight_kg"]
     return round(low * weight), round(high * weight)
 

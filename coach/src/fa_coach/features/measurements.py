@@ -21,11 +21,14 @@
 - Photos sent to the chat are stored under the coach's state directory as
   `photos/<date>/<n>.jpg`, one set per day, and acknowledged. Waist values
   ("waist 84.5", or a bare "84.5" while a waist reminder is open) are stored
-  with their date. Read them with `photo_sets(coach)` and `waist_values(coach)`.
+  with their date. Read them with `photo_sets(coach)` and `waist_values(coach)`;
+  `waist_history(coach, day)` adds each phase's start value (the chat's
+  `waist_history` tool).
   Photos are kept whenever they arrive, even with photos off.
 """
 
 import datetime
+import json
 import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -195,15 +198,47 @@ def _waist_reminder_open(coach: "Coach", now: datetime.datetime) -> bool:
                                                today) if d["kind"] == "waist"]
     if not due:
         return False
-    sent = coach.db.value("SELECT 1 FROM once_keys WHERE key = ?",
-                          (f"measurement-reminder:{phase['id']}:waist:{due[-1]}",))
-    return bool(sent) and not received_since(coach, "waist", due[-1])
+    sent = coach.db.once_at(f"measurement-reminder:{phase['id']}:waist:{due[-1]}") is not None
+    return sent and not received_since(coach, "waist", due[-1])
 
 
 def waist_values(coach: "Coach") -> list[dict[str, Any]]:
     """Every stored waist value, oldest first: [{"date", "cm"}]."""
     return [{"date": r["date"], "cm": r["cm"]}
             for r in coach.db.all("SELECT date, cm FROM waist_measurements ORDER BY date, id")]
+
+
+def waist_history(coach: "Coach", day: Date) -> list[dict[str, Any]]:
+    """Waist values up to `day`, newest first: the stored values (`source`
+    "measured") and each phase's start value (setup value `waist_cm_start`,
+    `source` "phase_start") on its start date, unless a value was measured
+    that day."""
+    values = [{**w, "source": "measured"} for w in waist_values(coach) if w["date"] <= day.isoformat()]
+    measured = {w["date"] for w in values}
+    for row in coach.db.all("SELECT start_date, setup FROM phases WHERE start_date <= ? ORDER BY start_date",
+                            (day.isoformat(),)):
+        start = json.loads(row["setup"]).get("waist_cm_start")
+        if start is not None and row["start_date"] not in measured:
+            values.append({"date": row["start_date"], "cm": start, "source": "phase_start"})
+    return sorted(values, key=lambda w: w["date"], reverse=True)
+
+
+WAIST_HISTORY_LIMIT = 12  # values when the model gives no limit, as the web page's weight detail
+
+
+@registry.tool(
+    "waist_history",
+    "The user's waist measurements up to today, newest first: date, cm, and `source` (`measured`: a value the "
+    "user sent; `phase_start`: the waist recorded in a phase's setup, on its start date). `limit` = how many of "
+    f"the newest values (default {WAIST_HISTORY_LIMIT}).",
+    {
+        "type": "object",
+        "properties": {"limit": {"type": "integer", "minimum": 1, "maximum": 100}},
+        "additionalProperties": False,
+    },
+)
+async def waist_history_tool(coach: "Coach", args: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
+    return {"waist": waist_history(coach, now.date())[:args.get("limit", WAIST_HISTORY_LIMIT)]}
 
 
 # --- photos ----------------------------------------------------------------------

@@ -219,6 +219,44 @@ async def test_a_question_past_the_daily_limit_waits_for_the_next_message(revers
     assert "300 kcal" in card.text
 
 
+# --- without a phase ----------------------------------------------------------------------
+# No phase yet: the coach fixture's clock is Mon 9 Nov 09:00, so the look-back is 2 - 8 Nov.
+
+
+async def test_a_partial_day_is_asked_without_a_phase(coach, api, outbox):
+    diet_history(api, **{"2026-11-04": 158})
+    await coach.sync()
+    assert outbox.items == []  # a sync alone sends nothing
+
+    messaging.send(coach, "Morning note.", at("2026-11-09", datetime.time(9)), kind="test")
+
+    [card] = questions(outbox)
+    assert card.text.startswith("Wed 4 Nov: 158 kcal")
+    assert labels(card) == ["That's all I ate", "I'll log the rest"]
+
+
+async def test_no_implausible_question_without_a_target(coach, api, outbox):
+    diet_history(api, **{"2026-11-04": 12000})
+    await coach.sync()
+
+    messaging.send(coach, "Morning note.", at("2026-11-09", datetime.time(9)), kind="test")
+
+    assert questions(outbox) == []
+
+
+async def test_a_day_confirmed_without_a_phase_makes_its_week_usable(coach, api, outbox):
+    diet_history(api, **{"2026-11-04": 158})  # week 4 of 4
+    await coach.sync()
+    assert estimate(coach)["weeks"] != 4
+    messaging.send(coach, "Morning note.", at("2026-11-09", datetime.time(9)), kind="test")
+    [card] = questions(outbox)
+
+    await tap(coach, card, "That's all I ate", at("2026-11-09", datetime.time(9, 5)))
+
+    assert "158" in outbox.items[-1].text and outbox.items[-1].buttons == ()
+    assert estimate(coach)["weeks"] == 4
+
+
 # --- chat ---------------------------------------------------------------------------------
 
 

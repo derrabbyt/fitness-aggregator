@@ -58,17 +58,20 @@ def _kcal_per_line(coach, day: Date) -> dict[tuple, float]:
     """Counted kcal per line ref ({} without a target that day)."""
     if phases.daily_target(coach, day) is None:
         return {}
-    activity = training_plan.counted_activity_on(coach, day, phases.params(coach)["activity"], refs=True)
+    start = Date.fromisoformat(phases.on(coach, day)["start_date"])  # the day's phase, as in the target
+    activity = training_plan.counted_activity_on(coach, day, phases.params_on(coach, day)["activity"],
+                                                 planned_from=start, refs=True)
     return {s["ref"]: s["kcal_counted"] for s in activity["sessions"] if s["status"] != "skipped"}
 
 
 def _prs_per_session(lifts: dict[str, dict[str, Any]]) -> dict[str, int]:
-    """PRs per Hevy session (paused exercises set none, as in progression.week)."""
+    """PRs per Hevy session (paused exercises set none, as in progression.week;
+    paused as on the session's day)."""
     out: dict[str, int] = {}
     for lift in lifts.values():
         if not lift["paused"]:
             for e in lift["entries"]:
-                if e["is_pr"]:
+                if e["is_pr"] and not e["paused"]:
                     out[e["session_id"]] = out.get(e["session_id"], 0) + 1
     return out
 

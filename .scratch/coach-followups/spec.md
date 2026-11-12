@@ -1,6 +1,6 @@
 # Coach follow-ups: ending a phase, history for past days, v1 gaps
 
-Status: ready-for-agent
+Status: resolved
 
 Sources: the questions of 2026-11-12, `.scratch/later/issues/01-coach-reset.md` and `02-setup-value-history.md`, the v1 code review (`.scratch/coach/spec.md`, review finding "step size and direction come only from the model"), `GLOSSARY.md`.
 
@@ -50,7 +50,7 @@ Sources: the questions of 2026-11-12, `.scratch/later/issues/01-coach-reset.md` 
 
 - **Ending a phase** (`features/phase_end.py`, new):
   - **Trigger:** a chat tool `request_phase_end(mode: "end" | "undo", reason)`, used when I ask, plus the `/endphase` command. `mode: "undo"` only when I explicitly ask to erase or undo (the skill says so). Both send a card; the tool itself changes nothing.
-  - **The card:** `end` lists the effects. `undo` lists what will be deleted: the phase, its setup, targets, proposals, weekly verdicts and reports, and the day questions and confirmations from its days. Buttons are Confirm and Cancel. One atomic claim per card, as for proposals.
+  - **The card:** `end` lists the effects. `undo` lists what will be deleted: the phase, its setup, targets, proposals, weekly verdicts and reports. Day questions and confirmations stay: they belong to the days, not the phase (they run without a phase). Buttons are Confirm and Cancel. One atomic claim per card, as for proposals.
   - **End:** the phase gets `status = 'ended'`, `ended_at`, and a new `end_date` (its last day = yesterday; a phase ended on its start day is erased by the same rule as undo, after saying so on the card). Open proposals are closed with "phase ended", cards edited.
   - **Undo:** deletes the rows above in one transaction.
   - **MFP goal:** untouched in both cases. The card says so.
@@ -71,7 +71,7 @@ Sources: the questions of 2026-11-12, `.scratch/later/issues/01-coach-reset.md` 
 - **Weekly decision guard** (`weekly_checkin.py`, next to the sport-load hold):
   - From `vs_band` and the distance to the band edge, code computes the expected direction and step size (`small_step_kcal` / `large_step_kcal`).
   - **When the verdict proposes a change**, code checks the direction and the size against the expected ones. A wrong direction becomes a hold. A wrong size becomes the expected size. Each correction is added to `code_adjustments`, and the stored `direction` is code's.
-  - **When the model holds, or the week is skipped,** the verdict stays unchanged.
+  - **When the model holds, or the week is skipped,** the verdict stays unchanged (no proposal is forced). For a week that counts, the stored `direction` is still code's expected direction, so a hold below the band counts toward the increase streak.
   - The rule lives in the reverse-bulk params (RB-SIZE) and stays symmetric, so the cut and maintenance phases can reuse it later.
 - **Day questions without a phase:** `check_recent_days` drops the phase requirement. The look-back is the last `LOOKBACK_DAYS` with no phase start bound. Without a target, the "implausible" check (2× the target) is skipped; the "partial" check (under half the usual intake) already needs no target.
 - **Waist history tool:** a model tool `waist_history(limit)` returning dated values, the phase start value included, in coach-chat's tool list.

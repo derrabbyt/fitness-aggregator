@@ -55,6 +55,11 @@ class Database:
         cur = self.execute("INSERT OR IGNORE INTO once_keys (key, at) VALUES (?, ?)", (key, now.isoformat()))
         return cur.rowcount == 1
 
+    def once_at(self, key: str) -> datetime.datetime | None:
+        """When `once(key)` first saw `key`, or None if it never did."""
+        at = self.value("SELECT at FROM once_keys WHERE key = ?", (key,))
+        return datetime.datetime.fromisoformat(at) if at else None
+
     def _migrate(self, folder: Path) -> None:
         self.execute("CREATE TABLE IF NOT EXISTS migrations (name TEXT PRIMARY KEY, applied_at TEXT NOT NULL)")
         done = {row[0] for row in self.all("SELECT name FROM migrations")}

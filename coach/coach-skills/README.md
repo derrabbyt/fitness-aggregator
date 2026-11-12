@@ -40,16 +40,18 @@ coach-skills/
 ## Which skills each job loads
 
 Every call loads `coach-core` first, then the **active phase skill** (from
-`week.phase_id`), then the task skill. Parameters: code merges `coach-core/params.yaml` with
-the active phase's `params.yaml` (phase wins on equal keys) and passes the result as
-`params` inside the facts.
+`week.phase_id`) when a phase is active, then the task skill. Without an active phase (none
+started yet, or the last one ended) the prefix is `coach-core` alone: training feedback and
+chat still run then. Parameters: code merges `coach-core/params.yaml` with the active phase's
+`params.yaml` (phase wins on equal keys; core params alone without a phase) and passes the
+result as `params` inside the facts.
 
 | Job / trigger | Task skill(s) | Input | Output |
 | --- | --- | --- | --- |
-| Weekly check-in, step 1 | weekly-decision | `weekly_facts` | `weekly_verdict` → code calls `propose_change` if a proposal is set |
+| Weekly check-in, step 1 (active phase only) | weekly-decision | `weekly_facts` | `weekly_verdict` → code calls `propose_change` if a proposal is set |
 | Weekly check-in, step 2 | weekly-report | facts, verdict, proposal result, changes applied, deferred items, due | `coach_message` |
-| Evening (after reminder time) | evening-recap | `daily_facts` (evening) | `coach_message` |
-| Lifting session synced | training-feedback | `daily_facts` (training) | `coach_message` |
+| Evening (after reminder time, active phase only) | evening-recap | `daily_facts` (evening) | `coach_message` |
+| Lifting session synced (with or without a phase) | training-feedback | `daily_facts` (training) | `coach_message` |
 | Unclassified exercise in a synced session (during a phase) | new-exercise | new exercises + those already classified, tool `classify_exercises` | text (counts toward the daily limit, else deferred to the weekly report) |
 | End of training block | block-review | block's `weekly_facts` list | `coach_message` |
 | Every few weeks / phase end | phase-review | `phase_summary` | `coach_message` (+ calibration proposals via tool) |
@@ -60,7 +62,8 @@ the active phase's `params.yaml` (phase wins on equal keys) and passes the resul
 Code-only rules (no model call): refusing a draft phase with TO DECIDE values, the phase-start
 preview card and its buttons, weigh-in outlier marking, missing-log reminder (one per
 day), data-freshness check, waist/photo due dates, applying approved proposals, setting the
-MyFitnessPal goal.
+MyFitnessPal goal, and the day questions ("is that all you ate?", "real or a typo?"), which
+run with or without a phase.
 
 Prompt layout per call: stable cached prefix (coach-core + phase skill + tool definitions),
 then the task skill, then a short state snapshot and the input JSON. Chat keeps only a

@@ -2,9 +2,9 @@
 weight detail `home/weight`, as they stood on the day shown.
 
 The 7-day trend is `phases.trend_weight` (outliers left out), the weekly
-rate the trend minus the trend 7 days earlier, judged against the active
-phase's band for the day's phase week the way the weekly check-in judges it
-(`weekly_facts`).
+rate the trend minus the trend 7 days earlier, judged against the band of
+the day's phase (active or ended) for its phase week the way the weekly
+check-in judges it (`weekly_facts`).
 """
 
 import datetime
@@ -70,15 +70,10 @@ def weight_detail(coach, query: dict[str, str], now: datetime.datetime) -> dict[
 
 
 def _waist(coach, day: Date) -> list[dict[str, Any]]:
-    """Waist values up to `day`, newest first, with the active phase's start
-    value (a setup value) on its start date."""
-    values = [w for w in measurements.waist_values(coach) if w["date"] <= day.isoformat()]
-    phase = phases.active(coach)
-    start = phase["setup"].get("waist_cm_start") if phase else None
-    if start is not None and phase["start_date"] <= day.isoformat() \
-            and all(w["date"] != phase["start_date"] for w in values):
-        values.append({"date": phase["start_date"], "cm": start})
-    return sorted(values, key=lambda w: w["date"], reverse=True)[:WAIST]
+    """Waist values up to `day`, newest first, with each phase's start value
+    (a setup value, active or ended phase) on its start date: the chat's
+    `waist_history` without its source."""
+    return [{"date": w["date"], "cm": w["cm"]} for w in measurements.waist_history(coach, day)[:WAIST]]
 
 
 def _prediction(coach, day: Date) -> dict[str, Any] | None:
@@ -90,7 +85,7 @@ def _prediction(coach, day: Date) -> dict[str, Any] | None:
     prev, at_start = phases.trend_weight(coach, start - DAY), phases.targets(coach, start)
     if prev is None or at_start is None:
         return None
-    kcal_per_kg = phases.params(coach)["maintenance_estimate"]["kcal_per_kg"]
+    kcal_per_kg = phases.params_on(coach, start)["maintenance_estimate"]["kcal_per_kg"]
     predicted = round(prev + at_start["surplus_kcal"] * 7 / kcal_per_kg, 2)
     actual = phases.trend_weight(coach, day)
     return {
@@ -105,8 +100,8 @@ def _prediction(coach, day: Date) -> dict[str, Any] | None:
 
 def _series(coach, start: Date, end: Date) -> list[dict[str, Any]]:
     """Each day: the weigh-in (outliers marked), the 7-day trend and the band
-    corridor: from the trend on the first judged day in the range (inside the
-    active phase, past the glycogen window), rising by the band's low and
+    corridor: from the trend on the first judged day in the range (inside a
+    phase, past the glycogen window), rising by the band's low and
     high rate a week for each day's phase week."""
     rows = {r["date"]: r for r in coach.db.all(
         "SELECT date, weight_kg, outlier FROM weigh_ins WHERE date BETWEEN ? AND ?",
@@ -141,24 +136,28 @@ def latest_weigh_in(coach, day: Date) -> dict[str, Any] | None:
 
 
 class Bands:
-    """The active phase's weight band by day (read once per view)."""
+    """The weight band by day: the band of the phase of that day (active or
+    ended, `phases.on`) with its params as of that day (`phases.params_on`)."""
 
     def __init__(self, coach):
-        self.phase = phases.active(coach)
-        self.params = phases.params(coach)
-        self.window = self.params.get("glycogen_window_weeks", 0)
+        self.coach = coach
+
+    def _phase(self, day: Date) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+        return phases.on(self.coach, day), phases.params_on(self.coach, day)
 
     def on(self, day: Date) -> dict[str, Any] | None:
-        """The band for `day`'s phase week; None before the phase or without
+        """The band for `day`'s phase week; None outside a phase or without
         a band (e.g. a cut before its band is decided)."""
-        if self.phase is None or not self.params.get("weight_band_kg_per_week"):
+        phase, p = self._phase(day)
+        if phase is None or not p.get("weight_band_kg_per_week"):
             return None
-        week = phases.phase_week(self.phase, day)
-        return weekly_facts.weight_band(self.params, week) if week >= 1 else None
+        week = phases.phase_week(phase, day)
+        return weekly_facts.weight_band(p, week) if week >= 1 else None
 
     def judged(self, day: Date) -> bool:
         """`day` has a band and is past the glycogen window."""
-        return self.on(day) is not None and phases.phase_week(self.phase, day) > self.window
+        phase, p = self._phase(day)
+        return self.on(day) is not None and phases.phase_week(phase, day) > p.get("glycogen_window_weeks", 0)
 
     def vs_band(self, day: Date, rate: float | None) -> str | None:
         """The rate of the 7 days ending `day` against the band, as the weekly
@@ -167,7 +166,8 @@ class Bands:
         band = self.on(day)
         if rate is None or band is None:
             return None
-        if weekly_facts.in_glycogen_window(self.phase, day, self.params):
+        phase, p = self._phase(day)
+        if weekly_facts.in_glycogen_window(phase, day, p):
             return "not_evaluated"
         return weekly_facts.vs_band(rate, band)
 

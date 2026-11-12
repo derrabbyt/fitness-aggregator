@@ -1,6 +1,6 @@
 ---
 name: training-feedback
-description: Runs once after a logged lifting session has synced. Names PRs and flags a new stall; sends nothing when the session was unremarkable. Code adds the "was this a reset?" question and its buttons. Load with coach-core and the active phase skill. Input daily_facts (kind training); output coach_message.schema.json.
+description: Runs once after a logged lifting session has synced. Names PRs and flags a new stall; sends nothing when the session was unremarkable. Code adds the "was this a reset?" question and its buttons. Load with coach-core and the active phase skill (it also runs without an active phase, then with no phase skill and `phase_id` and `phase_week` null). Input daily_facts (kind training); output coach_message.schema.json.
 ---
 
 # Training feedback

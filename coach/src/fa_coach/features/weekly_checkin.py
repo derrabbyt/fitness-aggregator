@@ -13,6 +13,11 @@ Code's rules on the verdict:
 - A week with a `sport_load` context note gives no "raise calories" and no
   "training needs a look": an increase becomes hold, the flag is dropped
   (WD-SPORT).
+- In a week that counts, a verdict pointing to a change must point the way
+  the trend does (increase below the band, decrease above it), else it
+  becomes a hold and its proposal is dropped; a proposal gets the RB-SIZE
+  step code computes (WD-GUARD, `apply_band_rules`). Holds stay unchanged,
+  but the direction stored for the streaks is code's (`streak_direction`).
 - A week skipped for confirmation (unusable, glycogen window, adherence
   gate, sport load) carries no proposal; it neither counts nor breaks a
   streak (`weekly_facts.skip_reason`).
@@ -36,7 +41,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from .. import messaging, phases, weekly_facts
+from .. import messaging, phases, proposals, weekly_facts
 from ..ports import Button, Buttons, ModelError
 from ..registry import registry
 from . import measurements
@@ -147,10 +152,14 @@ async def _run(coach, phase, moment: datetime.datetime, end: Date, now: datetime
 
     verdict, adjustments = apply_code_rules(verdict, facts)
     skip = weekly_facts.skip_reason(facts, verdict)
+    if skip is None:
+        verdict, guarded = apply_band_rules(verdict, facts)
+        adjustments += guarded
     if skip is not None and verdict["proposal"] is not None:
         verdict["proposal"] = None
         adjustments.append(f"proposal dropped: the week is skipped for confirmation ({skip})")
-    checkin_id = _store_ok(coach, phase, iso, start, end, facts, verdict, skip, adjustments, now)
+    direction = streak_direction(verdict, facts, skip)
+    checkin_id = _store_ok(coach, phase, iso, start, end, facts, verdict, direction, skip, adjustments, now)
     await _report(coach, checkin_id, facts, verdict, start, end, now)
 
 
@@ -195,6 +204,74 @@ def apply_code_rules(verdict: dict[str, Any], facts: dict[str, Any]) -> tuple[di
         if "WD-SPORT" not in verdict["rules_applied"]:
             verdict["rules_applied"].append("WD-SPORT")
     return verdict, changes
+
+
+def expected_change(weight: dict[str, Any], decisions: dict[str, Any]) -> tuple[str, float | None, str | None, str]:
+    """What the week's trend calls for, by code (RB-SIZE; symmetric, so other
+    phases can reuse it): (direction, step kcal or None, size "small" /
+    "large" or None, why). Below the band (or its lower limit) an increase,
+    above it a decrease, in it a hold; the large step from
+    `far_off_margin_kg_per_week` beyond the band edge, else the small one."""
+    rate, band, where = weight["weekly_rate_kg"], weight["band"], weight["vs_band"]
+    if where == "not_evaluated" or rate is None:
+        return "hold", None, None, "the trend was not evaluated"
+    edges = f"the band {band['low']:g} to {band['high']:g}"
+    if where == "in_band":
+        return "hold", None, None, f"the trend {rate:+.2f} kg/week is in {edges}"
+    below = where in ("below_band", "below_limit")
+    beyond = round(band["low"] - rate if below else rate - band["high"], 2)
+    size = "large" if beyond >= decisions["far_off_margin_kg_per_week"] else "small"
+    return ("increase" if below else "decrease", decisions[f"{size}_step_kcal"], size,
+            f"the trend {rate:+.2f} kg/week is {beyond:.2f} {'below' if below else 'above'} {edges}")
+
+
+def apply_band_rules(verdict: dict[str, Any], facts: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    """The weekly decision guard, for a week that counts: a verdict pointing
+    to a change must point the way the trend does (else it becomes a hold and
+    its proposal is dropped), and its proposal must have the step size the
+    trend calls for (else it gets it; a phase's first change keeps its start
+    range). A hold stays as it is (a proposal on a hold is left to
+    `propose_change`, which blocks it). Returns the (copied) verdict and what
+    changed. The direction stored for the streaks is code's either way
+    (`streak_direction`)."""
+    verdict = json.loads(json.dumps(verdict))
+    changes: list[str] = []
+    proposal = verdict["proposal"]
+    if verdict["direction"] == "hold":
+        return verdict, changes
+    decisions = facts["params"]["decisions"]
+    want, step, size, why = expected_change(facts["weight"], decisions)
+    if verdict["direction"] != want:
+        changes.append(f"direction {verdict['direction']} -> hold ({why})")
+        verdict["direction"] = "hold"
+    if proposal is None:
+        return verdict, changes
+    delta = proposal["delta_kcal"]
+    if verdict["direction"] == "hold" or (delta > 0) != (want == "increase") or delta == 0:
+        verdict["proposal"] = None
+        calls = "no change" if want == "hold" else f"an {want}"
+        changes.append(f"proposal {delta:+g} kcal dropped (the trend calls for {calls})")
+        return verdict, changes
+    if proposal["is_phase_first_change"]:
+        return verdict, changes
+    sign = 1 if want == "increase" else -1
+    if abs(abs(delta) - step) > proposals.STEP_TOLERANCE_KCAL:
+        proposal["delta_kcal"] = sign * step
+        changes.append(f"proposal {delta:+g} -> {sign * step:+g} kcal (the {size} step: {why})")
+    if proposal["size"] != size:
+        changes.append(f"proposal size {proposal['size']} -> {size}")
+        proposal["size"] = size
+    return verdict, changes
+
+
+def streak_direction(verdict: dict[str, Any], facts: dict[str, Any], skip: str | None) -> str:
+    """The direction stored with the check-in, which confirmation streaks
+    count: code's (`expected_change`) for a week that counts, even when the
+    model holds (the hold stays a hold, no proposal is forced); the
+    verdict's for a skipped week, which no streak counts."""
+    if skip is not None:
+        return verdict["direction"]
+    return expected_change(facts["weight"], facts["params"]["decisions"])[0]
 
 
 async def _report(coach, checkin_id: int, facts, verdict, start: Date, end: Date, now: datetime.datetime) -> None:
@@ -279,13 +356,13 @@ def _fallback(facts, verdict, held, due) -> str:
 # --- storage ---------------------------------------------------------------------------
 
 
-def _store_ok(coach, phase, iso, start, end, facts, verdict, skip, adjustments, now) -> int:
+def _store_ok(coach, phase, iso, start, end, facts, verdict, direction, skip, adjustments, now) -> int:
     cur = coach.db.execute(
         "INSERT INTO weekly_checkins (phase_row_id, iso_week, start_date, end_date, status, facts, verdict,"
         " rules_applied, direction, counts_for_confirmation, skip_reason, code_adjustments, created_at)"
         " VALUES (?, ?, ?, ?, 'ok', ?, ?, ?, ?, ?, ?, ?, ?)",
         (phase["id"], iso, start.isoformat(), end.isoformat(), json.dumps(facts), json.dumps(verdict),
-         json.dumps(verdict["rules_applied"]), verdict["direction"], int(skip is None), skip,
+         json.dumps(verdict["rules_applied"]), direction, int(skip is None), skip,
          json.dumps(adjustments), now.isoformat(timespec="seconds")),
     )
     return cur.lastrowid
@@ -303,7 +380,8 @@ def _store_failed(coach, phase, iso, start, end, facts, errors, now) -> None:
 def stored(coach, iso_week: str | None = None) -> dict[str, Any] | None:
     """The successful check-in for `iso_week` (default: the latest one):
     {iso_week, start_date, end_date, facts, verdict, rules_applied,
-    counts_for_confirmation, skip_reason, code_adjustments, report, created_at}."""
+    direction (the streak's, `streak_direction`), counts_for_confirmation,
+    skip_reason, code_adjustments, report, created_at}."""
     sql = "SELECT * FROM weekly_checkins WHERE status = 'ok'"
     params: tuple = ()
     if iso_week is not None:
@@ -319,6 +397,7 @@ def stored(coach, iso_week: str | None = None) -> dict[str, Any] | None:
         "facts": json.loads(row["facts"]),
         "verdict": json.loads(row["verdict"]),
         "rules_applied": json.loads(row["rules_applied"]),
+        "direction": row["direction"],
         "counts_for_confirmation": bool(row["counts_for_confirmation"]),
         "skip_reason": row["skip_reason"],
         "code_adjustments": json.loads(row["code_adjustments"]),

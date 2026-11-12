@@ -48,7 +48,7 @@ def compute(coach: "Coach", end: Date, now: datetime.datetime) -> dict[str, Any]
     if phase is None:
         raise ValueError("no active phase")
     start = end - 6 * DAY
-    p = phases.params(coach)
+    p = phases.params_on(coach, end)  # the values in force on the week's last day
     week = _week(coach, phase, start, end, p)
     food = weekdata.intake(coach, start, end)
     summary = weekdata.intake_summary(food["days"], p)

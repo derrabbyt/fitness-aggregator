@@ -40,7 +40,8 @@ logger = logging.getLogger("fa-coach")
 
 SKILLS = ("phase-start",)
 TOOLS = ("record_setup_value", "start_phase", "get_training_plan", "update_training_plan", "get_coach_profile",
-         "get_context_notes", "classify_exercises", "get_tracked_exercises", "confirm_day")
+         "get_context_notes", "classify_exercises", "get_tracked_exercises", "confirm_day",
+         "live")  # the read-only MFP/Hevy lookups (live_tools.READ_TOOLS), as in the chat
 IDLE = datetime.timedelta(hours=24)  # an idle setup stops taking over the chat ("start reverse" resumes it)
 TURNS = 8
 NO_ANSWER = "I don't have an answer to that."
@@ -252,8 +253,12 @@ def _change_active_phase(coach, key: str, value: Any, now: datetime.datetime) ->
         problems = coach.skills.errors(setup, "phase_setup")
     if problems:
         raise ToolError(f"{key}: " + "; ".join(problems))
-    coach.db.execute("UPDATE phases SET setup = ? WHERE id = ?", (json.dumps(setup), phase["id"]))
-    return {"updated": {key: value}, "phase_id": phase["phase_id"]}
+    with coach.db.transaction():
+        coach.db.execute("UPDATE phases SET setup = ? WHERE id = ?", (json.dumps(setup), phase["id"]))
+        # from today on; earlier days keep the value they had (phases.params_on)
+        phases.record_setup_change(coach, phase["id"], {key: value}, valid_from=now.date(),
+                                   source=phases.SETUP_VALUE_SOURCE, now=now)
+    return {"updated": {key: value}, "phase_id": phase["phase_id"], "applies_from": now.date().isoformat()}
 
 
 def _with(values: dict[str, Any], key: str, value: Any) -> dict[str, Any]:
@@ -455,14 +460,16 @@ async def confirm_phase_start(coach, ref_id: str, now: datetime.datetime) -> Non
     phase_row_id = f"p_{secrets.token_hex(4)}"
     at = now.isoformat(timespec="seconds")
     with coach.db.transaction():
-        coach.db.execute("UPDATE phases SET status = 'ended', ended_at = ? WHERE status = 'active'", (at,))
+        phases.end_active(coach, now, now.date() - datetime.timedelta(days=1))
         coach.db.execute(
             "INSERT INTO phases (id, phase_id, setup_id, status, start_date, setup, first_change_applied_at,"
             " started_at) VALUES (?, ?, ?, 'active', ?, ?, ?, ?)",
             (phase_row_id, setup["phase_id"], setup_id, full["start_date"], json.dumps(full), at, at),
         )
-        phases.set_targets(coach, phase_row_id, stored["targets"], valid_from=now.date(), source="phase_start",
-                           now=now)
+        phases.set_targets(coach, phase_row_id, stored["targets"], valid_from=now.date(),
+                           source=phases.PHASE_START_SOURCE, now=now)
+        phases.record_setup_change(coach, phase_row_id, phases.flat_setup(full), valid_from=now.date(),
+                                   source=phases.PHASE_START_SOURCE, now=now, ref=setup_id)
         coach.db.execute("UPDATE phase_setups SET status = 'confirmed', confirmed_at = ? WHERE id = ?", (at, setup_id))
     started = f"{render_card(stored)}\n\n✅ Started {full['start_date']}. These targets apply from today."
     coach.edit(_ref(setup), started)
