@@ -2,9 +2,13 @@
 Every number here is computed by code; the model only sees the results.
 
 Read API for features:
-- `active(coach)`: the active phase {id, phase_id, start_date, setup,
-  first_change_applied, started_at} or None (nothing is active before the
-  user confirms a phase start).
+- `active(coach)`: the active phase {id, phase_id, status, start_date,
+  end_date, setup, first_change_applied, started_at, ended_at} or None
+  (nothing is active before the user confirms a phase start, or after it ended).
+- `on(coach, day)`: the phase whose span covers `day` (active or ended), or
+  None. A span is start_date..end_date; the active phase has no end_date and
+  covers every day from its start. An ended phase's last day is the day
+  before it was ended (features/phase_end.py, or a new phase start).
 - `params(coach)`: coach-core params merged with the active phase's params
   and its setup values (run discount, wrestling/lifting kcal, fat start,
   photos, time goal, logistics -> `messaging` and `activity.soft_floor_min_days`).
@@ -81,12 +85,23 @@ def latest(coach: "Coach") -> dict[str, Any] | None:
     return _phase(row) if row else None
 
 
+def on(coach: "Coach", day: Date) -> dict[str, Any] | None:
+    """The phase whose span (start_date..end_date, open-ended while active)
+    covers `day`, or None. Spans don't overlap: a phase ends the day before
+    the next one starts."""
+    row = coach.db.one(
+        "SELECT * FROM phases WHERE start_date <= ? AND (end_date IS NULL OR end_date >= ?)"
+        " ORDER BY start_date DESC, started_at DESC LIMIT 1", (day.isoformat(), day.isoformat()))
+    return _phase(row) if row else None
+
+
 def _phase(row) -> dict[str, Any]:
     return {
         "id": row["id"],
         "phase_id": row["phase_id"],
         "status": row["status"],
         "start_date": row["start_date"],
+        "end_date": row["end_date"],
         "setup": json.loads(row["setup"]),
         "first_change_applied": row["first_change_applied_at"] is not None,
         "started_at": row["started_at"],

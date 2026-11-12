@@ -18,7 +18,10 @@ proposal, and applies it only after the user's tap. The model only asks.
 - `changes_applied(coach, iso_week, now)`: approved changes not yet in a
   weekly report (marked as reported in `iso_week`).
 - Cards: `add_card(coach, id, ref, text)` records a message showing a
-  proposal's buttons; every decision edits them (buttons removed, outcome shown).
+  proposal's buttons; every decision edits them (`close_cards`: buttons
+  removed, outcome shown).
+- `withdraw_open(coach, phase_row_id, now)`: a phase ended; its open
+  proposals are closed as superseded (features/phase_end.py).
 
 Guardrails (coach-skills/schemas/TOOLS.md):
 1. exceeds_max_change: |delta| > decisions.max_change_kcal, unless it is the
@@ -116,7 +119,7 @@ def propose(coach: "Coach", spec: dict[str, Any], now: datetime.datetime) -> dic
             coach.db.execute("UPDATE proposals SET status = 'superseded', decided_at = ? WHERE id = ? AND status = 'open'",
                              (now.isoformat(timespec="seconds"), original["id"]))
     if original is not None and status == "open":
-        _close_cards(coach, original["id"], f"↪️ Replaced by your counter ({describe_change(get(coach, proposal_id))}).")
+        close_cards(coach, original["id"], f"↪️ Replaced by your counter ({describe_change(get(coach, proposal_id))}).")
     return get(coach, proposal_id)
 
 
@@ -337,19 +340,19 @@ async def approve(coach: "Coach", proposal_id: str, now: datetime.datetime) -> d
         if outcome is not None:
             coach.db.execute("UPDATE proposals SET outcome = ? WHERE id = ?", (json.dumps(outcome), proposal_id))
     if outcome is None:
-        _close_cards(coach, proposal_id, "This proposal belongs to a phase that has ended. Nothing was changed.")
+        close_cards(coach, proposal_id, "This proposal belongs to a phase that has ended. Nothing was changed.")
         return None
     for other in others:
-        _close_cards(coach, other, "↪️ Not needed any more: another change was just approved. Nothing changed from this one.")
+        close_cards(coach, other, "↪️ Not needed any more: another change was just approved. Nothing changed from this one.")
     lines = [f"✅ Approved: {outcome['summary']}"]
-    _close_cards(coach, proposal_id, lines[0])
+    close_cards(coach, proposal_id, lines[0])
     if outcome.get("mfp_goal") is not None:
         result = await mfp_goal.set_once(coach, f"proposal:{proposal_id}", outcome["mfp_goal"], now)
         if result is not None:
             outcome["mfp_goal_status"] = result["status"]
             coach.db.execute("UPDATE proposals SET outcome = ? WHERE id = ?", (json.dumps(outcome), proposal_id))
             lines.append(mfp_goal.describe(result))
-            _close_cards(coach, proposal_id, "\n".join(lines))
+            close_cards(coach, proposal_id, "\n".join(lines))
     return outcome
 
 
@@ -455,7 +458,7 @@ def reject(coach: "Coach", proposal_id: str, now: datetime.datetime) -> bool:
         "UPDATE proposals SET status = 'rejected', decided_at = ? WHERE id = ? AND status = 'open'",
         (now.isoformat(timespec="seconds"), proposal_id)).rowcount == 1
     if claimed:
-        _close_cards(coach, proposal_id, "❌ Rejected. Nothing changes.")
+        close_cards(coach, proposal_id, "❌ Rejected. Nothing changes.")
     return claimed
 
 
@@ -474,7 +477,18 @@ def add_card(coach: "Coach", proposal_id: str, ref: str, text: str | None = None
                      (proposal_id, ref, text))
 
 
-def _close_cards(coach, proposal_id: str, outcome: str) -> None:
+def withdraw_open(coach: "Coach", phase_row_id: str, now: datetime.datetime) -> list[str]:
+    """Close a phase's open proposals as superseded (the phase ended). Call
+    inside the caller's transaction; edit their cards afterwards with
+    `close_cards`. Returns their ids."""
+    ids = [r["id"] for r in coach.db.all("SELECT id FROM proposals WHERE phase_row_id = ? AND status = 'open'",
+                                         (phase_row_id,))]
+    coach.db.execute("UPDATE proposals SET status = 'superseded', decided_at = ? WHERE phase_row_id = ?"
+                     " AND status = 'open'", (now.isoformat(timespec="seconds"), phase_row_id))
+    return ids
+
+
+def close_cards(coach, proposal_id: str, outcome: str) -> None:
     """Edit every message showing this proposal's buttons: no buttons, the outcome below."""
     for card in coach.db.all("SELECT ref, text FROM proposal_cards WHERE proposal_id = ?", (proposal_id,)):
         text = card["text"]

@@ -121,10 +121,14 @@ def week_view(coach, query: dict[str, str], now: datetime.datetime) -> dict[str,
 
 
 def phase_during(coach, w: Week) -> dict[str, Any] | None:
-    """The phase whose span covers the week's last day (the active one, or an ended one)."""
-    for row in coach.db.all("SELECT * FROM phases WHERE start_date <= ? ORDER BY start_date DESC", (w.end.isoformat(),)):
-        if row["ended_at"] is None or row["ended_at"][:10] >= w.start.isoformat():
-            return {"id": row["id"], "phase_id": row["phase_id"], "start_date": row["start_date"]}
+    """The phase whose span covers the latest day of the week it covers (the
+    active one, or an ended one; `phases.on`)."""
+    day = w.end
+    while day >= w.start:
+        phase = phases.on(coach, day)
+        if phase is not None:
+            return phase
+        day -= DAY
     return None
 
 
