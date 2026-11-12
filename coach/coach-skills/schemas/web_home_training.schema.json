@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "web_home_training.schema.json",
   "title": "Web: Home training",
-  "description": "The `training` part of web_home: the day's sessions as they stood that day, split into the Workouts card (lifting: Hevy sessions with the PRs set in each, a planned lift reported done, lifting extras; the 14-day strength trend; the lift summary over the last training.lift_recency_days days) and the Other activities card (Strava runs and runs reported done, wrestling (planned from the phase start on, or reported), other sessions and extras). One line per session, no per-exercise detail. A planned session reported skipped stays listed with skipped = true; there is no 'planned' state. The Workouts card is shown on days without a workout too.",
+  "description": "The `training` part of web_home: the day's sessions as they stood that day, split into the Workouts card (lifting: Hevy sessions with the PRs set in each, a planned lift reported done, lifting extras; the 14-day strength trend; the lift summary over the last training.lift_recency_days days) and the Other activities card (Strava runs and runs reported done, wrestling (planned from the phase start on, or reported), other sessions and extras). One line per session, no per-exercise detail. A planned session reported skipped is not listed (it did not happen); there is no 'planned' or 'skipped' state. The Workouts card is shown on days without a workout too.",
   "type": "object",
   "required": [
     "workouts",
@@ -19,7 +19,6 @@
         "minutes",
         "distance_km",
         "pace_s_per_km",
-        "skipped",
         "kcal_counted"
       ],
       "additionalProperties": false,
@@ -67,16 +66,13 @@
           "minimum": 0,
           "description": "Runs only: seconds per km, when both distance and duration are known."
         },
-        "skipped": {
-          "type": "boolean"
-        },
         "kcal_counted": {
           "type": [
             "integer",
             "null"
           ],
           "minimum": 1,
-          "description": "The kcal this session adds to the day's target (counted activity, as in the food build-up): Strava run kcal x run discount, lifting and wrestling their per-session values, reported or estimated kcal for extras and planned sessions reported done (runs discounted). Null when it adds nothing: skipped, not counted, or no target that day (before a phase)."
+          "description": "The kcal this session adds to the day's target (counted activity, as in the food build-up): Strava run kcal x run discount, lifting and wrestling their per-session values, reported or estimated kcal for extras and planned sessions reported done (runs discounted). Null when it adds nothing: not counted, or no target that day (before a phase)."
         }
       }
     },
@@ -89,7 +85,6 @@
         "minutes",
         "distance_km",
         "pace_s_per_km",
-        "skipped",
         "prs",
         "kcal_counted"
       ],
@@ -138,9 +133,6 @@
           "minimum": 0,
           "description": "Runs only: seconds per km, when both distance and duration are known."
         },
-        "skipped": {
-          "type": "boolean"
-        },
         "prs": {
           "type": [
             "integer",
@@ -155,7 +147,7 @@
             "null"
           ],
           "minimum": 1,
-          "description": "The kcal this session adds to the day's target (counted activity, as in the food build-up): Strava run kcal x run discount, lifting and wrestling their per-session values, reported or estimated kcal for extras and planned sessions reported done (runs discounted). Null when it adds nothing: skipped, not counted, or no target that day (before a phase)."
+          "description": "The kcal this session adds to the day's target (counted activity, as in the food build-up): Strava run kcal x run discount, lifting and wrestling their per-session values, reported or estimated kcal for extras and planned sessions reported done (runs discounted). Null when it adds nothing: not counted, or no target that day (before a phase)."
         }
       }
     }

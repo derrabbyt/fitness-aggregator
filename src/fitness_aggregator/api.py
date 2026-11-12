@@ -482,12 +482,25 @@ if WEB_DIST.is_dir():
     app.mount("/", _SpaFiles(directory=WEB_DIST, html=True), name="web")
 
 
+class _QuietCoachAccess(logging.Filter):
+    """Drops uvicorn's access lines for successful /api/coach/ requests."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args if isinstance(record.args, tuple) else ()
+        if len(args) >= 5 and str(args[2]).startswith("/api/coach/"):
+            return not str(args[4]).isdigit() or int(args[4]) >= 400
+        return True
+
+
 def main() -> None:
     import uvicorn
 
     from .tools_server import build_app
 
     logging.basicConfig(level=logging.INFO)
+    # The coach proxy: httpx would log every forwarded request, and the web page
+    # polls /api/coach/; keep warnings and failed requests only.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     web = uvicorn.Server(
         uvicorn.Config(app, host=os.environ.get("FA_HOST", "127.0.0.1"), port=int(os.environ.get("FA_PORT", "8000")))
     )
@@ -498,6 +511,7 @@ def main() -> None:
             port=int(os.environ.get("FA_TOOLS_PORT", "8001")),
         )
     )
+    logging.getLogger("uvicorn.access").addFilter(_QuietCoachAccess())  # after uvicorn set up its logging
 
     async def serve() -> None:
         # If either server stops, stop the process so Docker restarts both.

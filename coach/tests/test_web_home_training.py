@@ -24,12 +24,12 @@ def home(coach, day: str | None = None) -> dict:
 
 
 def line(type_: str, name: str, time: str | None = None, minutes: int | None = None, *,
-         distance_km: float | None = None, pace_s_per_km: int | None = None, skipped: bool = False,
+         distance_km: float | None = None, pace_s_per_km: int | None = None,
          prs: int | None = 0, kcal: int | None = None) -> dict:
     """A session line with the kcal it adds to the target; lifts also carry their PR count (null
     when reported without Hevy)."""
     out = {"type": type_, "name": name, "time": time, "minutes": minutes, "distance_km": distance_km,
-           "pace_s_per_km": pace_s_per_km, "skipped": skipped, "kcal_counted": kcal}
+           "pace_s_per_km": pace_s_per_km, "kcal_counted": kcal}
     return {**out, "prs": prs} if type_ == "lift" else out
 
 
@@ -76,11 +76,11 @@ async def test_planned_wrestling_is_listed_like_any_other_activity(phase, api, c
     assert home(phase)["training"]["other_activities"]["sessions"] == [line("wrestling", "Wrestling", "12:00", kcal=600)]
 
 
-async def test_skipped_wrestling_stays_listed_as_skipped(phase, api, clock, model):
+async def test_a_skipped_session_is_not_listed(phase, api, clock, model):
     await synced(phase, api, clock, "2026-11-13")
     await report(phase, model, date="2026-11-13", status="skipped", session_id="fri-1")
 
-    assert home(phase)["training"]["other_activities"]["sessions"] == [line("wrestling", "Wrestling", "12:00", skipped=True)]
+    assert home(phase)["training"]["other_activities"]["sessions"] == []  # it did not happen
 
 
 async def test_an_extra_session_is_listed_with_its_duration(phase, api, clock, model):
@@ -132,13 +132,6 @@ async def test_each_line_carries_the_kcal_it_adds_and_they_sum_to_the_activity(p
         ("Wrestling", 600), ("Running (jogging)", 300), ("Climbing", 350)]
     b = data["food"]["build_up"]
     assert b["activity_kcal"] - 1550 in (-34, -35)  # the sessions plus the step kcal (1,000 under the goal)
-
-
-async def test_a_skipped_session_adds_no_kcal(phase, api, clock, model):
-    await synced(phase, api, clock, "2026-11-13")
-    await report(phase, model, date="2026-11-13", status="skipped", session_id="fri-1")
-
-    assert home(phase)["training"]["other_activities"]["sessions"][0]["kcal_counted"] is None
 
 
 async def test_a_run_reported_done_counts_its_kcal_discounted(phase, api, clock, model):

@@ -4,10 +4,12 @@ a change from the web (`setup/activity` {values}) becomes a
 `calibration_change` proposal through chat's `propose_change`, so its card
 with approve / reject / counter goes to Telegram and nothing changes until
 the user taps Approve there. Out-of-range values are refused with the
-guardrail's reason (the blocked proposal is stored, as in chat).
+guardrail's reason (the blocked proposal is stored, as in chat), the run
+discount worded as the percentage the page takes.
 """
 
 import datetime
+import re
 from typing import Any
 
 from .. import phases, proposals, views
@@ -57,9 +59,17 @@ async def set_activity(coach, body: dict[str, Any], now: datetime.datetime) -> d
     result = await web_setup.run_tool(coach, "propose_change", {
         "type": "calibration_change", "new_values": changed, "reason": REASON, "source": "user_request"}, now)
     if result["status"] == "blocked_by_guardrail":
-        raise views.WebError(400, " ".join(d["text"] for d in result["guardrail"]["details"]))
+        raise views.WebError(400, _as_percent(" ".join(d["text"] for d in result["guardrail"]["details"])))
     return {"proposal": {**_short(result), "referenced": bool(result.get("referenced"))},
             "section": activity(coach, {}, now)}
+
+
+def _as_percent(reason: str) -> str:
+    """"run_kcal_discount = 1.5 is outside 0–1" as the page says it: "Runs counted 150 % is outside 0–100 %"."""
+    def pct(x: str) -> str:
+        return f"{float(x) * 100:,.4g}"
+    return re.sub(r"run_kcal_discount = (-?\d+(?:\.\d+)?) is outside (-?\d+(?:\.\d+)?)–(-?\d+(?:\.\d+)?)",
+                  lambda m: f"Runs counted {pct(m[1])} % is outside {pct(m[2])}–{pct(m[3])} %", reason)
 
 
 def _pending(coach) -> list[dict[str, Any]]:

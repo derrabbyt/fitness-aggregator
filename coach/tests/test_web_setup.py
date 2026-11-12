@@ -224,7 +224,7 @@ async def test_the_same_change_again_points_to_the_open_proposal(phase, outbox):
 
 
 @pytest.mark.parametrize("values, reason", [
-    ({"run_kcal_discount": 1.5}, "run_kcal_discount = 1.5 is outside 0–1. Values inside those ranges could pass."),
+    ({"run_kcal_discount": 1.5}, "Runs counted 150 % is outside 0–100 %. Values inside those ranges could pass."),  # the web takes a percentage
     ({"lifting_kcal_per_session": -10},
      "lifting_kcal_per_session = -10 is outside 0–2000. Values inside those ranges could pass."),
     ({"soft_step_floor": 8000},

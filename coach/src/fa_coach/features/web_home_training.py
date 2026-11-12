@@ -13,10 +13,10 @@ blocks, as they stood that day.
 
 Each line carries `kcal_counted` (ticket 15): the kcal it adds to the day's
 target, from counted activity (`training_plan.counted_activity_on`), so the
-lines agree with the food target line; null when it adds nothing (skipped,
-not counted, or no target: before a phase).
+lines agree with the food target line; null when it adds nothing (not
+counted, or no target: before a phase).
 
-A planned session reported skipped stays listed, marked skipped. Unreported
+A planned session reported skipped is not listed (it did not happen). Unreported
 runs, lifts and optional sessions are not listed: they show once they sync.
 HealthKit copies in MFP never show (as in counted activity).
 """
@@ -42,7 +42,7 @@ def training(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, 
     for item in sessions(coach, day, now):
         session_id = item.pop("session_id")
         counted = kcal.get(item.pop("ref"))
-        item["kcal_counted"] = round(counted) if counted and not item["skipped"] else None
+        item["kcal_counted"] = round(counted) if counted else None
         if item["type"] == "lift":
             workouts.append({**item, "prs": prs.get(session_id, 0) if session_id else None})
         else:
@@ -97,7 +97,7 @@ def sessions(coach, day: Date, now: datetime.datetime) -> list[dict[str, Any]]:
         status = report["status"] if report else None
         kind, name, time, ref = planned["type"], planned["name"], planned["time"], ("plan", planned["id"])
         if status == "skipped":
-            out.append(_line(kind, name, time, None, skipped=True, ref=ref))
+            continue
         elif kind == "wrestling" and (status == "done" or planned_counts):
             out.append(_reported_line(kind, name, time, report, ref))
         elif status != "done":
@@ -130,11 +130,11 @@ def _reported_line(kind: str, name: str, time: str | None, report: dict[str, Any
 
 
 def _line(kind: str, name: str, time: str | None, minutes: float | None, *, distance_km: float | None = None,
-          skipped: bool = False, ref: tuple | None = None) -> dict[str, Any]:
+          ref: tuple | None = None) -> dict[str, Any]:
     pace = round(minutes * 60 / distance_km) if kind == "run" and minutes and distance_km else None
     return {"type": kind, "name": name, "time": time, "minutes": round(minutes) if minutes is not None else None,
             "distance_km": round(distance_km, 2) if distance_km is not None else None,
-            "pace_s_per_km": pace, "skipped": skipped, "session_id": None, "ref": ref}
+            "pace_s_per_km": pace, "session_id": None, "ref": ref}
 
 
 def _clock(start: str | None, now: datetime.datetime) -> str | None:

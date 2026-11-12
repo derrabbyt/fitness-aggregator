@@ -8,7 +8,6 @@
         "minutes": 64,
         "distance_km": null,
         "pace_s_per_km": null,
-        "skipped": false,
         "prs": 2,
         "kcal_counted": 300
       }
@@ -95,7 +94,6 @@
         "minutes": null,
         "distance_km": null,
         "pace_s_per_km": null,
-        "skipped": false,
         "kcal_counted": 600
       },
       {
@@ -105,7 +103,6 @@
         "minutes": 62,
         "distance_km": 11.5,
         "pace_s_per_km": 323,
-        "skipped": false,
         "kcal_counted": 390
       },
       {
@@ -115,7 +112,6 @@
         "minutes": 90,
         "distance_km": null,
         "pace_s_per_km": null,
-        "skipped": false,
         "kcal_counted": 720
       }
     ]
