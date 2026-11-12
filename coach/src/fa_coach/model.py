@@ -8,7 +8,8 @@ is cached across calls:
 - tools (sorted by `ask.py`), then system blocks coach-core and the active
   phase skill → cache breakpoint 1 (the prefix);
 - the task skills (and the output schema, if any) → cache breakpoint 2;
-- a short chat history, then one user turn: state snapshot + input JSON;
+- a short chat history, then one user turn: state snapshot + input JSON
+  (then any images, each after its label);
 - the tool loop so far: the model's own content (thinking included, sent
   back unchanged) and code's tool results → breakpoint 3 on the last result.
 
@@ -16,6 +17,7 @@ Endpoint, key and models come from Settings (COACH_ANTHROPIC_* falling back
 to ANTHROPIC_*, COACH_MODEL, COACH_DECISION_MODEL).
 """
 
+import base64
 import json
 import logging
 import re
@@ -93,7 +95,12 @@ class AnthropicModel:
     def _messages(self, request: ModelRequest) -> list[dict[str, Any]]:
         messages: list[dict[str, Any]] = [{"role": t.role, "content": t.text} for t in request.history]
         turn = f"State:\n{_json(request.state)}\n\nInput:\n{_json(request.input)}"
-        messages.append({"role": "user", "content": [{"type": "text", "text": turn}]})
+        content: list[dict[str, Any]] = [{"type": "text", "text": turn}]
+        for image in request.images:
+            content.append({"type": "text", "text": image.label})
+            content.append({"type": "image", "source": {"type": "base64", "media_type": image.media_type,
+                                                         "data": base64.b64encode(image.data).decode()}})
+        messages.append({"role": "user", "content": content})
         for reply, results in request.steps:
             messages.append({"role": "assistant", "content": reply.raw if reply.raw is not None else _content(reply)})
             messages.append(

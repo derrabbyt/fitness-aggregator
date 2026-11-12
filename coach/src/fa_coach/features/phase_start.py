@@ -30,7 +30,7 @@ from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-from .. import cut, phases, progression
+from .. import body_fat, cut, phases, progression
 from ..ask import ToolError
 from ..ports import Button, ChatTurn, ModelError
 from ..registry import registry
@@ -221,7 +221,8 @@ def _fixed_fat(p: dict[str, Any]) -> float | None:
     "logistics.evening_reminder_time ('20:30'), logistics.max_unprompted_messages_per_day, "
     "logistics.soft_floor_min_days. step_goal (default 10,000 steps: where step kcal are 0; it doesn't change "
     "the energy the user gets). A cut only: cut_level (conservative / moderate / aggressive) or goal "
-    "({weight_kg, date} or {body_fat_pct, current_body_fat_pct, date}; code derives the deficit), and end_date "
+    "({weight_kg, date} or {body_fat_pct, current_body_fat_pct, date}; without current_body_fat_pct code takes the "
+    "latest body-fat estimate; code derives the deficit), and end_date "
     "(optional, a mini-cut's last day). Optional values the user declines are recorded as null. After the phase "
     "started, changes logistics, photos_enabled, time_goal_weeks, waist_cm_start, step_goal and end_date of the "
     "active phase. "
@@ -327,6 +328,7 @@ async def start_phase(coach, args: dict[str, Any], now: datetime.datetime) -> di
     p = coach.skills.params(setup["phase_id"])
     if "fat_g_per_kg_start" not in full and _fixed_fat(p) is not None:
         full["fat_g_per_kg_start"] = _fixed_fat(p)
+    _with_current_body_fat(coach, full, now.date())
     problems = coach.skills.errors(full, "phase_setup")
     if problems:
         raise ToolError("invalid setup: " + "; ".join(problems))
@@ -351,6 +353,20 @@ async def start_phase(coach, args: dict[str, Any], now: datetime.datetime) -> di
     if setup["status"] == "pending":
         _retire_card(coach, setup, "Replaced by a newer preview. Nothing was started.")
     return {k: v for k, v in result.items() if k != "targets"}
+
+
+def _with_current_body_fat(coach, full: dict[str, Any], today: datetime.date) -> None:
+    """A body-fat goal without `current_body_fat_pct` takes the latest
+    body-fat estimate up to today (the user's own or from photos; body_fat.py);
+    the preview's setup keeps the value used. Refused without any estimate."""
+    goal = full.get("goal")
+    if not isinstance(goal, dict) or "body_fat_pct" not in goal or "current_body_fat_pct" in goal:
+        return
+    latest = next((e for e in body_fat.estimates(coach) if e["date"] <= today.isoformat()), None)
+    if latest is None:
+        raise ToolError("goal: current_body_fat_pct is needed (there is no body-fat estimate yet); "
+                        "ask the user for their current body fat")
+    full["goal"] = {**goal, "current_body_fat_pct": latest["pct"]}
 
 
 def _full_setup(setup: dict[str, Any], today: datetime.date) -> dict[str, Any]:

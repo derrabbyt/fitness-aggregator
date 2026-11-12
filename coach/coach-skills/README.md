@@ -55,7 +55,7 @@ result as `params` inside the facts.
 | Unclassified exercise in a synced session (during a phase) | new-exercise | new exercises + those already classified, tool `classify_exercises` | text (counts toward the daily limit, else deferred to the weekly report) |
 | End of training block | block-review | block's `weekly_facts` list | `coach_message` |
 | Every few weeks / phase end | phase-review | `phase_summary` | `coach_message` (+ calibration proposals via tool) |
-| Photo set received | photo-review | photos + previous set + previous estimate | `photo_review` (code sends `notes`) |
+| Photo set received (active phase, photos on; no new photo for 10 min) | photo-review | the new set + the like-for-like set code picked (images), latest estimate, waist trend | `photo_review` (code stores the estimate, sends `notes` + the range as the photo review; code sends the body-fat advice) |
 | Coach chat message | coach-chat + context-log (others via `load_skill`) | message + tools | text reply |
 | "start …" command, and every message while that setup is open | phase-start (target phase skill in the prefix) | message + `setup` (recorded, still needed, prefill from history, Hevy exercises with their classification, limits) + tools | text; after `start_phase` code sends the preview card with confirm / edit buttons |
 

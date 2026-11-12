@@ -13,7 +13,7 @@ import datetime
 
 import pytest
 
-from fa_coach import phases
+from fa_coach import body_fat, phases
 from fa_coach.features import weekly_checkin
 from fakes import exercise, food, reply, session, tool_call, tool_calls
 from test_phase_start import CLASSES, SETUP, card, diet_history  # noqa: F401
@@ -114,6 +114,26 @@ async def test_a_body_fat_goal_keeps_the_lean_mass(diet_history, model):
     plan = result.content["cut"]
     assert (plan["level"], plan["deficit_kcal"], plan["warning"]) == ("conservative", 320, None)
     assert plan["goal"]["goal_weight_kg"] == 75.8
+
+
+async def test_a_body_fat_goal_without_the_current_body_fat_uses_the_latest_estimate(diet_history, model, clock):
+    """As above, with 20 % from the latest estimate (the user's winning over the photos' 21 %)."""
+    body_fat.add(diet_history, "2026-10-26", 24, "model", clock.now())
+    body_fat.add(diet_history, "2026-11-02", 21, "model", clock.now())
+    body_fat.add(diet_history, "2026-11-02", 20, "user", clock.now())
+
+    result = await collect_cut(diet_history, model, goal={"body_fat_pct": 15, "date": "2027-03-01"})
+
+    plan = result.content["cut"]
+    assert (plan["deficit_kcal"], plan["goal"]["goal_weight_kg"]) == (320, 75.8)
+    assert phases.pending_setup(diet_history)["preview"]["setup"]["goal"]["current_body_fat_pct"] == 20
+
+
+async def test_a_body_fat_goal_without_any_current_body_fat_is_refused(diet_history, model):
+    result = await collect_cut(diet_history, model, goal={"body_fat_pct": 15, "date": "2027-03-01"})
+
+    assert result.is_error and "current_body_fat_pct" in result.content["error"]
+    assert phases.pending_setup(diet_history) is None
 
 
 async def test_a_level_wins_over_a_goal_which_is_shown_against_it(diet_history, model):

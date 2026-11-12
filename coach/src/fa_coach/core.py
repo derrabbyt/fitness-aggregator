@@ -22,7 +22,7 @@ from typing import Any
 from . import phases, views
 from .ask import Answer, ask
 from .db import Database
-from .ports import ApiClient, Buttons, ChatTurn, Clock, Edit, ModelClient, Outbox, Send
+from .ports import ApiClient, Buttons, ChatTurn, Clock, Edit, Image, ModelClient, Outbox, Send
 from .registry import Registry, default_registry
 from .skills import SkillsPackage
 
@@ -158,6 +158,7 @@ class Coach:
         decision: bool = False,
         history: Sequence[ChatTurn] = (),
         phase: str | None = None,
+        images: Sequence[Image] = (),
         now: datetime.datetime | None = None,
     ) -> Answer:
         """Run one model task to its end. `tools`: names of registered tools
@@ -165,7 +166,8 @@ class Coach:
         name, "live", adds all of its runtime tools); code validates and
         executes each call once. `phase`: the phase whose skill goes in the
         cached prefix instead of the active one (phase start loads the target
-        phase). With `output_schema`, `answer.data` is the schema-valid JSON
+        phase). `images`: shown to the model after the input (photo
+        review). With `output_schema`, `answer.data` is the schema-valid JSON
         object, else None with `answer.errors`. Raises
         `ModelError` when the model can't be reached."""
         return await ask(
@@ -177,6 +179,7 @@ class Coach:
             decision=decision,
             history=history,
             phase=phase,
+            images=images,
             now=now,
         )
 

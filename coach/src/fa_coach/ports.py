@@ -119,12 +119,22 @@ class ChatTurn:
 
 
 @dataclass(frozen=True)
+class Image:
+    """An image the model sees in the user turn, after the input JSON, with a
+    short `label` before it (e.g. "New set 2026-11-23, photo 1")."""
+
+    label: str
+    data: bytes
+    media_type: str = "image/jpeg"
+
+
+@dataclass(frozen=True)
 class ModelRequest:
     """One model call. Layout (spec, "Claude"): a cached prefix
     (`prefix_skills` = coach-core + the active phase skill, plus `tools`),
     then the task skills, then a short `history`, then one user turn with the
-    `state` snapshot and the `input` JSON, then the tool loop so far
-    (`steps`). With `output_schema` set, the final text must be one JSON
+    `state` snapshot and the `input` JSON (plus `images`, each after its
+    label), then the tool loop so far (`steps`). With `output_schema` set, the final text must be one JSON
     object valid against that schema (`Coach.ask` validates it)."""
 
     prefix_skills: tuple[str, ...]
@@ -135,6 +145,7 @@ class ModelRequest:
     history: tuple[ChatTurn, ...] = ()
     steps: tuple[Step, ...] = ()
     output_schema: str | None = None  # schema name, e.g. "weekly_verdict"
+    images: tuple[Image, ...] = ()  # e.g. the photo review's photo sets
     decision: bool = False  # True: COACH_DECISION_MODEL, else COACH_MODEL
 
 

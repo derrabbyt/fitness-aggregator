@@ -83,6 +83,10 @@ is down), say you can't look it up right now.
 - **CC-SETUP** – A setup value ("wrestling is about 500 kcal", "check-ins on Sunday
   evening", "photos off") → `record_setup_value`. Run discount, wrestling and lifting kcal
   outside phase start go through `propose_change` (`calibration_change`, `source: user_request`).
+- **CC-BODY-FAT** – The user's own body-fat estimate ("I'd say I'm at 18 %") →
+  `record_body_fat` (with the date they mean, default today). It wins over the photo
+  estimate for that date. Never a scale's body-fat reading: say why instead of storing it.
+  If `advice_sent`, code already sent the mini-cut / end-of-bulk advice: don't repeat it.
 - **CC-PHASE** – "start reverse" / "start cut" messages go to the phase-start setup in code,
   not to you.
 - **CC-PHASE-END** – "End the bulk", "stop the phase", "I'm done with the reverse" without a
