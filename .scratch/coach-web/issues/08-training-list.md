@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Coach-core read model `training()` with schema; tests cover counting and excluded lifts, each status, a bodyweight lift (effective load), runs and other sessions
 - [x] UI list and sections; build + screenshots in Comments; tests green

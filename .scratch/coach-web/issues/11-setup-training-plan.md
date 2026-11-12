@@ -4,7 +4,7 @@
 
 **Blocked by:** 10
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Read model and schema; commands shared with `update_training_plan` and `set_session_status`; tests cover a lasting change, a this-week skip, an extra session with estimated kcal, and a rejection
 - [x] UI; build + screenshots in Comments; tests green

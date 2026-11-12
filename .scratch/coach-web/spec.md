@@ -1,6 +1,6 @@
 # Coach web page
 
-Status: ready-for-agent
+Status: resolved
 
 Sources: the grilling session of 2026-11-10, `.scratch/coach/spec.md` ("Out of Scope": the coach page), ADR 0001, `GLOSSARY.md`, and the Sure design-language reference (`docs/design/sure-reference.md`).
 

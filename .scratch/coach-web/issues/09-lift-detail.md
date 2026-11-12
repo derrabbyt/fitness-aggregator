@@ -4,7 +4,7 @@
 
 **Blocked by:** 08
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Coach-core read model `lift(exercise_id)` with schema and paging; commands for classification, pause and baseline reset shared with the chat tools; tests cover the chart series, paging, each control and a rejected command
 - [x] UI detail with controls and inline confirmation / error; build + screenshots in Comments; tests green

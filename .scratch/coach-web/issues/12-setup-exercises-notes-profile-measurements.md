@@ -4,7 +4,7 @@
 
 **Blocked by:** 10
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Read models and schemas; commands shared with the chat tools (classification, context notes, profile, waist); photos served read-only through the coach API; tests cover each command, a rejection, and the photo list
 - [x] UI sections; build + screenshots in Comments; tests green

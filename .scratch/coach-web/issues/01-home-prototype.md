@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [ ] Use the prototype skill; the prototype lives outside the shipped app (or behind a throwaway route) and is easy to delete
 - [ ] Phone-width screenshots, light and dark, plus one desktop-width screenshot, saved where the user can open them

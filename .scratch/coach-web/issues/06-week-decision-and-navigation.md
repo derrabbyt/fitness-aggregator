@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Coach-core read model `week(iso_week)` with schema, built from the stored check-in (facts, verdict, report) or the facts so far; tests cover a finished check-in with and without a proposal, a blocked proposal, an unusable week, a sport-load week and a week in progress
 - [x] No web action on proposals; the page says decisions are made in Telegram only through layout, not clutter

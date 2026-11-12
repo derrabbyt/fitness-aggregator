@@ -21,7 +21,7 @@
 
 **Blocked by:** 03, 04, 05 (all merged)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] **Read model:** the Home food part carries the target build-up (base at goal, steps, workouts, activities, surplus, total), as of the shown day and from the same code as the daily target. The math line adds up exactly to the target.
 - [x] **Read model:** the Home training part has `workouts` (sessions with PR counts, a 14-day strength series, a rate in % per week over 28 days, and the 14-day summary) and `other_activities`. Old fields are removed or renamed; schemas and examples are updated.

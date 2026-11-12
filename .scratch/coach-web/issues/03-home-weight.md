@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Read model and schema extended; tests cover a day with and without a weigh-in, rate on / under / over band, outliers, waist present / absent, prediction present / absent, a past day
 - [x] UI block and detail per the design direction; thin SVG line charts, no chart library

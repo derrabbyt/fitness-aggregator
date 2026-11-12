@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] The coach's HTTP server runs inside the coach process (not published on the host); `fa-api` passes `/api/coach/` through unchanged; the coach stays the only process opening its database
 - [x] Coach-core read model `home(day)` (food part, freshness) and the food detail, each with a JSON schema; tests through the Coach seam with the existing fakes cover today, a past day (as of that day), a day before any phase, and stale vs fresh

@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Steps in the coach read model and schema; tests cover above / below goal, not tracked, a run day (run steps removed), a past day
 - [x] Sleep comes from `fa-api` directly in the frontend (it isn't coach data); a missing night or error shows "–"

@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Read model and schema extended; tests cover a lifting day, a run day, planned / skipped wrestling, an extra session, no sessions, the trend line, banner states (none, open proposal, waiting question), banner absent on past days
 - [x] UI per the design direction; tap → Training tab

@@ -15,7 +15,7 @@
 
 **Blocked by:** 14 (merged)
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Read model: each session in `workouts` and `other_activities` carries `kcal_counted` (null when nothing is counted). The food build-up exposes `base`, `activity` (one total incl. steps ±), and `surplus` (signed), with a total equal to the target; schemas and examples updated
 - [x] Tests through the Coach seam: kcal per session for lifting, a run (discounted), wrestling, an extra session and a skipped one; the build-up with surplus, a deficit, zero, and a below-goal steps day folded into activity

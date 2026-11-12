@@ -4,7 +4,7 @@
 
 **Blocked by:** 06
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Read model and schema extended; tests cover each block for a finished and an in-progress week, partial days marked, flags present / absent
 - [x] UI blocks; build + screenshots in Comments; tests green

@@ -4,7 +4,7 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Coach-core read model `setup()` and section views with schemas; edit commands share validation with chat (`record_setup_value`, calibration proposals); tests cover each edit, each rejection with its reason, and a calibration edit creating a proposal (and the Telegram card)
 - [x] No web path changes targets, the phase or the MFP goal directly
