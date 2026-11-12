@@ -6,11 +6,12 @@ import { Card } from '../../ui/card';
 import { dayLabel, fmt } from '../../ui/format';
 import { State } from '../../ui/state';
 import { EditRow, EditState } from './edit-row';
-import { MeasurementsView, Photo, PhotoSet } from './setup-records.types';
+import { BodyFatEstimate, MeasurementsView, Photo, PhotoSet } from './setup-records.types';
 
 /**
  * Setup › Measurements: waist values (the one from the phase start, then
- * each stored value; add one, chat's range check) and the progress photo
+ * each stored value; add one, chat's range check), the body-fat estimates
+ * (read-only, the user's own winning for its date) and the progress photo
  * sets by date. Photos are only shown: the coach serves each one read-only
  * (`GET /api/coach/photos/<date>/<n>`); a tap opens it larger.
  */
@@ -41,6 +42,21 @@ import { MeasurementsView, Photo, PhotoSet } from './setup-records.types';
                   <li class="kv">
                     <span class="k">{{ day(w.date) }}@if (w.start) { <span class="t2"> · phase start</span> }</span>
                     <span class="v num">{{ cmText(w.cm) }}</span>
+                  </li>
+                }
+              </ul>
+            }
+          </app-card>
+
+          <app-card label="Body fat">
+            @if (!v.body_fat.length) {
+              <p class="t2 small empty">No estimates yet. The coach estimates it from each photo set; tell it your own in Telegram.</p>
+            } @else {
+              <ul class="rows bf">
+                @for (b of v.body_fat; track b.date) {
+                  <li class="kv">
+                    <span class="k">{{ day(b.date) }}<span class="t2 small src">{{ source(b) }}</span></span>
+                    <span class="v num">{{ pctText(b.pct) }}</span>
                   </li>
                 }
               </ul>
@@ -94,6 +110,10 @@ import { MeasurementsView, Photo, PhotoSet } from './setup-records.types';
     .hist > li.kv { padding: 8px 0; border-top: 0; }
     .hist > li.kv + li.kv { border-top: 1px solid var(--divider); }
     .sub { margin: 0 0 12px; }
+    .bf > li.kv { padding: 8px 0; }
+    .bf > li.kv:first-child { padding-top: 0; }
+    .bf > li.kv:last-child { padding-bottom: 0; }
+    .src { display: block; margin-top: 2px; }
     .set + .set { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--divider); }
     .set-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
     .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; }
@@ -140,6 +160,16 @@ export class MeasurementsPage {
 
   protected cmText(cm: number): string {
     return `${fmt(cm, cm % 1 ? 1 : 0)} cm`;
+  }
+
+  protected pctText(pct: number): string {
+    return `${fmt(pct, pct % 1 ? 1 : 0)} %`;
+  }
+
+  /** Where an estimate came from; the user's own wins over the photo review's. */
+  protected source(b: BodyFatEstimate): string {
+    if (b.source === 'model') return 'From the photos';
+    return b.model_pct == null ? 'Your estimate' : `Your estimate · photos said ${this.pctText(b.model_pct)}`;
   }
 
   protected history(v: MeasurementsView): { date: string; cm: number; start: boolean }[] {

@@ -10,6 +10,9 @@ last day as the check-in names it.
   plus every open one on the week in progress (where Home's banner leads).
   Approving, rejecting and countering stay in Telegram; there is no web
   command for them.
+- Reviews (block, phase, photo; `reviews.py`) sent during the week, oldest
+  first, with their text as sent (the page shows them collapsed, like the
+  report).
 
 Number blocks (weight, intake, training, notes and flags) are parts of
 `week` in their own modules: `@registry.view_part("week", "<key>",
@@ -23,7 +26,7 @@ import json
 import re
 from typing import Any
 
-from .. import history, phases, proposals, views, weekly_facts
+from .. import history, phases, proposals, reviews, views, weekly_facts
 from ..registry import registry
 from . import weekly_checkin
 from .web_home import check_in_week_start
@@ -113,6 +116,7 @@ def week_view(coach, query: dict[str, str], now: datetime.datetime) -> dict[str,
         "so_far": _so_far(coach, w) if state == "in_progress" else None,
         "proposals": _proposals(coach, w, now),
         "report": w.stored["report"] if w.stored else None,
+        "reviews": _reviews(coach, w),
         "freshness": views.freshness(coach, now),
     }
 
@@ -257,6 +261,15 @@ def _skip(reason: str | None, verdict: dict[str, Any], facts: dict[str, Any]) ->
     else:  # sport_load
         text = "A heavy sport week: it doesn't count and gives no calorie increase."
     return {"reason": reason, "text": text}
+
+
+# --- reviews -------------------------------------------------------------------------------
+
+
+def _reviews(coach, w: Week) -> list[dict[str, Any]]:
+    return [{"id": r["id"], "kind": r["kind"], "title": reviews.TITLES[r["kind"]], "period_start": r["period_start"],
+             "period_end": r["period_end"], "text": r["text"], "sent_at": r["created_at"]}
+            for r in reviews.sent_between(coach, w.start, w.end)]
 
 
 # --- proposals -----------------------------------------------------------------------------

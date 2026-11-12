@@ -4,7 +4,7 @@
   "title": "Web: Week",
   "description": "GET /api/coach/week?week=YYYY-Www (default: the check-in week holding today). The check-in week: the 7 days the weekly check-in judges (start..end, Monday-Sunday without a check-in day), named by the ISO week of its last day. A judged week comes from the stored check-in (its facts, verdict and report); a week in progress shows what is known so far, without a decision. Proposals are shown read-only: approving, rejecting and countering stay in Telegram. This schema is the envelope; the number blocks are view parts with their own schemas (web_week_<key>.schema.json, checked by fa_coach.views.errors).",
   "type": "object",
-  "required": ["iso_week", "start", "end", "is_current", "state", "phase_week", "prev_week", "next_week", "checkin_at", "note", "decision", "so_far", "proposals", "report", "freshness"],
+  "required": ["iso_week", "start", "end", "is_current", "state", "phase_week", "prev_week", "next_week", "checkin_at", "note", "decision", "so_far", "proposals", "report", "reviews", "freshness"],
   "$defs": {
     "iso_week": { "type": "string", "pattern": "^[0-9]{4}-W[0-9]{2}$" },
     "proposal": {
@@ -122,6 +122,24 @@
       "items": { "$ref": "#/$defs/proposal" }
     },
     "report": { "type": ["string", "null"], "description": "The weekly report as sent to Telegram (state decided); null otherwise." },
+    "reviews": {
+      "type": "array",
+      "description": "The reviews (block, phase, photo) sent in Telegram during this week (by the local date they were sent), oldest first, with their text as sent. Read-only.",
+      "items": {
+        "type": "object",
+        "required": ["id", "kind", "title", "period_start", "period_end", "text", "sent_at"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "integer" },
+          "kind": { "enum": ["block", "phase", "photo"] },
+          "title": { "type": "string", "description": "Block review, Phase review or Photo review." },
+          "period_start": { "type": "string", "format": "date", "description": "The first day the review looks back over." },
+          "period_end": { "type": "string", "format": "date", "description": "The last day it looks back over." },
+          "text": { "type": "string" },
+          "sent_at": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
     "freshness": { "$ref": "web_freshness.schema.json" }
   }
 }

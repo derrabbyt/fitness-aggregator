@@ -8,12 +8,15 @@ code (same range check, same table):
 Photos are served read-only, one at a time, by the coach API's photo route
 (`GET /api/coach/photos/<date>/<n>`, `Coach.photo`); the view lists their
 URLs relative to /api/coach/. Photos are never changed from the web.
+
+Body-fat estimates (`body_fat.py`: the photo review's and the user's own,
+the user's winning for its date) are listed newest first, read-only.
 """
 
 import datetime
 from typing import Any
 
-from .. import phases, views
+from .. import body_fat, phases, views
 from ..registry import registry
 from . import measurements
 
@@ -79,6 +82,7 @@ def measurements_view(coach, query: dict[str, str], now: datetime.datetime) -> d
                   "min": measurements.WAIST_CM[0], "max": measurements.WAIST_CM[1]},
         "photos": {"enabled": bool(phases.params(coach)["measurements"]["photos_enabled"]) if phase else None,
                    "next_due": _next_due(coach, "photos", today), "sets": _sets(coach)},
+        "body_fat": body_fat.estimates(coach),
     }
 
 
