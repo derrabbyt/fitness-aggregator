@@ -6,21 +6,31 @@ goal set once and read back).
 Uses the worked example of test_weekly_checkin: the reverse starts Mon 9 Nov
 2026 at 2300 kcal on average (surplus -236), Monday 09:00 check-ins, the
 glycogen window covers W46-W47. W48 (23-29 Nov) and W49 (30 Nov-6 Dec) are
-the first weeks that count. Approving +100 on Mon 7 Dec gives an average
-daily target of 2400 kcal and an MFP goal of base 2536 + surplus -136 = 2400
-kcal (a rest day; no counted activity was expected); macros at the W49 trend
-weight 82.1 kg: protein 164 g, fat 74 g (0.9 g/kg), carbs (2400 - 164.2 x 4 -
-73.9 x 9) / 4 = 270 g.
+the first weeks that count. Code's decision guard checks a verdict's direction
+and step against the trend, so the weeks gain 0.05 kg/week, just below the
+0.1-0.3 band (`below_band`: averages 81.85, 81.9, 81.95, 82.0 from W48): an
+increase of the small step (100 kcal). Approving +100 on Mon 7 Dec gives an
+average daily target of 2400 kcal and an MFP goal of base 2536 + surplus -136
+= 2400 kcal (a rest day; no counted activity was expected); macros at the W49
+trend weight 81.9 kg: protein 164 g, fat 74 g (0.9 g/kg), carbs (2400 - 163.8
+x 4 - 73.7 x 9) / 4 = 270 g. Decreases use weeks above the band (`ABOVE`).
 """
 
+import pytest
+
 from fa_coach import phases, proposals
+from fa_coach.features import weekly_checkin
 from fa_coach.ports import Goal
 from fakes import reply, reply_json, tool_call
-from test_weekly_checkin import at, check_in, fill_week, phase, three_weeks, verdict  # noqa: F401
+from test_weekly_checkin import at, below_band, check_in, fill_week, phase, three_weeks, verdict  # noqa: F401
+
+pytestmark = pytest.mark.usefixtures("below_band")
 
 UP = {"type": "calorie_change", "delta_kcal": 100, "size": "small", "reason": "Gaining below the band.",
       "is_phase_first_change": False, "returning_rejected_proposal_id": None}
 NEW_GOAL = {"kcal": 2400, "protein_g": 164, "carbs_g": 270, "fat_g": 74}
+BELOW = {3: 81.85, 4: 81.9}  # +0.05 kg/week (as `below_band`): a small increase
+ABOVE = {3: 82.15, 4: 82.5}  # +0.35 kg/week: 0.05 above the band, a small decrease
 
 
 def c_week(iso: str, *, delta: int = 100, scenario: str | None = None) -> dict:
@@ -48,11 +58,13 @@ def decision_input(model) -> dict:
 
 
 async def two_c_weeks(coach, api, clock, model, *, delta: int = 100) -> None:
-    """W48 points one way (no proposal: one week), W49 the same way with a proposal."""
-    await three_weeks(coach, api, clock, model)
+    """W48 points one way (no proposal: one week), W49 the same way with a proposal
+    (below the band for an increase, above it for a decrease)."""
+    avg = BELOW if delta > 0 else ABOVE
+    await three_weeks(coach, api, clock, model, avg=avg[3])
     await check_in(coach, clock, model, "2026-11-30",
                    verdict("2026-W48", scenario="C", direction="increase" if delta > 0 else "decrease"))
-    fill_week(api, 4)
+    fill_week(api, 4, avg=avg[4])
     await check_in(coach, clock, model, "2026-12-07", c_week("2026-W49", delta=delta))
 
 
@@ -159,7 +171,7 @@ async def test_the_next_report_lists_the_applied_change_once(phase, api, clock, 
     assert change["mfp_goal_status"] == "set"
     assert decision_input(model)["history"]["last_change"]["delta_kcal"] == 100
 
-    fill_week(api, 6, avg=82.3)
+    fill_week(api, 6)
     await check_in(phase, clock, model, "2026-12-21", verdict("2026-W51", scenario="A"))
     assert report_input(model)["changes_applied"] == []
 
@@ -234,13 +246,14 @@ def blocked(model) -> dict:
     return result
 
 
-async def test_a_change_above_the_max_is_blocked_and_the_report_has_no_buttons(phase, api, clock, model, outbox):
-    await two_c_weeks(phase, api, clock, model, delta=300)
+async def test_a_change_above_the_max_is_blocked(phase, api, clock, model, outbox):
+    await two_c_weeks(phase, api, clock, model)
 
-    result = blocked(model)
-    assert result["guardrail"]["violations"] == ["exceeds_max_change", "size_or_direction_mismatch"]
+    result = await request(phase, clock, model, type="calorie_change", delta_kcal=300)
+
+    assert result["status"] == "blocked_by_guardrail"
+    assert result["guardrail"]["violations"][0] == "exceeds_max_change"
     assert "±200 kcal" in result["guardrail"]["details"][0]["text"]
-    assert last_card(outbox).buttons == ()
 
 
 async def test_a_change_too_soon_after_the_last_one_is_locked_out(phase, api, clock, model, outbox):
@@ -251,10 +264,11 @@ async def test_a_change_too_soon_after_the_last_one_is_locked_out(phase, api, cl
     assert result["guardrail"]["violations"] == ["lockout", "confirmation_not_met"]
     lockout = result["guardrail"]["details"][0]
     assert lockout["earliest_checkin"] == "2026-12-07" and "Mon 07 Dec" in lockout["text"]
+    assert last_card(outbox).buttons == ()  # a blocked proposal gets no buttons
 
 
 async def c_weeks_at(coach, api, clock, model, w49_avg: float, w49: dict) -> dict:
-    """W48 points to an increase; W49 (prev average 82.0) at `w49_avg` with the verdict `w49`."""
+    """W48 points to an increase; W49 (prev average 81.85) at `w49_avg` with the verdict `w49`."""
     await three_weeks(coach, api, clock, model)
     await check_in(coach, clock, model, "2026-11-30", verdict("2026-W48", scenario="C", direction="increase"))
     fill_week(api, 4, avg=w49_avg)
@@ -262,33 +276,32 @@ async def c_weeks_at(coach, api, clock, model, w49_avg: float, w49: dict) -> dic
     return report_input(model)["proposal_result"]
 
 
-async def test_a_step_larger_than_the_trend_calls_for_is_blocked(phase, api, clock, model, outbox):
+async def test_a_step_larger_than_the_trend_calls_for_is_proposed_at_codes_size(phase, api, clock, model, outbox):
     # rate +0.05 kg/week, 0.05 below the 0.1-0.3 band: slightly off, so about +100
-    result = await c_weeks_at(phase, api, clock, model, 82.05, c_week("2026-W49", delta=200))
+    result = await c_weeks_at(phase, api, clock, model, 81.9, c_week("2026-W49", delta=200))
 
-    assert result["status"] == "blocked_by_guardrail"
-    assert result["guardrail"]["violations"] == ["size_or_direction_mismatch"]
-    assert "+100" in result["guardrail"]["details"][0]["text"]
-    assert last_card(outbox).buttons == ()
+    assert (result["status"], result["delta_kcal"]) == ("open", 100)
+    assert weekly_checkin.stored(phase, "2026-W49")["code_adjustments"][0].startswith("proposal +200 -> +100 kcal")
 
 
 async def test_far_below_the_band_the_large_step_passes(phase, api, clock, model, outbox):
     # rate -0.05 kg/week, 0.15 below the band (more than 0.1): far off, so about +200
-    result = await c_weeks_at(phase, api, clock, model, 81.95, c_week("2026-W49", delta=200))
+    result = await c_weeks_at(phase, api, clock, model, 81.8, c_week("2026-W49", delta=200))
 
     assert result["status"] == "open"
 
 
 async def test_a_change_the_scenario_doesnt_call_for_is_blocked(phase, api, clock, model, outbox):
-    # scenario C calls for an increase; scenario A for no calorie change
-    down = await c_weeks_at(phase, api, clock, model, 82.05,
-                            verdict("2026-W49", scenario="C", direction="increase", proposal={**UP, "delta_kcal": -100}))
+    # Scenario A calls for no calorie change, whatever the trend (code's guard
+    # only checks the trend's direction, and leaves a hold as it is).
+    up = await c_weeks_at(phase, api, clock, model, 81.9,
+                          verdict("2026-W49", scenario="A", direction="increase", proposal=UP))
     fill_week(api, 5)
     await check_in(phase, clock, model, "2026-12-14", verdict("2026-W50", scenario="A", proposal=UP))
     hold = report_input(model)["proposal_result"]
 
-    assert down["guardrail"]["violations"] == ["confirmation_not_met", "size_or_direction_mismatch"]
-    assert "an increase of about +100" in mismatch(down)
+    assert up["guardrail"]["violations"] == ["size_or_direction_mismatch"]
+    assert "no calorie change" in mismatch(up)
     assert hold["guardrail"]["violations"] == ["confirmation_not_met", "size_or_direction_mismatch"]
     assert "no calorie change" in mismatch(hold)
 
@@ -304,14 +317,14 @@ async def test_the_lockout_counts_from_the_check_in_week_whatever_day_the_change
     fill_week(api, 5, kcal=2400)  # W50 (7-13 Dec) is week 1 of the new window although approved on the 8th
     await check_in(phase, clock, model, "2026-12-14", verdict("2026-W50", scenario="C", direction="increase"))
     assert report_input(model)["changes_applied"][0]["recheck_on"] == "2026-12-21"
-    fill_week(api, 6, kcal=2400, avg=82.3)
+    fill_week(api, 6, kcal=2400)
     await check_in(phase, clock, model, "2026-12-21", c_week("2026-W51"))
 
     assert report_input(model)["proposal_result"]["status"] == "open"
 
 
 async def test_too_fast_needs_only_one_confirming_week(phase, api, clock, model, outbox):
-    await three_weeks(phase, api, clock, model)
+    await three_weeks(phase, api, clock, model, avg=ABOVE[3])
     await check_in(phase, clock, model, "2026-11-30", c_week("2026-W48", delta=-100, scenario="E"))
 
     assert report_input(model)["proposal_result"]["status"] == "open"
@@ -320,7 +333,7 @@ async def test_too_fast_needs_only_one_confirming_week(phase, api, clock, model,
 async def test_a_direction_without_confirming_weeks_is_blocked(phase, api, clock, model, outbox):
     await two_c_weeks(phase, api, clock, model, delta=-100)  # W48 and W49 point down: that passes
     assert report_input(model)["proposal_result"]["status"] == "open"
-    fill_week(api, 5)
+    fill_week(api, 5, avg=ABOVE[4] + 0.05)  # +0.05: below the band
     await check_in(phase, clock, model, "2026-12-14", c_week("2026-W50", delta=100))
 
     result = blocked(model)
@@ -341,7 +354,7 @@ async def test_a_rejected_direction_returns_only_after_enough_weeks(phase, api, 
     assert result["guardrail"]["violations"] == ["rejected_return_too_early"]
     assert result["guardrail"]["details"][0]["earliest_checkin"] == "2026-12-21"
 
-    fill_week(api, 6, avg=82.3)
+    fill_week(api, 6)
     await check_in(phase, clock, model, "2026-12-21", c_week("2026-W51"))
     assert report_input(model)["proposal_result"]["status"] == "open"
 

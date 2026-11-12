@@ -45,6 +45,14 @@ def fill_week(api, week: int, *, kcal: float = 2300, avg: float | None = None, w
 
 
 @pytest.fixture
+def below_band(monkeypatch):
+    """Weeks 3-6 gain 0.05 kg/week, just below the band (0.1-0.3): an increase
+    with the small step is what code's decision guard expects."""
+    for week, avg in {3: 81.85, 4: 81.9, 5: 81.95, 6: 82.0}.items():
+        monkeypatch.setitem(WEEK_AVG, week, avg)
+
+
+@pytest.fixture
 async def phase(coach, api, model, outbox, monkeypatch):
     """Diet history, then the reverse confirmed on Mon 9 Nov with Monday 09:00 check-ins."""
     monkeypatch.setitem(SETUP, "logistics.weekly_checkin", "mon 09:00")
@@ -216,7 +224,7 @@ async def test_an_invalid_verdict_is_not_acted_on_and_the_user_is_told(phase, ap
 # --- skipped weeks ---------------------------------------------------------------------
 
 
-async def test_skipped_weeks_neither_count_nor_break_confirmation(phase, api, clock, model):
+async def test_skipped_weeks_neither_count_nor_break_confirmation(phase, api, clock, model, below_band):
     await three_weeks(phase, api, clock, model)
     await check_in(phase, clock, model, "2026-11-30", verdict("2026-W48", scenario="C", direction="increase"))
     fill_week(api, 4, kcal=2600)  # 18200 vs 16700-ish: adherence gate fails
@@ -238,7 +246,8 @@ async def test_skipped_weeks_neither_count_nor_break_confirmation(phase, api, cl
     assert history["weeks_since_last_change"] == 2
 
 
-async def test_a_sport_load_week_is_skipped_and_gives_no_increase_or_training_call(phase, api, clock, model):
+async def test_a_sport_load_week_is_skipped_and_gives_no_increase_or_training_call(phase, api, clock, model,
+                                                                                   below_band):
     await three_weeks(phase, api, clock, model)
     await check_in(phase, clock, model, "2026-11-30", verdict("2026-W48", scenario="C", direction="increase"))
     clock.current = at("2026-11-30", 12)

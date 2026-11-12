@@ -37,6 +37,13 @@ Per session of an exercise:
   % or more below the best recent session and no reset / injury / pain note
   covers the day.
 - A paused exercise is not judged (`paused`).
+- Settings as of the day (coach-followups ticket 04): each classification or
+  pause change is stored with the day it was made
+  (migrations/24_exercise_setting_history.sql) and applies from then on. A
+  session is judged with the setting in force on its day (`paused`, its PR);
+  whether a lift counts, and whether it is paused now, is the setting on the
+  day shown (`until`, a week's last day). An exercise's first classification
+  describes the exercise, so it applies to its whole history.
 
 Read API:
 - `session(coach, session_id)`: every exercise of one session, judged as
@@ -46,6 +53,7 @@ Read API:
 - `week(coach, start, end)`: the `training` section of the weekly facts.
 - `exercises(coach, since, until)`: exercises in the Hevy history with
   their settings (phase start, chat).
+- `setting_on(coach, exercise_id, day)`: the setting in force that day.
 Writes: `classify`, `set_paused`, `mark_reset`.
 """
 
@@ -78,6 +86,42 @@ def settings(coach: "Coach") -> dict[str, dict[str, Any]]:
     return {r["exercise_id"]: dict(r) for r in coach.db.all("SELECT * FROM exercise_settings")}
 
 
+SETTING_KEYS = ("classification", "paused", "paused_reason")
+NO_SETTING = {"classification": None, "paused": False, "paused_reason": None}
+
+
+def _setting_changes(coach: "Coach", exercise_id: str | None = None) -> dict[str, list[dict[str, Any]]]:
+    """{exercise_id: [{valid_from, classification, paused, paused_reason}]}, oldest first."""
+    where, params = ("WHERE exercise_id = ?", (exercise_id,)) if exercise_id else ("", ())
+    out: dict[str, list[dict[str, Any]]] = {}
+    for r in coach.db.all("SELECT exercise_id, valid_from, classification, paused, paused_reason"
+                          f" FROM exercise_setting_changes {where} ORDER BY valid_from, id", params):
+        out.setdefault(r["exercise_id"], []).append(
+            {"valid_from": r["valid_from"], "classification": r["classification"], "paused": bool(r["paused"]),
+             "paused_reason": r["paused_reason"]})
+    return out
+
+
+def _in_force(changes: list[dict[str, Any]], day: str) -> dict[str, Any]:
+    found = NO_SETTING
+    for c in changes:
+        if c["valid_from"] > day:
+            break
+        found = c
+    return {k: found[k] for k in SETTING_KEYS}
+
+
+def setting_on(coach: "Coach", exercise_id: str, day: Date) -> dict[str, Any]:
+    """{classification, paused, paused_reason} in force on `day`."""
+    return _in_force(_setting_changes(coach, exercise_id).get(exercise_id, []), day.isoformat())
+
+
+def counts_on(lift: dict[str, Any], day: Date | str) -> bool:
+    """Whether a lift from `lifts` counted on `day` (null classification counts)."""
+    day = day if isinstance(day, str) else day.isoformat()
+    return _in_force(lift["setting_changes"], day)["classification"] != "excluded"
+
+
 def known_exercise(coach: "Coach", exercise_id: str) -> dict[str, Any] | None:
     """The exercise as Hevy last sent it ({exercise_id, title, exercise_type}), or None."""
     row = coach.db.one(
@@ -99,6 +143,31 @@ def _upsert(coach: "Coach", exercise_id: str, now: datetime.datetime, **values: 
         " updated_at = excluded.updated_at",
         (exercise_id, title, *values.values(), at),
     )
+    _record(coach, exercise_id, now, {k: v for k, v in values.items() if k in SETTING_KEYS})
+
+
+def _record(coach: "Coach", exercise_id: str, now: datetime.datetime, values: dict[str, Any]) -> None:
+    """Adds the exercise's new setting, in force from today. A first
+    classification is written into the whole history instead."""
+    at = now.isoformat(timespec="seconds")
+    changes = _setting_changes(coach, exercise_id).get(exercise_id, [])
+    if "classification" in values and not any(c["classification"] for c in changes):
+        if changes:
+            coach.db.execute("UPDATE exercise_setting_changes SET classification = ? WHERE exercise_id = ?",
+                             (values["classification"], exercise_id))
+        else:
+            coach.db.execute(
+                "INSERT INTO exercise_setting_changes (exercise_id, classification, paused, valid_from, created_at)"
+                " VALUES (?, ?, 0, '0001-01-01', ?)", (exercise_id, values["classification"], at))
+        values = {k: v for k, v in values.items() if k != "classification"}
+        if not values:
+            return
+        changes = _setting_changes(coach, exercise_id).get(exercise_id, [])
+    new = {**_in_force(changes, now.date().isoformat()), **values}
+    coach.db.execute(
+        "INSERT INTO exercise_setting_changes (exercise_id, classification, paused, paused_reason, valid_from,"
+        " created_at) VALUES (?, ?, ?, ?, ?, ?)",
+        (exercise_id, new["classification"], int(new["paused"]), new["paused_reason"], now.date().isoformat(), at))
 
 
 def classify(coach: "Coach", exercise_id: str, classification: str, reason: str | None,
@@ -186,7 +255,7 @@ class _Judge:
         self.p = phases.params(coach)["training"]
         self.until = until
         self.sessions = history.sessions(coach.db, "0000-01-01", until.isoformat())
-        self.settings = settings(coach)
+        self.changes = _setting_changes(coach)
         self.resets: dict[str, list[dict[str, Any]]] = {}
         for r in coach.db.all("SELECT * FROM baseline_resets ORDER BY from_date, id"):
             self.resets.setdefault(r["exercise_id"], []).append(dict(r))
@@ -237,7 +306,8 @@ class _Judge:
                     continue
                 item = merged.setdefault(ex["exercise_id"], {"session_id": s["id"], "date": s["date"], "sets": []})
                 item["sets"] += ex["sets"]
-                row = self.settings.get(ex["exercise_id"], {})
+                changes = self.changes.get(ex["exercise_id"], [])
+                row = _in_force(changes, self.until.isoformat())
                 lifts[ex["exercise_id"]] = {
                     "exercise_id": ex["exercise_id"], "name": ex["title"] or ex["exercise_id"],
                     "exercise_type": ex["exercise_type"],
@@ -245,6 +315,7 @@ class _Judge:
                     "classification": row.get("classification"),
                     "counts": row.get("classification") != "excluded",
                     "paused": bool(row.get("paused")),
+                    "setting_changes": changes,
                 }
             for exercise_id, item in merged.items():
                 occurrences.setdefault(exercise_id, []).append(item)
@@ -269,6 +340,7 @@ class _Judge:
                          if s["type"] != "warmup" and s["reps"] is not None],
                 "top": top, "status": "not_judged", "not_judged_reason": None, "best_recent": None,
                 "sessions_considered": 0, "is_pr": False, "drop_pct_vs_best_recent": None, "possible_reset": False,
+                "paused": _in_force(lift["setting_changes"], occ["date"])["paused"],
             }
             reset_here = False
             while resets and (resets[0]["session_id"] == occ["session_id"]
@@ -325,7 +397,7 @@ def _summary(top: dict[str, Any] | None) -> dict[str, Any] | None:
 
 
 def _exercise_view(lift: dict[str, Any], entry: dict[str, Any]) -> dict[str, Any]:
-    paused = lift["paused"]
+    paused = entry["paused"]
     flags = not paused and lift["counts"]  # excluded exercises get no stall flags
     return {
         "exercise_id": lift["exercise_id"],
@@ -350,8 +422,9 @@ def _exercise_view(lift: dict[str, Any], entry: dict[str, Any]) -> dict[str, Any
 
 def lifts(coach: "Coach", until: Date) -> dict[str, dict[str, Any]]:
     """{exercise_id: {exercise_id, name, exercise_type, bodyweight_exercise,
-    counts, classification, paused, entries}}: every synced session of each
-    exercise up to `until`, judged, oldest first."""
+    counts, classification, paused, setting_changes, entries}}: every synced
+    session of each exercise up to `until`, judged, oldest first (each entry
+    `paused` as on its day); the lift's settings as of `until`."""
     return _Judge(coach, until).all()
 
 
@@ -420,7 +493,8 @@ def week(coach: "Coach", start: Date, end: Date, phase_start: Date | None = None
         if not lift["paused"]:
             prs += [{"exercise_id": lift["exercise_id"], "name": lift["name"], "date": e["date"],
                      "top_set": _summary(e["top"])}
-                    for e in lift["entries"] if e["is_pr"] and start.isoformat() <= e["date"] <= end.isoformat()]
+                    for e in lift["entries"]
+                    if e["is_pr"] and not e["paused"] and start.isoformat() <= e["date"] <= end.isoformat()]
     listed.sort(key=lambda lift: (not lift["counts"], lift["name"]))
     counted = [lift for lift in listed if lift["counted"]]
     improved = [lift for lift in counted if lift["status"] == "improved"]

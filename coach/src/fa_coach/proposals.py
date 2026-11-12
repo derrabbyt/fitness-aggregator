@@ -492,11 +492,20 @@ def withdraw_open(coach: "Coach", phase_row_id: str, now: datetime.datetime) -> 
 
 def close_cards(coach, proposal_id: str, outcome: str) -> None:
     """Edit every message showing this proposal's buttons: no buttons, the outcome below."""
+    for ref, text in card_edits(coach, proposal_id, outcome):
+        coach.edit(ref, text)
+
+
+def card_edits(coach, proposal_id: str, outcome: str) -> list[tuple[str, str]]:
+    """(ref, new text) for every message showing this proposal's buttons, read
+    now (before an erase deletes the rows they come from)."""
+    edits = []
     for card in coach.db.all("SELECT ref, text FROM proposal_cards WHERE proposal_id = ?", (proposal_id,)):
         text = card["text"]
         if text is None and card["ref"].startswith("weekly:"):
             text = coach.db.value("SELECT report FROM weekly_checkins WHERE id = ?", (int(card["ref"][7:]),))
-        coach.edit(card["ref"], f"{text}\n\n{outcome}" if text else outcome)
+        edits.append((card["ref"], f"{text}\n\n{outcome}" if text else outcome))
+    return edits
 
 
 # --- read ------------------------------------------------------------------------------------
