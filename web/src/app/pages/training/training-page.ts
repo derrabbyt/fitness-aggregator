@@ -12,7 +12,7 @@ import { LineChart } from '../../ui/line-chart';
 import { SectionHeader } from '../../ui/section-header';
 import { State } from '../../ui/state';
 import { Tone } from '../../ui/tone';
-import { StrengthTrendChart } from '../../ui/strength-trend';
+import { StrengthTrendChart, strengthEmptyText } from '../../ui/strength-trend';
 import { LIFT_STATUS, setText } from './lift-format';
 import { TrainingActivity, TrainingLift, TrainingView } from './training.types';
 
@@ -43,7 +43,7 @@ const TYPES: Record<TrainingActivity['type'], string> = {
               @if (t.strength_trend.rate_pct_per_week != null) {
                 <app-strength-trend [trend]="t.strength_trend" />
               } @else {
-                <div class="t2">Not enough sessions in the last {{ t.strength_trend.window_days }} days yet.</div>
+                <div class="t2">{{ strengthEmptyText(t.strength_trend) }}</div>
               }
             </app-card>
 
@@ -164,6 +164,7 @@ export class TrainingPage {
   protected readonly fmt = fmt;
   protected readonly dayLabel = dayLabel;
   protected readonly String = String;
+  protected readonly strengthEmptyText = strengthEmptyText;
   protected st(l: TrainingLift): { text: string; tone: Tone } {
     return LIFT_STATUS[l.status];
   }

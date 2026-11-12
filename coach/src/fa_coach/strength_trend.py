@@ -21,6 +21,9 @@ Schema: coach-skills/schemas/web_strength_trend.schema.json.
   spread over the whole window. The rate is the mean of those % per week:
   within ±`training.e1rm_same_band_pct` it is flat, above rising, below
   falling. The chart points stay % vs the window start.
+- `lifts` counts the lifts in the rate; `lifts_trained` the counting lifts
+  with any session in the window ending on the day (so the page can tell
+  "nothing trained" from "not enough sessions yet").
 """
 
 import datetime
@@ -55,9 +58,12 @@ def compute(coach: "Coach", day: Date, *, days: int = SERIES_DAYS,
         rates = [(pct - 100) / (max(span, MIN_SPAN_DAYS) / 7) for pct, span in changes]
     trained = len(rates)
     rate = round(sum(rates) / trained, 1) if rates else None
+    first, last = (day - (window - 1) * DAY).isoformat(), day.isoformat()
+    in_window = sum(1 for h in histories if any(first <= v[0] <= last for v in h))
     direction = None if rate is None else "rising" if rate > band else "falling" if rate < -band else "flat"
     return {"window_days": window, "start": points[0]["date"], "end": day.isoformat(), "points": points,
-            "rate_pct_per_week": rate, "direction": direction, "lifts": trained}
+            "rate_pct_per_week": rate, "direction": direction, "lifts": trained,
+            "lifts_trained": in_window}
 
 
 def _values(entries: list[dict[str, Any]]) -> list[tuple[str, float, bool]]:

@@ -6,7 +6,8 @@ import { Tone } from './tone';
 /**
  * web_strength_trend.schema.json (fa_coach/strength_trend.py): one point per
  * day, each the mean of the counting lifts' latest e1RM as % of their value
- * at the start of the 28 days before it; the rate in % per week over those 28 days.
+ * at the start of the 28 days before it; the rate in % per week, each lift
+ * measured over its own span (at least 7 days) and averaged.
  */
 export interface StrengthTrend {
   window_days: number;
@@ -16,6 +17,13 @@ export interface StrengthTrend {
   rate_pct_per_week: number | null;
   direction: 'rising' | 'flat' | 'falling' | null;
   lifts: number;
+  /** Counting lifts with any session in the window ending on the day (2 not needed). */
+  lifts_trained: number;
+}
+
+/** The text when the trend has no value: nothing trained, or lifts trained but none twice yet. */
+export function strengthEmptyText(trend: StrengthTrend | null | undefined): string {
+  return trend?.lifts_trained ? 'Not enough sessions yet' : 'No lifts in the last 4 weeks';
 }
 
 /** Rising green, within the ±1 % band neutral, falling red. */

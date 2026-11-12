@@ -289,6 +289,14 @@ async def test_old_sessions_leave_the_window(coach, api, clock):
     # 7-9 Nov: trained once (no point); 10-16 Nov 110 % of 20 Oct; from 17 Nov only 10 Nov is left.
     assert pcts(trend) == [None] * 3 + [110.0] * 7 + [None] * 4
     assert (trend["rate_pct_per_week"], trend["direction"], trend["lifts"]) == (None, None, 0)
+    assert trend["lifts_trained"] == 1  # 10 Nov is still in the window: trained, just not twice
+
+
+async def test_a_lift_trained_once_is_trained_but_not_counted_yet(coach, api, clock):
+    trend = await lifted(coach, api, clock, session("s1", "2026-11-25", exercise("Bench Press", (100, 5))))
+
+    assert pcts(trend) == [None] * 14
+    assert (trend["lifts"], trend["lifts_trained"]) == (0, 1)
 
 
 async def test_the_strength_trend_on_a_past_day_ends_that_day(coach, api, clock):
@@ -308,3 +316,4 @@ async def test_before_any_lift_there_is_no_trend_and_no_workout(coach):
     assert workouts["sessions"] == [] and workouts["summary"] is None
     assert pcts(workouts["strength_trend"]) == [None] * 14
     assert (workouts["strength_trend"]["rate_pct_per_week"], workouts["strength_trend"]["direction"]) == (None, None)
+    assert workouts["strength_trend"]["lifts_trained"] == 0

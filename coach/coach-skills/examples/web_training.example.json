@@ -125,7 +125,8 @@
     ],
     "rate_pct_per_week": 0.8,
     "direction": "flat",
-    "lifts": 6
+    "lifts": 6,
+    "lifts_trained": 7
   },
   "lifts": [
     {

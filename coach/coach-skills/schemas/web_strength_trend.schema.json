@@ -11,7 +11,8 @@
     "points",
     "rate_pct_per_week",
     "direction",
-    "lifts"
+    "lifts",
+    "lifts_trained"
   ],
   "additionalProperties": false,
   "properties": {
@@ -75,6 +76,11 @@
       "type": "integer",
       "minimum": 0,
       "description": "Counting lifts in the last point."
+    },
+    "lifts_trained": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Counting lifts with any usable session in the window ending on the last day (2+ sessions not needed); 0 means nothing was trained."
     }
   }
 }
