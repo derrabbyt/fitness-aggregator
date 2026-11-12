@@ -227,6 +227,8 @@ def params_for(skills, phase_id: str, setup: dict[str, Any]) -> dict[str, Any]:
         merged["measurements"]["photos_enabled"] = setup["photos_enabled"]
     if setup.get("step_goal") is not None:
         merged["steps"]["step_goal"] = setup["step_goal"]
+    if setup.get("block_weeks") is not None:
+        merged["reviews"]["block_weeks"] = setup["block_weeks"]
     if "time_goal_weeks" in setup:
         merged["time_goal_weeks"] = setup["time_goal_weeks"]
     if phase_id == cut.PHASE_ID and setup.get("deficit_kcal") is not None:

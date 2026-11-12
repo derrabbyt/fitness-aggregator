@@ -96,7 +96,7 @@ measurements:
   photos_enabled: true
 
 reviews:
-  block_length_weeks: [4, 6]
+  block_weeks: 5                    # default training block length; setup value block_weeks overrides it
   phase_review_every_weeks: [8, 12]
 
 messaging:

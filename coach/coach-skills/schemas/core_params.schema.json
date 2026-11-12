@@ -123,9 +123,9 @@
     },
     "reviews": {
       "type": "object", "additionalProperties": false,
-      "required": ["block_length_weeks", "phase_review_every_weeks"],
+      "required": ["block_weeks", "phase_review_every_weeks"],
       "properties": {
-        "block_length_weeks": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "integer" } },
+        "block_weeks": { "type": "integer", "minimum": 1, "description": "Default training block length in weeks (block n ends at the phase start + n x block_weeks, counted again from a block ended early); the setup value block_weeks overrides it." },
         "phase_review_every_weeks": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "integer" } }
       }
     },
