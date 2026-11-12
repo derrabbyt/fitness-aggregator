@@ -91,7 +91,7 @@ const MORE = 10; // sessions per "show more"
 
               <app-edit-row label="Paused"
                             [hint]="v.paused && v.controls.paused_reason ? v.controls.paused_reason : ''"
-                            [value]="v.paused ? 'Paused' : 'No'"
+                            [value]="v.paused ? 'Yes' : 'No'"
                             [editable]="true" [editLabel]="v.paused ? 'Resume' : 'Pause'"
                             [editing]="edit.open() === 'pause'" [busy]="edit.busy() === 'pause'"
                             [error]="edit.errorFor('pause')" [notice]="edit.noticeFor('pause')"
@@ -140,7 +140,7 @@ const MORE = 10; // sessions per "show more"
     .set { flex: 1; min-width: 0; }
     .pr { margin-left: 6px; color: var(--success); }
     .st { flex: none; text-align: right; white-space: nowrap; }
-    .more { margin: 8px 0 0 -10px; padding: 6px 10px; border-radius: var(--radius-inner); }
+    .more { display: block; margin: 8px 0 0 -10px; padding: 6px 10px; border-radius: var(--radius-inner); }
     .more[disabled] { opacity: .5; }
     @media (hover: hover) { .more:not([disabled]):hover { background: var(--inset); } }
     .ctl { padding-bottom: 12px; border-bottom: 1px solid var(--divider); margin-bottom: 12px; }
