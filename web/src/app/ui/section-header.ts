@@ -17,7 +17,7 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
   styles: `
     :host { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 4px 4px; }
     h2 { margin: 0; }
-    .aside { font-size: 13px; color: var(--text-2); }
+    .aside { font-size: var(--type-small); color: var(--text-2); }
   `,
 })
 export class SectionHeader {

@@ -22,7 +22,7 @@ import { ChangeDetectionStrategy, Component, input, output } from '@angular/core
       transition: background-color .15s ease; }
     .switch[aria-checked="true"] { background: var(--fill); }
     .knob { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
-      background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, .2); transition: transform .15s ease; }
+      background: var(--knob); box-shadow: var(--knob-shadow); transition: transform .15s ease; }
     .switch[aria-checked="true"] .knob { transform: translateX(18px); background: var(--container); }
     .switch[disabled] { opacity: .6; cursor: default; }
     .switch:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }

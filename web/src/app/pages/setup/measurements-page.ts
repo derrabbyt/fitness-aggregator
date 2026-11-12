@@ -102,9 +102,9 @@ import { MeasurementsView, Photo, PhotoSet } from './setup-records.types';
     .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .thumb:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; }
     .cap { position: absolute; left: 6px; bottom: 6px; padding: 1px 6px; border-radius: 6px;
-      background: rgba(11, 11, 11, .6); color: #fff; }
+      background: var(--scrim); color: var(--on-scrim); }
     .viewer { padding: 0; border: 0; background: transparent; max-width: min(96vw, 720px); max-height: 96dvh; }
-    .viewer::backdrop { background: rgba(0, 0, 0, .8); }
+    .viewer::backdrop { background: var(--scrim-strong); }
     .frame { display: grid; gap: 8px; }
     .frame img { max-width: 100%; max-height: calc(96dvh - 64px); object-fit: contain; border-radius: var(--radius-inner);
       margin: 0 auto; display: block; }

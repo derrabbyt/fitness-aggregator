@@ -41,7 +41,7 @@ import { Icon } from './icon';
     }
     .tap { cursor: pointer; transition: transform .12s ease; }
     .tap:active { transform: scale(.995); }
-    @media (hover: hover) { .tap:hover { box-shadow: var(--ring), 0 2px 8px rgba(11, 11, 11, .04); } }
+    @media (hover: hover) { .tap:hover { box-shadow: var(--ring), var(--shadow-hover); } }
     .head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; min-height: 16px; }
     .chev { --icon: 16px; color: var(--text-3); }
     @media (min-width: 900px) { .card { padding: 20px; } }

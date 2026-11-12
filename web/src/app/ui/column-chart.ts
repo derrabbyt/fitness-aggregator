@@ -44,8 +44,8 @@ export interface Column {
     .col i { display: block; width: 100%; min-height: 2px; border-radius: 3px 3px 1px 1px; transition: height .4s ease; }
     .col i.stub { height: 2px; background: var(--track); }
     .ref { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--text-3); opacity: .7; pointer-events: none; z-index: 1; }
-    .ref span { position: absolute; right: 0; bottom: 2px; font-size: 11px; color: var(--text-2); background: var(--container); padding-left: 4px; }
-    .ends { display: flex; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--text-2); }
+    .ref span { position: absolute; right: 0; bottom: 2px; font-size: var(--type-caption); color: var(--text-2); background: var(--container); padding-left: 4px; }
+    .ends { display: flex; justify-content: space-between; margin-top: 6px; font-size: var(--type-caption); color: var(--text-2); }
   `,
 })
 export class ColumnChart {

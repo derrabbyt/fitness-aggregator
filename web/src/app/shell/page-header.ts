@@ -36,14 +36,14 @@ import { Tabs } from './tabs';
   styles: `
     header { display: flex; align-items: center; gap: 4px; padding: 8px 0 16px; min-height: 64px; }
     .title { flex: 1; min-width: 0; text-align: center; }
-    h1 { font-size: 20px; line-height: 28px; font-weight: 500; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .sub { font-size: 13px; color: var(--text-2); }
+    h1 { font-size: var(--type-title); line-height: 28px; font-weight: 500; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sub { font-size: var(--type-small); color: var(--text-2); }
     .actions { display: flex; align-items: center; gap: 4px; }
     .actions:empty { display: none; }
     @media (min-width: 900px) {
       header { padding-bottom: 24px; }
       .title { text-align: left; order: -1; }
-      h1 { font-size: 24px; line-height: 32px; }
+      h1 { font-size: var(--type-title-wide); line-height: 32px; }
       .segments { margin: 0 16px; }
     }
   `,
