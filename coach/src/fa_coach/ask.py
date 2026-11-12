@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-from .ports import ChatTurn, ModelRequest, ToolCall, ToolResult
+from .ports import ChatTurn, Image, ModelRequest, ToolCall, ToolResult
 
 if TYPE_CHECKING:
     from .core import Coach
@@ -60,6 +60,7 @@ async def ask(
     decision: bool = False,
     history: Sequence[ChatTurn] = (),
     phase: str | None = None,
+    images: Sequence[Image] = (),
     now: datetime.datetime | None = None,
 ) -> Answer:
     now = now or coach.clock.now()
@@ -74,6 +75,7 @@ async def ask(
         tools=tuple(t.definition() for t in allowed.values()),
         history=tuple(history),
         output_schema=output_schema,
+        images=tuple(images),
         decision=decision,
     )
     answer = Answer()

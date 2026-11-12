@@ -148,7 +148,9 @@ def exercise(title: str, *sets: tuple[float | None, int], exercise_id: str | Non
 
 class FakeModel:
     """Returns scripted replies in order and records every request it was
-    given (one request per model turn, so a tool loop records several)."""
+    given (one request per model turn, so a tool loop records several).
+    Image input arrives as `request.images` (labelled `ports.Image`s): the
+    fake never looks at them, tests assert on them."""
 
     def __init__(self, *replies: ModelReply | Exception) -> None:
         self.replies: list[ModelReply | Exception] = list(replies)

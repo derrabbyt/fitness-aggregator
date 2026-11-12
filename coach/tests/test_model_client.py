@@ -13,7 +13,7 @@ import pytest
 
 from fa_coach.config import Settings
 from fa_coach.model import AnthropicModel
-from fa_coach.ports import ChatTurn, ModelError, ModelReply, ModelRequest, ToolCall, ToolResult
+from fa_coach.ports import ChatTurn, Image, ModelError, ModelReply, ModelRequest, ToolCall, ToolResult
 from fa_coach.skills import SkillsPackage
 
 CACHED = {"type": "ephemeral"}
@@ -131,6 +131,22 @@ async def test_an_output_schema_is_given_with_the_task():
     task = sdk.calls[0]["system"][-1]["text"]
     assert "one JSON object" in task
     assert '"$id": "context_note.schema.json"' in task
+
+
+async def test_images_follow_the_input_each_after_its_label():
+    model, sdk = make_model(response(block("text", text="{}")))
+
+    await model.run(request(images=(Image("New set 2026-11-23, photo 1", b"\xff\xd8jpeg"),
+                                    Image("Comparison set 2026-11-09, photo 1", b"png", "image/png"))))
+
+    content = sdk.calls[0]["messages"][-1]["content"]
+    assert content[0]["text"].startswith("State:\n")
+    assert content[1:] == [
+        {"type": "text", "text": "New set 2026-11-23, photo 1"},
+        {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": "/9hqcGVn"}},
+        {"type": "text", "text": "Comparison set 2026-11-09, photo 1"},
+        {"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": "cG5n"}},
+    ]
 
 
 async def test_a_refusal_is_reported_as_such():

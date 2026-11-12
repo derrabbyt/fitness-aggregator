@@ -22,7 +22,7 @@ import statistics
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-from . import history, phases, weekdata
+from . import body_fat, history, phases, weekdata
 from .features import context_notes, measurements
 
 if TYPE_CHECKING:
@@ -234,8 +234,18 @@ def _measurements(coach, phase, end: Date, p) -> dict[str, Any]:
         "waist_cm_latest": waist[-1] if waist else None,
         "waist_cm_prev": waist[-2] if len(waist) > 1 else None,
         "waist_cm_phase_start": phase["setup"].get("waist_cm_start"),
-        "latest_bf_estimate": None,
+        "latest_bf_estimate": _latest_bf(coach, end),
     }
+
+
+def _latest_bf(coach, end: Date) -> dict[str, Any] | None:
+    """The newest body-fat estimate up to `end` (the user's winning for its date,
+    body_fat.py). Stored as one value, so the range is that value."""
+    latest = next((e for e in body_fat.estimates(coach) if e["date"] <= end.isoformat()), None)
+    if latest is None:
+        return None
+    return {"low_pct": latest["pct"], "high_pct": latest["pct"],
+            "source": "photo" if latest["source"] == "model" else "user", "date": latest["date"]}
 
 
 def _maintenance(coach, end: Date, p) -> dict[str, Any]:

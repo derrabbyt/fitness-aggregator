@@ -21,11 +21,11 @@
     "week1_increase_kcal": { "type": ["number", "null"], "description": "reverse_bulk only; within start.week1_increase_kcal." },
     "cut_level": { "enum": ["conservative", "moderate", "aggressive"], "description": "cut only: the deficit level (phase-cut params cut.levels_kcal). With a goal too, the level decides the deficit and the goal is shown against it." },
     "goal": {
-      "description": "cut only: a goal weight, or a goal body fat with the current body fat (the user's estimate), and the date to reach it by. Code derives the rate and deficit it needs.",
+      "description": "cut only: a goal weight, or a goal body fat with the current body fat (the user's estimate; left out, code takes the latest body-fat estimate, the user's or from photos), and the date to reach it by. Code derives the rate and deficit it needs.",
       "oneOf": [
         { "type": "object", "required": ["weight_kg", "date"], "additionalProperties": false,
           "properties": { "weight_kg": { "type": "number", "minimum": 30, "maximum": 250 }, "date": { "type": "string", "format": "date" } } },
-        { "type": "object", "required": ["body_fat_pct", "current_body_fat_pct", "date"], "additionalProperties": false,
+        { "type": "object", "required": ["body_fat_pct", "date"], "additionalProperties": false,
           "properties": { "body_fat_pct": { "type": "number", "minimum": 3, "maximum": 60 }, "current_body_fat_pct": { "type": "number", "minimum": 3, "maximum": 60 }, "date": { "type": "string", "format": "date" } } },
         { "type": "null" }
       ]
