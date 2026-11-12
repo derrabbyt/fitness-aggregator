@@ -71,6 +71,12 @@ the input:
   `prefill` (confirmed by the user) or from the user. If the user says "use the usual",
   reuse the stored value and name it. (Classifying exercises is your judgement, not a
   setup value; the user sees and can flip it.)
+- **PS-LIVE-READS** – The live MyFitnessPal and Hevy reads (`fitness_get_*`,
+  `fitness_search_food`, `hevy_*`) are for looking things up when the user asks or a value
+  needs checking ("what did I eat last Sunday?", "what did I bench last week?"). They change
+  nothing: every setup value still goes through `record_setup_value` (or `confirm_day`,
+  `classify_exercises`, `update_training_plan`) and needs the user's confirmation; a number
+  you read live is offered like a prefill, never recorded on your own.
 - **PS-CHANGE-MIDWAY** – After the start, `record_setup_value` changes logistics, photos,
   time goal and waist at start; `classify_exercises` flips an exercise any time. Calibration values (run discount, wrestling
   kcal, lifting kcal) go through `propose_change`; start values are fixed for the phase.
