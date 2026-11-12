@@ -12,15 +12,15 @@ import { Icon } from '../../ui/icon';
 import { State } from '../../ui/state';
 import { ProposalCard } from './proposal-card';
 import { WEEK_BLOCKS } from './week-blocks';
-import { WeekView } from './week.types';
+import { WeekReview, WeekView } from './week.types';
 
 const ISO_WEEK = /^\d{4}-W\d{2}$/;
 
 /**
  * Week: the check-in week (the 7 days the coach judges), the week in progress
  * by default, `?week=YYYY-Www` for older ones. The decision first, then the
- * proposals (read-only), the number blocks (WEEK_BLOCKS) and the report,
- * collapsed at the bottom.
+ * proposals (read-only), the number blocks (WEEK_BLOCKS), then the reviews
+ * sent during the week and the report, each collapsed at the bottom.
  */
 @Component({
   selector: 'app-week-page',
@@ -81,6 +81,16 @@ const ISO_WEEK = /^\d{4}-W\d{2}$/;
             <ng-container *ngComponentOutlet="block; inputs: { view: w }" />
           }
 
+          @for (r of w.reviews; track r.id) {
+            <details class="report">
+              <summary>
+                <span class="label">{{ r.title }}</span>
+                <span class="end"><span class="t2 small num">{{ period(r) }}</span><app-icon name="right" class="chev" /></span>
+              </summary>
+              <div class="text">{{ r.text }}</div>
+            </details>
+          }
+
           @if (w.report) {
             <details class="report">
               <summary><span class="label">Weekly report</span><app-icon name="right" class="chev" /></summary>
@@ -104,6 +114,7 @@ const ISO_WEEK = /^\d{4}-W\d{2}$/;
     .report summary { display: flex; align-items: center; justify-content: space-between; padding: 16px;
       cursor: pointer; list-style: none; }
     .report summary::-webkit-details-marker { display: none; }
+    .end { display: inline-flex; align-items: center; gap: 8px; }
     .chev { --icon: 16px; color: var(--text-3); transition: transform .15s ease; }
     .report[open] .chev { transform: rotate(90deg); }
     .text { padding: 0 16px 16px; white-space: pre-wrap; overflow-wrap: anywhere; color: var(--text-2); }
@@ -176,6 +187,12 @@ export class WeekPage {
   protected go(week: string | null | undefined): void {
     if (!week) return;
     void this.router.navigate([], { relativeTo: this.route, queryParams: { week }, replaceUrl: true });
+  }
+
+  /** The days a review looks back over: "9 Nov – 13 Dec", or one day for a photo review. */
+  protected period(r: WeekReview): string {
+    const start = dayLabel(r.period_start, false);
+    return r.period_start === r.period_end ? start : `${start} – ${dayLabel(r.period_end, false)}`;
   }
 
   protected range(w: WeekView): string {

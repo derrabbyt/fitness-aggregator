@@ -42,5 +42,10 @@
     }
   ],
   "report": "Weekly check-in 2026-W49 (phase week 4)\nWeight is up 0.1 kg, a little below the band.\nProposal: +100 kcal a day on average.",
+  "reviews": [
+    { "id": 3, "kind": "photo", "title": "Photo review", "period_start": "2026-12-05", "period_end": "2026-12-05",
+      "text": "Leaner around the waist than on 21 Nov, in similar light. I'd put you at about 19-21 % body fat.",
+      "sent_at": "2026-12-05T10:05:00+01:00" }
+  ],
   "freshness": { "last_sync_at": "2026-12-07T08:55:00+01:00", "age_hours": 0.1, "stale": false }
 }

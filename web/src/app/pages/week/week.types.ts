@@ -27,6 +27,8 @@ export interface WeekView {
   so_far: { days: number; weigh_ins: number; food_days_logged: number } | null;
   proposals: Proposal[];
   report: string | null;
+  /** Block, phase and photo reviews sent during the week, oldest first. */
+  reviews: WeekReview[];
   freshness: Freshness;
   /** The number blocks (ticket 07); null when no phase was active during the week. */
   weight?: WeekWeight | null;
@@ -106,6 +108,18 @@ export interface WeekNotes {
   flags: { code: string; severity: 'info' | 'watch' | 'action'; detail: string }[] | null;
   deferred: { date: string; text: string }[];
   due_next_week: { date: string; kind: 'waist' | 'photos' }[];
+}
+
+/** A review as sent in Telegram, read-only. */
+export interface WeekReview {
+  id: number;
+  kind: 'block' | 'phase' | 'photo';
+  title: string;
+  /** The days it looks back over. */
+  period_start: string;
+  period_end: string;
+  text: string;
+  sent_at: string;
 }
 
 export interface WeekDecision {

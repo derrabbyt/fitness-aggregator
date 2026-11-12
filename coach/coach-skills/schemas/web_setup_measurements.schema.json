@@ -2,9 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "web_setup_measurements.schema.json",
   "title": "Web: Setup, Measurements",
-  "description": "GET /api/coach/setup/measurements. Waist values and photo sets, newest first, with the next due dates of the active phase. POST /api/coach/setup/measurements/waist {cm, date?} stores a waist value (chat's range check; date defaults to today, never in the future) and returns this view. Each photo is served read-only as an image at GET /api/coach/<url>.",
+  "description": "GET /api/coach/setup/measurements. Waist values, photo sets and body-fat estimates, newest first, with the next due dates of the active phase. POST /api/coach/setup/measurements/waist {cm, date?} stores a waist value (chat's range check; date defaults to today, never in the future) and returns this view. Each photo is served read-only as an image at GET /api/coach/<url>.",
   "type": "object",
-  "required": ["today", "waist", "photos"],
+  "required": ["today", "waist", "photos", "body_fat"],
   "additionalProperties": false,
   "properties": {
     "today": { "type": "string", "format": "date" },
@@ -66,6 +66,21 @@
               }
             }
           }
+        }
+      }
+    },
+    "body_fat": {
+      "type": "array",
+      "description": "Body-fat estimates, one per date, newest first: the photo review's (source model) or the user's own (source user), which wins for its date. model_pct: the model's estimate the user's overrides (null otherwise). Read-only.",
+      "items": {
+        "type": "object",
+        "required": ["date", "pct", "source", "model_pct"],
+        "additionalProperties": false,
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "pct": { "type": "number" },
+          "source": { "enum": ["model", "user"] },
+          "model_pct": { "type": ["number", "null"] }
         }
       }
     }

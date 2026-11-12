@@ -66,6 +66,16 @@ export interface MeasurementsView {
     next_due: string | null;
     sets: PhotoSet[];
   };
+  /** One per date, newest first; the user's own estimate wins for its date. */
+  body_fat: BodyFatEstimate[];
+}
+
+export interface BodyFatEstimate {
+  date: string;
+  pct: number;
+  source: 'model' | 'user';
+  /** The model's estimate the user's overrides; null otherwise. */
+  model_pct: number | null;
 }
 
 export interface WaistValue {
