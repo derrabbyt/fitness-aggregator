@@ -9,7 +9,7 @@
 - [x] Schedule (10 weeks, on end) tests
 - [x] Calibration drift -> proposal test
 - [x] Skill + schema; validator green
-- [ ] Tests green
+- [x] Tests green
 
 Spec: `.scratch/coach-reviews-and-phases/spec.md`.
 
