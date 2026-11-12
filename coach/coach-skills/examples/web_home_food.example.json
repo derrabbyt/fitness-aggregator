@@ -1,0 +1,11 @@
+{
+  "kcal": { "eaten": 2410, "target": null, "left": null },
+  "build_up": null,
+  "logged": "complete",
+  "macros": {
+    "protein": { "eaten_g": 142, "target_g": null },
+    "carbs": { "eaten_g": 260, "target_g": null },
+    "fat": { "eaten_g": 78, "target_g": null },
+    "fiber": { "eaten_g": 24, "target_g": null, "target_max_g": null }
+  }
+}

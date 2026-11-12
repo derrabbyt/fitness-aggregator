@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_week_notes.schema.json",
+  "title": "Web: Week notes and flags",
+  "description": "The `notes` part of GET /api/coach/week (null when no phase was active during the week). context_notes: the user's notes that apply to a day of the week (applies_to null = ongoing). flags: the check-in's flags (code, severity, the verdict's detail line); null until the week is judged. deferred: observations held back for the week's report, by the day they are about. due_next_week: waist and photo check-ins due in the 7 days after the week (the active phase's schedule).",
+  "type": ["object", "null"],
+  "required": ["context_notes", "flags", "deferred", "due_next_week"],
+  "additionalProperties": false,
+  "properties": {
+    "context_notes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "text", "applies_from", "applies_to", "tags"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "text": { "type": "string" },
+          "applies_from": { "type": "string", "format": "date" },
+          "applies_to": { "type": ["string", "null"], "format": "date" },
+          "tags": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "flags": {
+      "type": ["array", "null"],
+      "items": {
+        "type": "object",
+        "required": ["code", "severity", "detail"],
+        "additionalProperties": false,
+        "properties": {
+          "code": { "type": "string" },
+          "severity": { "enum": ["info", "watch", "action"] },
+          "detail": { "type": "string" }
+        }
+      }
+    },
+    "deferred": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["date", "text"],
+        "additionalProperties": false,
+        "properties": { "date": { "type": "string", "format": "date" }, "text": { "type": "string" } }
+      }
+    },
+    "due_next_week": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["date", "kind"],
+        "additionalProperties": false,
+        "properties": { "date": { "type": "string", "format": "date" }, "kind": { "enum": ["waist", "photos"] } }
+      }
+    }
+  }
+}

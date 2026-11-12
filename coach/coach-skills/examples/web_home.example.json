@@ -1,0 +1,16 @@
+{
+  "date": "2026-11-10",
+  "is_today": true,
+  "freshness": { "last_sync_at": "2026-11-10T08:00:00+01:00", "age_hours": 2.5, "stale": false },
+  "food": {
+    "kcal": { "eaten": 1980, "target": 2300, "left": 320 },
+    "build_up": { "base_kcal": 2571, "activity_kcal": -35, "surplus_kcal": -236, "total_kcal": 2300 },
+    "logged": "complete",
+    "macros": {
+      "protein": { "eaten_g": 128, "target_g": 161 },
+      "carbs": { "eaten_g": 214, "target_g": 251 },
+      "fat": { "eaten_g": 61, "target_g": 72 },
+      "fiber": { "eaten_g": 19, "target_g": 24, "target_max_g": 40 }
+    }
+  }
+}

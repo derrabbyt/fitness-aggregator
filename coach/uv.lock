@@ -239,6 +239,8 @@ dependencies = [
     { name = "mcp" },
     { name = "python-telegram-bot" },
     { name = "pyyaml" },
+    { name = "starlette" },
+    { name = "uvicorn" },
 ]
 
 [package.dev-dependencies]
@@ -255,6 +257,8 @@ requires-dist = [
     { name = "mcp", specifier = ">=2.3.0" },
     { name = "python-telegram-bot", specifier = ">=22.8" },
     { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "starlette", specifier = ">=1.10.0" },
+    { name = "uvicorn", specifier = ">=0.54.0" },
 ]
 
 [package.metadata.requires-dev]

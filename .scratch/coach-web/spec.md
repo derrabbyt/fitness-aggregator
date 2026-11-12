@@ -1,6 +1,6 @@
 # Coach web page
 
-Status: ready-for-agent
+Status: resolved
 
 Sources: the grilling session of 2026-11-10, `.scratch/coach/spec.md` ("Out of Scope": the coach page), ADR 0001, `GLOSSARY.md`, and the Sure design-language reference (`docs/design/sure-reference.md`).
 
@@ -64,8 +64,8 @@ The page reads the coach's stored data and opens instantly. A refresh button syn
 
 ### Home: weight
 
-22. As the user, I want today's weigh-in as the main number and the 7-day trend as the second, so that I see both the scale and what it means.
-23. As the user, I want the weekly rate coloured against my target band (on target, under, over), so that I see whether I'm gaining as planned.
+22. As the user, I want today's weigh-in as the main number on Home (the 7-day trend value only in the weight detail), so that Home stays simple.
+23. As the user, I want the weekly rate coloured against my target band (on target, under, over), without band text, so that I see whether I'm gaining as planned.
 24. As the user, I want a small 14-day line of the trend, so that I see the direction.
 25. As the user, I want to tap weight to see a longer chart (4 or 12 weeks) with the target band shaded, so that I see the bigger picture.
 26. As the user, I want a list of recent weigh-ins with outliers marked, so that I can spot typos.
@@ -81,10 +81,11 @@ The page reads the coach's stored data and opens instantly. A refresh button syn
 
 ### Home: training
 
-33. As the user, I want each of the day's sessions on one line with its time of day and duration or distance ("Push · 06:50 · 66 min", "Run · 17:25 · 11.5 km"), so that I see what I did without exercise detail.
-34. As the user, I want planned wrestling shown as planned until I skip it, so that the line matches how it's counted.
+33. As the user, I want training split into a Gym block (lifting sessions, one line each with time and duration, the lift trend line below) and an Other activities block (runs with distance, duration and pace; wrestling; extra sessions), so that gym progress isn't buried under other workouts.
+34. As the user, I want planned wrestling listed like any other activity, without a "planned" tag, so that the block stays clean.
 35. As the user, I want one trend line ("5 of 7 lifts progressing · 1 stall · 2 PRs this week") without jargon like "counting lifts", so that I know if training is moving.
 36. As the user, I want to tap training to open the Training tab, so that detail lives in one place.
+36a. As the user, I want a 4-week strength trend line (average % change of my counting lifts' estimated 1RM) with one number, a rate in % per week (like "+0.8 %/wk"), on Home's Gym block and at the top of the Training tab, so that I see at a glance whether I'm improving or stalling overall.
 
 ### Home: sleep
 
@@ -97,7 +98,7 @@ The page reads the coach's stored data and opens instantly. A refresh button syn
 40. As the user, I want the Week page to show the check-in week (the 7 days the coach judges), with the current week in progress by default, so that it matches the coach's decisions.
 41. As the user, I want arrows to move to older weeks, so that I can review past decisions.
 42. As the user, I want the week's decision first, in plain words (hold, +100, −200, and why), so that I know what happens next.
-43. As the user, I want an open proposal shown with its reasoning, guardrail status and when it would apply, so that I can decide in Telegram knowing the details.
+43. As the user, I want an open proposal shown with its reasoning, a blocking guardrail's reason and when it could pass, so that I can decide in Telegram knowing the details.
 44. As the user, I want no approve, reject or counter on the web, so that decisions and discussions stay in the coach chat.
 45. As the user, I want a weight block with the trend against the target band, the weekly rate and the weigh-in count, so that I see the week's weight picture.
 46. As the user, I want an intake block with each day eaten against target, the weekly average, the adherence result and macros against targets, so that I see whether the week counts.
@@ -178,7 +179,7 @@ The page reads the coach's stored data and opens instantly. A refresh button syn
   - thin line charts drawn as hand-written SVG (no chart library), without axes clutter;
   - colour only for on or off target.
   The reference is `docs/design/sure-reference.md`. No Sure logo, name or assets.
-- **Food block** in the common food-tracking style: kcal eaten / target with "left" big (a ring or a bar), and macro and fiber bars against targets.
+- **Food block** (chosen in ticket 01): "kcal left" big, eaten / target beside it, one bar, then protein / carbs / fat / fiber as four compact columns with thin bars.
 - **Phone first:** the bottom tab bar respects the safe area. On desktop the content is centred at a readable width, and wider sections may use two columns.
 - **No build-time dependency on the coach being up.** API errors show an inline empty or error state.
 

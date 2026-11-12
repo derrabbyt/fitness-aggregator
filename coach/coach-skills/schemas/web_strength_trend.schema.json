@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_strength_trend.schema.json",
+  "title": "Web: strength trend",
+  "description": "Whether lifting is improving overall (fa_coach.strength_trend), as a daily series ending on the day. Each day's point looks back over the training.strength_trend_days (28) days ending that day: every counting lift trained in them gives its latest estimated 1RM (heaviest working set; effective load for bodyweight lifts) as % of its first one in that window (after its latest baseline reset there, if any; a lift trained once is at 100); the point is the mean over those lifts. The rate is the last point's change in % per week over the window. Shown on Home's Workouts card (14 days) and at the top of the Training tab.",
+  "type": "object",
+  "required": [
+    "window_days",
+    "start",
+    "end",
+    "points",
+    "rate_pct_per_week",
+    "direction",
+    "lifts",
+    "lifts_trained"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "window_days": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "training.strength_trend_days: the look-back of each point and of the rate."
+    },
+    "start": {
+      "type": "string",
+      "format": "date",
+      "description": "The first point's day."
+    },
+    "end": {
+      "type": "string",
+      "format": "date",
+      "description": "The last point's day: the shown day."
+    },
+    "points": {
+      "type": "array",
+      "description": "One per day, oldest first.",
+      "items": {
+        "type": "object",
+        "required": [
+          "date",
+          "pct"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "pct": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "description": "Mean % of the window-start value (100 = unchanged), 1 decimal; null without a counting lift trained in the window."
+          }
+        }
+      }
+    },
+    "rate_pct_per_week": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "As of the last day, the mean over the counting lifts of each lift's change (latest as % of first in the window, after its reset) per week of its own span (first to latest session, at least 7 days), 1 decimal; null without a counting lift."
+    },
+    "direction": {
+      "enum": [
+        "rising",
+        "flat",
+        "falling",
+        null
+      ],
+      "description": "rising above +training.e1rm_same_band_pct (% per week), falling below its negative, flat within; null with the rate null."
+    },
+    "lifts": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Counting lifts in the last point."
+    },
+    "lifts_trained": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Counting lifts with any usable session in the window ending on the last day (2+ sessions not needed); 0 means nothing was trained."
+    }
+  }
+}

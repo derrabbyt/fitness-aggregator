@@ -1,0 +1,145 @@
+/*
+ * Design tokens and base classes for the coach page (docs/design/sure-reference.md,
+ * direction from coach-web ticket 01). Calm: grays everywhere, colour only on the
+ * number or bar that carries an on/off-target verdict. Two weights (400/500).
+ *
+ * The page follows the phone's theme; [data-theme] on <html> forces one
+ * (screenshots use ?theme=light|dark).
+ */
+:root {
+  --surface: #F7F7F7;          /* page */
+  --container: #FFFFFF;        /* card */
+  --inset: #F0F0F0;            /* segmented track, hover */
+  --track: #E7E7E7;            /* meter track */
+  --text: #171717;
+  --text-2: #737373;           /* labels, secondary */
+  --text-3: #9E9E9E;           /* faint: chevrons, tracks, dashed marks; never text (2.7:1 on white) */
+  --divider: rgba(11, 11, 11, .08);
+  --ring: 0 1px 2px rgba(11, 11, 11, .06), 0 0 0 1px rgba(11, 11, 11, .05);
+  --success: #078C52;
+  --destructive: #F13636;
+  --warning: #DC6803;
+  --info: #1570EF;
+  --fill: #171717;             /* neutral meter fill */
+  --fill-2: #9E9E9E;           /* muted meter fill, neutral chart line */
+  --indicator: #0B0B0B;        /* active tab marker */
+  --banner-bg: #EFF6FF;
+  --banner-ring: rgba(21, 112, 239, .25);
+  --on-color: #FFFFFF;         /* text on a coloured fill (danger button); same in dark */
+  --scrim: rgba(11, 11, 11, .6);          /* caption chip over a photo; same in dark */
+  --scrim-strong: rgba(0, 0, 0, .8);      /* photo viewer backdrop; same in dark */
+  --on-scrim: #FFFFFF;
+  --shadow-input: 0 1px 2px rgba(11, 11, 11, .04);   /* inputs, textareas */
+  --shadow-hover: 0 2px 8px rgba(11, 11, 11, .04);   /* tappable card on hover */
+  --knob: #FFFFFF;             /* switch knob (off) */
+  --knob-shadow: 0 1px 2px rgba(0, 0, 0, .2);
+
+  /* Type scale: use these, never raw font sizes. */
+  --type-caption: 11px;        /* chart end labels */
+  --type-label: 12px;          /* .label */
+  --type-small: 13px;          /* .small, asides, subtitles */
+  --type-body: 14px;
+  --type-mid: 18px;            /* .mid */
+  --type-title: 20px;          /* page title (phone) */
+  --type-title-wide: 24px;     /* page title (desktop) */
+  --type-big: 30px;            /* .big */
+
+  --radius: 12px;              /* cards */
+  --radius-inner: 8px;
+  --font: "Geist Variable", "Geist", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --page-max: 560px;           /* phone column, centred */
+  --page-max-wide: 960px;      /* desktop */
+  --tabbar-h: 64px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #0B0B0B; --container: #171717; --inset: #242424; --track: #2E2E2E;
+    --text: #FFFFFF; --text-2: #CFCFCF; --text-3: #9E9E9E;
+    --divider: rgba(255, 255, 255, .10);
+    --ring: 0 1px 2px rgba(255, 255, 255, .05), 0 0 0 1px rgba(255, 255, 255, .08);
+    --success: #32D583; --destructive: #ED4E4E; --warning: #FDB022; --info: #2E90FA;
+    --fill: #F0F0F0; --fill-2: #737373; --indicator: #FFFFFF;
+    --banner-bg: rgba(46, 144, 250, .10); --banner-ring: rgba(46, 144, 250, .30);
+    --shadow-input: 0 1px 2px rgba(0, 0, 0, .3); --shadow-hover: 0 2px 8px rgba(0, 0, 0, .4);
+    --knob: #F0F0F0; --knob-shadow: 0 1px 2px rgba(0, 0, 0, .5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --surface: #0B0B0B; --container: #171717; --inset: #242424; --track: #2E2E2E;
+  --text: #FFFFFF; --text-2: #CFCFCF; --text-3: #9E9E9E;
+  --divider: rgba(255, 255, 255, .10);
+  --ring: 0 1px 2px rgba(255, 255, 255, .05), 0 0 0 1px rgba(255, 255, 255, .08);
+  --success: #32D583; --destructive: #ED4E4E; --warning: #FDB022; --info: #2E90FA;
+  --fill: #F0F0F0; --fill-2: #737373; --indicator: #FFFFFF;
+  --banner-bg: rgba(46, 144, 250, .10); --banner-ring: rgba(46, 144, 250, .30);
+  --shadow-input: 0 1px 2px rgba(0, 0, 0, .3); --shadow-hover: 0 2px 8px rgba(0, 0, 0, .4);
+  --knob: #F0F0F0; --knob-shadow: 0 1px 2px rgba(0, 0, 0, .5);
+  color-scheme: dark;
+}
+
+/* --- base ----------------------------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font);
+  font-weight: 400;
+  font-size: var(--type-body);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums;
+  -webkit-tap-highlight-color: transparent;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+a { color: inherit; text-decoration: none; }
+:focus-visible { outline: 2px solid var(--info); outline-offset: 2px; border-radius: 6px; }
+
+/* --- type ------------------------------------------------------------------ */
+.num { font-variant-numeric: tabular-nums; }
+.m { font-weight: 500; }
+.t2 { color: var(--text-2); }
+.ok { color: var(--success); }
+.bad { color: var(--destructive); }
+.warn { color: var(--warning); }
+.label { font-size: var(--type-label); font-weight: 500; text-transform: uppercase; letter-spacing: .02em; color: var(--text-2); }
+.big { font-size: var(--type-big); line-height: 36px; font-weight: 500; letter-spacing: -.02em; }
+.mid { font-size: var(--type-mid); line-height: 24px; font-weight: 500; }
+.small { font-size: var(--type-small); }
+
+/* --- page layout ------------------------------------------------------------ */
+.page {
+  max-width: var(--page-max);
+  margin: 0 auto;
+  padding: calc(8px + env(safe-area-inset-top)) 12px calc(var(--tabbar-h) + 32px + env(safe-area-inset-bottom));
+}
+/* Home's block grid: one column on the phone, two on desktop. */
+.grid { display: grid; gap: 12px; }
+.stack { display: grid; gap: 12px; }
+
+@media (min-width: 900px) {
+  .page { max-width: var(--page-max-wide); padding: 24px 40px 48px; }
+  .grid { grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+}
+
+/* Square icon button (header arrows, date picker, refresh): 40px, 44px on touch. */
+.iconbtn {
+  position: relative; width: 40px; height: 40px; display: grid; place-items: center; flex: none;
+  border-radius: 10px; color: var(--text-2);
+}
+.iconbtn:hover { background: var(--inset); color: var(--text); }
+.iconbtn[disabled], .iconbtn[aria-disabled="true"] { opacity: .3; cursor: default; background: none; pointer-events: none; }
+@media (pointer: coarse) { .iconbtn { width: 44px; height: 44px; } }
+
+/* Visually hidden, still read by screen readers. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

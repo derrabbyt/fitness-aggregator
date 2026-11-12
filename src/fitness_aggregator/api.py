@@ -455,12 +455,41 @@ from .health_inbox import router as health_inbox_router  # noqa: E402
 
 from .phone_sleep import router as phone_sleep_router  # noqa: E402
 
+from starlette.exceptions import HTTPException as StarletteHTTPException  # noqa: E402
+
+from .coach_proxy import router as coach_proxy_router  # noqa: E402
+
 app.include_router(health_inbox_router)  # PoC: Apple Health exports into state/health_inbox
 app.include_router(phone_sleep_router)  # PoC: phone pings -> sleep estimate
+app.include_router(coach_proxy_router)  # /api/coach/* -> the coach's HTTP API
+
+
+class _SpaFiles(StaticFiles):
+    """The Angular app's routes (/week, /home/food, /legacy, ...) are client-side:
+    any path that isn't a file (and isn't under /api) gets index.html."""
+
+    async def get_response(self, path: str, scope):
+        try:
+            return await super().get_response(path, scope)
+        except StarletteHTTPException as exc:
+            if exc.status_code != 404 or path == "api" or path.startswith("api/"):
+                raise
+            return await super().get_response("index.html", scope)
+
 
 if WEB_DIST.is_dir():
     # Built Angular app; html=True serves index.html for "/".
-    app.mount("/", StaticFiles(directory=WEB_DIST, html=True), name="web")
+    app.mount("/", _SpaFiles(directory=WEB_DIST, html=True), name="web")
+
+
+class _QuietCoachAccess(logging.Filter):
+    """Drops uvicorn's access lines for successful /api/coach/ requests."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        args = record.args if isinstance(record.args, tuple) else ()
+        if len(args) >= 5 and str(args[2]).startswith("/api/coach/"):
+            return not str(args[4]).isdigit() or int(args[4]) >= 400
+        return True
 
 
 def main() -> None:
@@ -469,6 +498,9 @@ def main() -> None:
     from .tools_server import build_app
 
     logging.basicConfig(level=logging.INFO)
+    # The coach proxy: httpx would log every forwarded request, and the web page
+    # polls /api/coach/; keep warnings and failed requests only.
+    logging.getLogger("httpx").setLevel(logging.WARNING)
     web = uvicorn.Server(
         uvicorn.Config(app, host=os.environ.get("FA_HOST", "127.0.0.1"), port=int(os.environ.get("FA_PORT", "8000")))
     )
@@ -479,6 +511,7 @@ def main() -> None:
             port=int(os.environ.get("FA_TOOLS_PORT", "8001")),
         )
     )
+    logging.getLogger("uvicorn.access").addFilter(_QuietCoachAccess())  # after uvicorn set up its logging
 
     async def serve() -> None:
         # If either server stops, stop the process so Docker restarts both.

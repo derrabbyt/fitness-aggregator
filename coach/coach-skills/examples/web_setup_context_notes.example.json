@@ -1,0 +1,10 @@
+{
+  "today": "2026-11-11",
+  "tag_options": ["illness", "travel", "alcohol", "salty_or_large_meal", "supplement_change", "medication_change", "sport_load", "extra_session", "session_skipped", "injury", "pain", "baseline_reset", "hunger_high", "hunger_low", "energy_low", "sleep_poor", "stress", "digestion", "other_location", "logging_issue", "plan_change", "goal_change", "other"],
+  "notes": [
+    { "id": "n_9a1c2e40", "created_at": "2026-11-11T07:40:00+01:00", "text": "Wrestling camp next week, two sessions a day", "applies_from": "2026-11-16", "applies_to": "2026-11-20", "tags": ["sport_load"], "exercise_id": null, "suggest_unusable": "no", "follow_up_question": null },
+    { "id": "n_51f0b7d2", "created_at": "2026-11-10T20:05:00+01:00", "text": "Left knee a bit sore on squats", "applies_from": "2026-11-10", "applies_to": null, "tags": ["pain"], "exercise_id": "D04AC939", "suggest_unusable": "no", "follow_up_question": null },
+    { "id": "n_3f2a9c1d", "created_at": "2026-11-04T19:12:00+01:00", "text": "Hotel gym in Vienna, different machines", "applies_from": "2026-11-04", "applies_to": "2026-11-05", "tags": ["travel", "other_location"], "exercise_id": null, "suggest_unusable": "maybe", "follow_up_question": null },
+    { "id": "n_0c77a1b9", "created_at": "2026-10-01T08:00:00+02:00", "text": "Started creatine, 5 g a day", "applies_from": "2026-10-01", "applies_to": null, "tags": ["supplement_change"], "exercise_id": null, "suggest_unusable": "no", "follow_up_question": null }
+  ]
+}

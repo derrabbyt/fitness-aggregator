@@ -50,6 +50,7 @@ training:
   big_drop_pct_ask_reset: 15        # assumption: estimated-1RM drop vs the best recent session that asks "was this a reset?"
   volume_note_max_sets_per_session: 20
   volume_note_max_sets_per_muscle_per_session: 4
+  strength_trend_days: 28           # web: the strength trend (mean % change of the counting lifts' e1RM) covers this many days; within ±e1rm_same_band_pct is flat
 
 nutrition:
   carbs: remainder                  # carbs_g = (kcal - protein_g*4 - fat_g*9) / 4

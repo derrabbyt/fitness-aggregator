@@ -100,18 +100,31 @@ async def receive(request: Request) -> dict[str, Any]:
     return {"stored": path.name, "bytes": len(body), "summary": summary}
 
 
+SLEEP_RANGE_MAX_DAYS = 62
+
+
 @router.get("/api/sleep")
-async def sleep(date: str) -> dict[str, Any]:
+async def sleep(date: str | None = None, start: str | None = None, end: str | None = None) -> dict[str, Any]:
     """Sleep for `date`, for the web UI. `phone` is the estimate from phone pings
     (what the UI shows). `night` is legacy: Marrow's Apple Health `sleep_analysis`
     entry for that date (exports are incremental, so every stored file is read and
-    a later file wins); the UI no longer shows it."""
-    try:
-        day = datetime.date.fromisoformat(date)
-    except ValueError:
-        raise HTTPException(400, "date must be YYYY-MM-DD")
-    from .phone_sleep import estimate  # phone-use estimate (pings), shown next to Health's entry
+    a later file wins); the UI no longer shows it.
 
+    `?start=&end=` (read-only, at most SLEEP_RANGE_MAX_DAYS nights): the phone
+    estimate for every night from `start` to `end`, oldest first, reading the
+    pings once: `{start, end, nights: [{date, phone}]}`."""
+    from .phone_sleep import estimate, ping_times  # phone-use estimate (pings), shown next to Health's entry
+
+    if start is not None or end is not None:
+        first, last = _date(start, "start"), _date(end, "end")
+        days = (last - first).days + 1
+        if not 1 <= days <= SLEEP_RANGE_MAX_DAYS:
+            raise HTTPException(400, f"start..end must be 1 to {SLEEP_RANGE_MAX_DAYS} days, start first")
+        times = ping_times()
+        nights = [first + datetime.timedelta(days=n) for n in range(days)]
+        return {"start": first.isoformat(), "end": last.isoformat(),
+                "nights": [{"date": d.isoformat(), "phone": estimate(d, times)} for d in nights]}
+    day = _date(date, "date")
     phone = estimate(day)
     night = None
     for path in sorted(INBOX.glob("*.json")) if INBOX.exists() else []:
@@ -130,6 +143,13 @@ async def sleep(date: str) -> dict[str, Any]:
     keys = ("asleep", "inBed", "totalSleep", "sleepStart", "sleepEnd", "core", "deep", "rem", "awake")
     health = {k: night[k] for k in keys if k in night} if night is not None else None
     return {"date": date, "night": health, "phone": phone}
+
+
+def _date(value: str | None, name: str) -> datetime.date:
+    try:
+        return datetime.date.fromisoformat(value or "")
+    except ValueError:
+        raise HTTPException(400, f"{name} must be YYYY-MM-DD") from None
 
 
 @router.get("/api/health-data")

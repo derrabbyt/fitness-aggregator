@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_home.schema.json",
+  "title": "Web: Home",
+  "description": "GET /api/coach/home?day=YYYY-MM-DD (default today). One day as it stood that day, from the coach's stored data. This schema is the envelope; each block is a view part with its own schema (web_home_<key>.schema.json, checked by fa_coach.views.errors): food, and the blocks later tickets add.",
+  "type": "object",
+  "required": ["date", "is_today", "freshness"],
+  "properties": {
+    "date": { "type": "string", "format": "date" },
+    "is_today": { "type": "boolean" },
+    "freshness": { "$ref": "web_freshness.schema.json" }
+  }
+}

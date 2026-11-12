@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_home_food_detail.schema.json",
+  "title": "Web: Home food detail",
+  "description": "GET /api/coach/home/food?day=YYYY-MM-DD. The check-in week holding the day (the 7 days the weekly check-in judges, start..end; Monday-Sunday without a check-in day), each day from start to `date` eaten against its daily target. so_far totals the complete days only; its target and deviation are null when any of them has no target.",
+  "type": "object",
+  "required": ["date", "start", "end", "iso_week", "days", "so_far"],
+  "additionalProperties": false,
+  "properties": {
+    "date": { "type": "string", "format": "date" },
+    "start": { "type": "string", "format": "date" },
+    "end": { "type": "string", "format": "date" },
+    "iso_week": { "type": "string", "pattern": "^[0-9]{4}-W[0-9]{2}$", "description": "The ISO week of `end`, as the check-in names the week." },
+    "days": {
+      "type": "array",
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": ["date", "eaten_kcal", "target_kcal", "logged"],
+        "additionalProperties": false,
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "eaten_kcal": { "type": ["integer", "null"], "minimum": 0 },
+          "target_kcal": { "type": ["integer", "null"] },
+          "logged": { "enum": ["complete", "partial", "missing"] }
+        }
+      }
+    },
+    "so_far": {
+      "type": "object",
+      "required": ["days_logged", "eaten_kcal", "target_kcal", "deviation_pct"],
+      "additionalProperties": false,
+      "properties": {
+        "days_logged": { "type": "integer", "minimum": 0 },
+        "eaten_kcal": { "type": ["integer", "null"], "minimum": 0 },
+        "target_kcal": { "type": ["integer", "null"] },
+        "deviation_pct": { "type": ["number", "null"] }
+      }
+    }
+  }
+}

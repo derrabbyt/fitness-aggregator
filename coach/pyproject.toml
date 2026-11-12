@@ -13,6 +13,9 @@ dependencies = [
     "mcp>=2.3.0",
     "python-telegram-bot>=22.8",
     "pyyaml>=6.0.3",
+    # The coach's HTTP API for the web page (ADR 0001); already locked through mcp.
+    "starlette>=1.10.0",
+    "uvicorn>=0.54.0",
 ]
 
 [project.scripts]

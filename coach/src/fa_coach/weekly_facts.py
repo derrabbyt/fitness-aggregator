@@ -11,6 +11,9 @@ and report see, computed in code for one 7-day week of the active phase.
   and the guardrails count it.
 - `window_start(coach, change)`: the first day of week 1 after a calorie
   change (the lockout and confirmation window).
+- `weekly_rate(coach, end)` and `in_glycogen_window(phase, end, p)`: the
+  weekly weight rate and the "not evaluated" rule for the 7 days ending
+  `end`, shared with the web page's weight (`features/web_weight.py`).
 """
 
 import datetime
@@ -73,7 +76,7 @@ def compute(coach: "Coach", end: Date, now: datetime.datetime) -> dict[str, Any]
             "code_unusable_reasons": reasons,
         },
         "weight": _weight(coach, phase, start, end, week, not reasons, p),
-        "intake": _intake(food, summary, p),
+        "intake": intake(food, summary, p),
         "activity": {
             **weekdata.steps(coach, start, end, p),
             "sessions": food["sessions"],
@@ -120,13 +123,24 @@ def _week(coach, phase, start: Date, end: Date, p) -> dict[str, Any]:
         "end_date": end.isoformat(),
         "phase_id": phase["phase_id"],
         "phase_week": number,
-        # Any day of the week inside the window keeps the week "not judged".
-        "in_glycogen_window": phases.phase_week(phase, start) <= p.get("glycogen_window_weeks", 0),
+        "in_glycogen_window": in_glycogen_window(phase, end, p),
         "phase_first_change_pending": not phase["first_change_applied"],
     }
 
 
-def _band(p: dict[str, Any], week: int) -> dict[str, Any]:
+def weekly_rate(coach: "Coach", end: Date) -> float | None:
+    """The 7-day trend on `end` minus the trend 7 days earlier (kg per week); None without both."""
+    now, before = phases.trend_weight(coach, end), phases.trend_weight(coach, end - 7 * DAY)
+    return round(now - before, 2) if now is not None and before is not None else None
+
+
+def in_glycogen_window(phase: dict[str, Any], end: Date, p: dict[str, Any]) -> bool:
+    """Any of the 7 days ending `end` in the glycogen window (or before the phase) keeps the week
+    "not evaluated"."""
+    return phases.phase_week(phase, end - 6 * DAY) <= p.get("glycogen_window_weeks", 0)
+
+
+def weight_band(p: dict[str, Any], week: int) -> dict[str, Any]:
     rows = [b for b in p["weight_band_kg_per_week"]
             if b["from_week"] <= week and (b["to_week"] is None or week <= b["to_week"])]
     band = rows[0] if rows else p["weight_band_kg_per_week"][-1]
@@ -134,7 +148,7 @@ def _band(p: dict[str, Any], week: int) -> dict[str, Any]:
             "upper_limit": p.get("weight_upper_limit_kg_per_week")}
 
 
-def _vs_band(rate: float, band: dict[str, Any]) -> str:
+def vs_band(rate: float, band: dict[str, Any]) -> str:
     if band["upper_limit"] is not None and rate > band["upper_limit"]:
         return "above_limit"
     if band["lower_limit"] is not None and rate < band["lower_limit"]:
@@ -149,8 +163,8 @@ def _vs_band(rate: float, band: dict[str, Any]) -> str:
 def _weight(coach, phase, start: Date, end: Date, week: dict, usable: bool, p) -> dict[str, Any]:
     avg = phases.trend_weight(coach, end)
     prev = phases.trend_weight(coach, start - DAY)
-    rate = round(avg - prev, 2) if avg is not None and prev is not None else None
-    band = _band(p, week["phase_week"])
+    rate = weekly_rate(coach, end)
+    band = weight_band(p, week["phase_week"])
     evaluated = usable and not week["in_glycogen_window"] and rate is not None
     # The prediction made at the start of the week: last week's average plus
     # the planned daily surplus over 7 days.
@@ -165,7 +179,7 @@ def _weight(coach, phase, start: Date, end: Date, week: dict, usable: bool, p) -
         "prev_avg_7d_kg": prev,
         "weekly_rate_kg": rate,
         "band": band,
-        "vs_band": _vs_band(rate, band) if evaluated else "not_evaluated",
+        "vs_band": vs_band(rate, band) if evaluated else "not_evaluated",
         "predicted_avg_7d_kg": predicted,
         "prediction_error_kg": error,
         "prediction_miss": error is not None and abs(error) > p["decisions"]["prediction_miss_kg"],
@@ -174,7 +188,7 @@ def _weight(coach, phase, start: Date, end: Date, week: dict, usable: bool, p) -
     }
 
 
-def _intake(food: dict[str, Any], summary: dict[str, Any], p) -> dict[str, Any]:
+def intake(food: dict[str, Any], summary: dict[str, Any], p) -> dict[str, Any]:
     macros = food["macros"]
     reference = macros[-1]["reference_weight_kg"] if macros else 0
     fiber = p["nutrition"]["fiber_g_per_kg"]

@@ -53,6 +53,22 @@ async def test_later_syncs_fetch_only_new_and_recent_days(coach, api, clock):
     assert [s["id"] for s in history.sessions(coach.db, "2026-10-01", "2026-11-10")] == ["w2"]
 
 
+async def test_once_a_week_hevy_is_re_read_over_the_whole_history_so_late_sessions_land(coach, api, clock):
+    await coach.sync()  # Mon 9 Nov: the first sync reads 16 weeks
+    api.calls.clear()
+    api.sessions = [session("late", "2026-10-20", exercise("Squat", (100, 5)))]  # logged three weeks late
+
+    await coach.sync(clock.advance(days=6))  # Sun 15 Nov: within the week, the usual re-read
+    await coach.sync(clock.advance(days=1))  # Mon 16 Nov: a week on, the whole window again
+    await coach.sync(clock.advance(hours=1))  # and then the usual re-read again
+
+    assert api.ranges("hevy_sessions") == [("2026-11-09", "2026-11-15"), ("2026-07-28", "2026-11-16"),
+                                           ("2026-11-10", "2026-11-16")]
+    assert [s["id"] for s in history.sessions(coach.db, "2026-10-01", "2026-11-16")] == ["late"]
+    assert api.ranges("mfp_days") == [("2026-11-09", "2026-11-15"), ("2026-11-10", "2026-11-16"),
+                                      ("2026-11-10", "2026-11-16")]  # MFP keeps its 7-day re-read
+
+
 async def test_a_sync_after_a_long_gap_resumes_where_it_stopped(coach, api, clock):
     await coach.sync()
     api.calls.clear()

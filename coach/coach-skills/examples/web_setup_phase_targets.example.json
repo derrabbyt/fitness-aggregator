@@ -1,0 +1,15 @@
+{
+  "phase": { "phase_id": "reverse_bulk", "name": "Reverse into bulk", "start_date": "2026-11-09", "week": 1 },
+  "targets": {
+    "valid_from": "2026-11-09",
+    "base_maintenance_kcal": 2536,
+    "avg_day_steps": 9000,
+    "base_at_step_goal_kcal": 2570,
+    "surplus_kcal": -236,
+    "avg_daily_target_kcal": 2300,
+    "mfp_goal_kcal": 2300,
+    "at_step_goal": { "rest": 2334, "lifting": 2634, "wrestling": 2934 },
+    "today": { "kcal": 2300, "protein_g": 161, "carbs_g": 251, "fat_g": 72 }
+  },
+  "step_goal": { "value": 10000, "default": 10000, "min": 1000, "max": 40000, "editable": true }
+}

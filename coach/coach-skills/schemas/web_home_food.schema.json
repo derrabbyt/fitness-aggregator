@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_home_food.schema.json",
+  "title": "Web: Home food",
+  "description": "The `food` part of web_home: kcal eaten against the coach's daily target (never MFP's goal) and macros against their targets, as they stood that day. Every target is null before a phase is active or before its start. left = target - eaten (eaten counts as 0 when nothing is logged); negative = over.",
+  "type": "object",
+  "required": ["kcal", "build_up", "logged", "macros"],
+  "additionalProperties": false,
+  "$defs": {
+    "grams": { "type": ["integer", "null"], "minimum": 0 },
+    "macro": {
+      "type": "object",
+      "required": ["eaten_g", "target_g"],
+      "additionalProperties": false,
+      "properties": { "eaten_g": { "$ref": "#/$defs/grams" }, "target_g": { "$ref": "#/$defs/grams" } }
+    }
+  },
+  "properties": {
+    "kcal": {
+      "type": "object",
+      "required": ["eaten", "target", "left"],
+      "additionalProperties": false,
+      "properties": {
+        "eaten": { "type": ["integer", "null"], "minimum": 0 },
+        "target": { "type": ["integer", "null"] },
+        "left": { "type": ["integer", "null"] }
+      }
+    },
+    "build_up": {
+      "description": "How the day's target is built (phases.daily_target, as of the day): base at the step goal + activity (the counted sessions, workouts and other activities, plus the step kcal, which are negative below the step goal; one number) + surplus (signed: negative is a deficit, 0 maintenance) = total_kcal, exactly (rounding goes to activity_kcal). Null without a target (before a phase).",
+      "type": ["object", "null"],
+      "required": ["base_kcal", "activity_kcal", "surplus_kcal", "total_kcal"],
+      "additionalProperties": false,
+      "properties": {
+        "base_kcal": { "type": "integer" },
+        "activity_kcal": { "type": "integer" },
+        "surplus_kcal": { "type": "integer" },
+        "total_kcal": { "type": "integer" }
+      }
+    },
+    "logged": {
+      "enum": ["complete", "partial", "missing"],
+      "description": "partial: an earlier day suspected partly logged and not confirmed (today is never partial)."
+    },
+    "macros": {
+      "type": "object",
+      "required": ["protein", "carbs", "fat", "fiber"],
+      "additionalProperties": false,
+      "properties": {
+        "protein": { "$ref": "#/$defs/macro" },
+        "carbs": { "$ref": "#/$defs/macro" },
+        "fat": { "$ref": "#/$defs/macro" },
+        "fiber": {
+          "description": "Fiber's target is a range (nutrition.fiber_g_per_kg x the macro reference weight): target_g is its low end.",
+          "type": "object",
+          "required": ["eaten_g", "target_g", "target_max_g"],
+          "additionalProperties": false,
+          "properties": {
+            "eaten_g": { "$ref": "#/$defs/grams" },
+            "target_g": { "$ref": "#/$defs/grams" },
+            "target_max_g": { "$ref": "#/$defs/grams" }
+          }
+        }
+      }
+    }
+  }
+}

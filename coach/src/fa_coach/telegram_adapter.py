@@ -3,17 +3,21 @@
 Updates from the one allowed user become `on_message` / `on_photo` /
 `on_button` calls; everyone else is ignored. A scheduler loop calls `sync`
 and `run_due_jobs`. After every core call the outbox is sent. One core call
-runs at a time. Only one process may poll a bot token.
+runs at a time. Only one process may poll a bot token. The web page's HTTP
+API (web_adapter.py) runs in the same event loop; its refreshes and edits go
+through `web_call`.
 """
 
 import asyncio
 import contextlib
 import logging
 from collections.abc import Awaitable, Callable
+from typing import Any
 
 from telegram import BotCommand, InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import Application, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 
+from . import web_adapter
 from .core import Coach
 from .ports import Buttons, Edit, Outgoing, Send
 
@@ -44,6 +48,7 @@ class TelegramAdapter:
         self.outbox = outbox
         self.allowed = allowed_user_id
         self.lock = asyncio.Lock()
+        self.bot = None  # set once the application is up
 
     # --- updates -------------------------------------------------------------
 
@@ -86,6 +91,15 @@ class TelegramAdapter:
 
     # --- core calls and delivery ---------------------------------------------
 
+    async def web_call(self, call: Callable[[], Awaitable[Any]]) -> Any:
+        """A core call from the web page: under the same lock, its result
+        returned (errors raised to the HTTP adapter), the outbox sent."""
+        async with self.lock:
+            try:
+                return await call()
+            finally:
+                await self._flush(self.bot)
+
     async def _run(self, bot, call: Callable[[], Awaitable[None]]) -> None:
         async with self.lock:
             try:
@@ -93,11 +107,15 @@ class TelegramAdapter:
             except Exception as exc:  # noqa: BLE001
                 logger.exception("coach call failed")
                 self.coach.say(f"⚠️ That failed ({type(exc).__name__}). Details are in the coach's log.")
-            for item in self.outbox.drain():
-                try:
-                    await self._deliver(bot, item)
-                except Exception:  # noqa: BLE001
-                    logger.exception("sending to Telegram failed")
+            await self._flush(bot)
+
+    async def _flush(self, bot) -> None:
+        """Send everything the core call queued; a failed send is logged, the rest still go."""
+        for item in self.outbox.drain():
+            try:
+                await self._deliver(bot, item)
+            except Exception:  # noqa: BLE001
+                logger.exception("sending to Telegram failed")
 
     async def _deliver(self, bot, item: Outgoing) -> None:
         chat_id = self.allowed  # private chat: chat id == user id
@@ -144,7 +162,8 @@ def _chunks(text: str) -> list[str]:
     return chunks
 
 
-def run(coach: Coach, outbox: QueueOutbox, token: str, allowed_user_id: int) -> None:
+def run(coach: Coach, outbox: QueueOutbox, token: str, allowed_user_id: int, *, web_host: str = "0.0.0.0",
+        web_port: int = 8002) -> None:
     adapter = TelegramAdapter(coach, outbox, allowed_user_id)
     tasks: list[asyncio.Task] = []
 
@@ -152,7 +171,9 @@ def run(coach: Coach, outbox: QueueOutbox, token: str, allowed_user_id: int) -> 
         await app.bot.set_my_commands(
             [BotCommand(c.name, c.help) for c in sorted(coach.registry.commands.values(), key=lambda c: c.name)]
         )
+        adapter.bot = app.bot
         tasks.append(asyncio.create_task(adapter.scheduler(app.bot)))
+        tasks.append(asyncio.create_task(web_adapter.serve(coach, adapter.web_call, web_host, web_port)))
 
     async def post_shutdown(app: Application) -> None:
         for task in tasks:

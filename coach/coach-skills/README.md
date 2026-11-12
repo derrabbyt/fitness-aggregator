@@ -80,6 +80,7 @@ short history.
 | `phase_summary` | code → phase-review |
 | `phase_setup` | phase-start → `start_phase` tool |
 | `core_params`, `phase_params` | validate the params.yaml files |
+| `web_*` | code (read models, `fa_coach/views.py`) → the web page via `/api/coach/` (no model involved) |
 
 Tools and the exact guardrail checks: `schemas/TOOLS.md`.
 
@@ -110,6 +111,7 @@ changes the schema, the skills that reference it, the examples, and reruns
 | `training.e1rm_same_band_pct` | 1 | only when load and reps move in opposite directions: estimated 1RMs (Epley) within ±1 % are "same" (more load or reps and neither less is always improved) |
 | `training.bodyweight_same_load_kg` | 1.0 | bodyweight lifts: a change in effective load that comes only from bodyweight is the same load unless the 7-day trend moved by at least 1 kg since the compared session (user decision) |
 | `training.stall_sessions` | 3 | a stall = this many sessions in a row without progress |
+| `training.strength_trend_days` | 28 | the web page's strength trend (Home and Training; `fa_coach/strength_trend.py`): each day's point is the mean over the counting lifts trained in the 28 days ending that day of the lift's latest estimated 1RM (effective load for bodyweight lifts) as % of its first one there (after its latest baseline reset; a lift needs 2 sessions there); the rate is each such lift's change per week of its own span (first session in the window or its reset to its latest one, at least 7 days), averaged over the lifts, flat within ±`e1rm_same_band_pct` (user decision 2026-11-10, reworked in ticket 14 and the code review) |
 | `training.min_sessions_for_compare` | 2 (the judged session included) | the first session only starts a lift's history |
 | `training.compare_best_of_last_sessions` | 3 | SPEC says "best of last 2–3" |
 | `activity.met_by_activity` | running 8.0, cycling 7.5, swimming 6.0, football 7.0, basketball 6.5, tennis 7.0, hiking 6.0, walking 3.5, rowing 6.0, martial_arts 6.0 (grappling, BJJ, boxing …; wrestling and lifting use their setup values instead) | estimating kcal for sessions reported without kcal (MET × 7-day trend weight × hours); conservative "general" values in the style of the Compendium of Physical Activities. Other activities, or no trend weight yet: the model's own estimate, stored as `model_estimate` |

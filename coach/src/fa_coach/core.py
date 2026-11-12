@@ -1,6 +1,7 @@
 """The Coach core: the one seam tests drive (spec, "Coach core").
 
-Inputs: `sync`, `run_due_jobs`, `on_message`, `on_photo`, `on_button`.
+Inputs: `sync`, `run_due_jobs`, `on_message`, `on_photo`, `on_button`, and
+for the web page `view`, `refresh`, `command` (views.py) and `photo`.
 Outputs: `Send` / `Edit` items in the outbox, plus state in the database.
 Dependencies are injected: api client, model client, clock, outbox.
 Model tasks run through `coach.ask(...)` (ask.py): the prompt layout, the
@@ -18,7 +19,7 @@ from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import Any
 
-from . import phases
+from . import phases, views
 from .ask import Answer, ask
 from .db import Database
 from .ports import ApiClient, Buttons, ChatTurn, Clock, Edit, ModelClient, Outbox, Send
@@ -112,6 +113,38 @@ class Coach:
                 await job.fn(self, now)
             except Exception:
                 logger.exception("job %s failed", job.name)
+
+    # --- web page (views.py) ---------------------------------------------------
+
+    def view(self, name: str, query: dict[str, str] | None = None,
+             now: datetime.datetime | None = None) -> dict[str, Any]:
+        """A read model from stored data, e.g. `view("home", {"day": "2026-11-10"})`.
+        Raises `views.WebError` for an unknown view or a bad query."""
+        return views.render(self, name, query or {}, now or self.clock.now())
+
+    async def refresh(self, name: str, query: dict[str, str] | None = None,
+                      now: datetime.datetime | None = None) -> dict[str, Any]:
+        """Sync MFP and Hevy now, then return the read model."""
+        now = now or self.clock.now()
+        views.render(self, name, query or {}, now)  # refuse a bad request before syncing
+        await self.sync(now)
+        return views.render(self, name, query or {}, now)
+
+    async def command(self, name: str, body: dict[str, Any] | None = None,
+                      now: datetime.datetime | None = None) -> Any:
+        """An edit from the web page (a registered web command)."""
+        return await views.command(self, name, body or {}, now or self.clock.now())
+
+    def photo(self, set_date: str, number: int) -> bytes:
+        """Photo `number` (1-based) of the `set_date` set, read-only, for the
+        web page (`photos/<date>/<n>` in setup/measurements). Raises
+        `views.WebError` 404 when there is no such photo."""
+        from .features import measurements  # the photo store belongs to the measurements feature
+
+        path = measurements.photo_file(self, set_date, number)
+        if path is None:
+            raise views.WebError(404, "There is no such photo.")
+        return path.read_bytes()
 
     # --- model ---------------------------------------------------------------
 

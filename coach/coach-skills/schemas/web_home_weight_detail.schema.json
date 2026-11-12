@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_home_weight_detail.schema.json",
+  "title": "Web: weight detail",
+  "description": "GET /api/coach/home/weight?day=YYYY-MM-DD&weeks=4|12 (default today, 4 weeks). Weight as it stood that day: the latest weigh-in, the 7-day trend, the weekly rate against the band, and the chart series ending the day.",
+  "type": "object",
+  "required": ["date", "weeks", "weigh_in", "trend_kg", "weekly_rate_kg", "vs_band", "band", "series",
+               "recent", "waist", "prediction"],
+  "additionalProperties": false,
+  "$defs": {
+    "kg": { "type": ["number", "null"] }
+  },
+  "properties": {
+    "date": { "type": "string", "format": "date" },
+    "weeks": { "enum": [4, 12] },
+    "weigh_in": { "$ref": "web_home_weight.schema.json#/properties/weigh_in" },
+    "trend_kg": { "$ref": "#/$defs/kg", "description": "Mean of the non-outlier weigh-ins in the 7 days ending the day; null with too few." },
+    "weekly_rate_kg": { "$ref": "#/$defs/kg" },
+    "vs_band": { "$ref": "web_home_weight.schema.json#/properties/vs_band" },
+    "band": {
+      "description": "The active phase's band (kg per week) for the day's phase week; null before a phase or without a band.",
+      "type": ["object", "null"],
+      "required": ["low", "high", "lower_limit", "upper_limit"],
+      "additionalProperties": false,
+      "properties": {
+        "low": { "type": "number" },
+        "high": { "type": "number" },
+        "lower_limit": { "type": ["number", "null"] },
+        "upper_limit": { "type": ["number", "null"] }
+      }
+    },
+    "series": {
+      "description": "weeks x 7 days ending the day, oldest first. kg: that day's weigh-in (outlier: left out of the trend). band_low_kg/band_high_kg: the band as a weight corridor, starting at the trend on the first day in the range inside the active phase and past the glycogen window, then rising by the band's low/high rate a week; null before it.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["date", "kg", "outlier", "trend_kg", "band_low_kg", "band_high_kg"],
+        "additionalProperties": false,
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "kg": { "$ref": "#/$defs/kg" },
+          "outlier": { "type": "boolean" },
+          "trend_kg": { "$ref": "#/$defs/kg" },
+          "band_low_kg": { "$ref": "#/$defs/kg" },
+          "band_high_kg": { "$ref": "#/$defs/kg" }
+        }
+      }
+    },
+    "recent": {
+      "description": "The last 14 weigh-ins on or before the day, newest first; outliers marked (likely typos, left out of the trend).",
+      "type": "array",
+      "maxItems": 14,
+      "items": {
+        "type": "object",
+        "required": ["date", "kg", "outlier"],
+        "additionalProperties": false,
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "kg": { "type": "number" },
+          "outlier": { "type": "boolean" }
+        }
+      }
+    },
+    "waist": {
+      "description": "Waist values on or before the day, newest first (at most 12), including the active phase's start value on its start date.",
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": ["date", "cm"],
+        "additionalProperties": false,
+        "properties": { "date": { "type": "string", "format": "date" }, "cm": { "type": "number" } }
+      }
+    },
+    "prediction": {
+      "description": "The check-in week holding the day: the trend predicted for its end (last week's trend + the planned surplus x 7 / kcal per kg, as the weekly check-in predicts it) against the trend on the day. complete: the day is the week's last. null before a phase or without last week's trend.",
+      "type": ["object", "null"],
+      "required": ["start", "end", "predicted_kg", "actual_kg", "difference_kg", "complete"],
+      "additionalProperties": false,
+      "properties": {
+        "start": { "type": "string", "format": "date" },
+        "end": { "type": "string", "format": "date" },
+        "predicted_kg": { "type": "number" },
+        "actual_kg": { "$ref": "#/$defs/kg" },
+        "difference_kg": { "$ref": "#/$defs/kg", "description": "actual - predicted" },
+        "complete": { "type": "boolean" }
+      }
+    }
+  }
+}

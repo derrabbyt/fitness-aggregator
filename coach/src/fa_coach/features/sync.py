@@ -3,7 +3,9 @@ lifting sessions. Read the result through `fa_coach.history`.
 
 - The first sync loads `HISTORY_DAYS` (16 weeks up to today). Later syncs
   fetch from where the last one ended, and always re-read the last
-  `RECHECK_DAYS` so late edits in MFP or Hevy land.
+  `RECHECK_DAYS` so late edits in MFP or Hevy land. Hevy is also re-read
+  over the whole `HISTORY_DAYS` once every `HEVY_FULL_READ_DAYS`, so a
+  session logged in Hevy long after its date still lands.
 - Weigh-in outliers are marked here, in code, and never messaged about.
 - Each source records its last attempt and success (`sync_state`). When the
   last successful sync is older than `data.sync_max_age_hours`, the
@@ -20,6 +22,7 @@ from ..registry import registry
 
 HISTORY_DAYS = 16 * 7
 RECHECK_DAYS = 7
+HEVY_FULL_READ_DAYS = 7  # days between full re-reads of the Hevy history
 MFP_CHUNK_DAYS = 28  # days per api request (the api reads MFP day by day)
 
 Date = datetime.date
@@ -53,7 +56,7 @@ async def sync_mfp(coach, now: datetime.datetime) -> None:
 
 @registry.syncer("hevy", order=20)
 async def sync_hevy(coach, now: datetime.datetime) -> None:
-    async with _Run(coach, "hevy", now) as run:
+    async with _Run(coach, "hevy", now, full_read_days=HEVY_FULL_READ_DAYS) as run:
         sessions = await coach.api.hevy_sessions(run.start, run.end)
         db = coach.db
         known = {
@@ -75,18 +78,22 @@ async def sync_hevy(coach, now: datetime.datetime) -> None:
 
 
 class _Run:
-    def __init__(self, coach, source: str, now: datetime.datetime):
+    def __init__(self, coach, source: str, now: datetime.datetime, full_read_days: int | None = None):
         self.coach, self.source, self.now = coach, source, now
         today = now.date()
-        through = coach.db.value("SELECT synced_through FROM sync_state WHERE source = ?", (source,))
+        row = coach.db.one("SELECT synced_through, full_read_on FROM sync_state WHERE source = ?", (source,))
+        through, full_read_on = (row[0], row[1]) if row else (None, None)
         first = today - datetime.timedelta(days=HISTORY_DAYS - 1)
-        if through is None:
+        full_read_due = full_read_days is not None and (
+            full_read_on is None or (today - Date.fromisoformat(full_read_on)).days >= full_read_days)
+        if through is None or full_read_due:
             self.start = first
         else:
             resume = Date.fromisoformat(through) + datetime.timedelta(days=1)
             recheck = today - datetime.timedelta(days=RECHECK_DAYS - 1)
             self.start = max(first, min(resume, recheck))
         self.end = today
+        self.full_read = self.start == first
         self.count = 0
         self.new: int | None = None
         self.warning: str | None = None
@@ -112,6 +119,8 @@ class _Run:
             last_count=self.count,
             last_new=self.new,
         )
+        if self.full_read:
+            _set(self.coach.db, self.source, full_read_on=self.end.isoformat())
 
 
 

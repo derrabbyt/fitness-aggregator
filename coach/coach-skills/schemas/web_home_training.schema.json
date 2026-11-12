@@ -1,0 +1,224 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_home_training.schema.json",
+  "title": "Web: Home training",
+  "description": "The `training` part of web_home: the day's sessions as they stood that day, split into the Workouts card (lifting: Hevy sessions with the PRs set in each, a planned lift reported done, lifting extras; the 14-day strength trend; the lift summary over the last training.lift_recency_days days) and the Other activities card (Strava runs and runs reported done, wrestling (planned from the phase start on, or reported), other sessions and extras). One line per session, no per-exercise detail. A planned session reported skipped is not listed (it did not happen); there is no 'planned' or 'skipped' state. The Workouts card is shown on days without a workout too.",
+  "type": "object",
+  "required": [
+    "workouts",
+    "other_activities"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "session": {
+      "type": "object",
+      "required": [
+        "type",
+        "name",
+        "time",
+        "minutes",
+        "distance_km",
+        "pace_s_per_km",
+        "kcal_counted"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "lift",
+            "run",
+            "wrestling",
+            "other"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "description": "Hevy's or the plan's session name, the user's name for an extra, or the MFP entry's name for a Strava run."
+        },
+        "time": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^(([01][0-9]|2[0-3]):[0-5][0-9]|morning|midday|afternoon|evening)$",
+          "description": "Time of day: HH:MM (local) when the session has a start time (Hevy, Strava, the plan), else the plan's label, or null."
+        },
+        "minutes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "distance_km": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Runs only (and reported sessions with a distance)."
+        },
+        "pace_s_per_km": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Runs only: seconds per km, when both distance and duration are known."
+        },
+        "kcal_counted": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "The kcal this session adds to the day's target (counted activity, as in the food build-up): Strava run kcal x run discount, lifting and wrestling their per-session values, reported or estimated kcal for extras and planned sessions reported done (runs discounted). Null when it adds nothing: not counted, or no target that day (before a phase)."
+        }
+      }
+    },
+    "lift_session": {
+      "type": "object",
+      "required": [
+        "type",
+        "name",
+        "time",
+        "minutes",
+        "distance_km",
+        "pace_s_per_km",
+        "prs",
+        "kcal_counted"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": [
+            "lift",
+            "run",
+            "wrestling",
+            "other"
+          ]
+        },
+        "name": {
+          "type": "string",
+          "description": "Hevy's or the plan's session name, the user's name for an extra, or the MFP entry's name for a Strava run."
+        },
+        "time": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "pattern": "^(([01][0-9]|2[0-3]):[0-5][0-9]|morning|midday|afternoon|evening)$",
+          "description": "Time of day: HH:MM (local) when the session has a start time (Hevy, Strava, the plan), else the plan's label, or null."
+        },
+        "minutes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "distance_km": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Runs only (and reported sessions with a distance)."
+        },
+        "pace_s_per_km": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "Runs only: seconds per km, when both distance and duration are known."
+        },
+        "prs": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "PRs set in this Hevy session (exercises not paused, as in the weekly facts); null for a lift reported done without a Hevy session."
+        },
+        "kcal_counted": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "description": "The kcal this session adds to the day's target (counted activity, as in the food build-up): Strava run kcal x run discount, lifting and wrestling their per-session values, reported or estimated kcal for extras and planned sessions reported done (runs discounted). Null when it adds nothing: not counted, or no target that day (before a phase)."
+        }
+      }
+    }
+  },
+  "properties": {
+    "workouts": {
+      "type": "object",
+      "required": [
+        "sessions",
+        "strength_trend",
+        "summary"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sessions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/lift_session"
+          }
+        },
+        "strength_trend": {
+          "$ref": "web_strength_trend.schema.json"
+        },
+        "summary": {
+          "description": "The lifts over the training.lift_recency_days (14) days up to the day, the recency window the lift status uses: of the counted lifts (counting, judged at their latest session in the window), how many are progressing; stalled counting lifts; PRs in the window. Null when no lift has been trained yet.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "progressing",
+            "counted",
+            "stalls",
+            "prs"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "progressing": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "counted": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "stalls": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "prs": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "other_activities": {
+      "type": "object",
+      "required": [
+        "sessions"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sessions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/session"
+          }
+        }
+      }
+    }
+  }
+}

@@ -89,10 +89,15 @@ async def recent(request: Request, hours: int = 36) -> list[dict[str, Any]]:
     return [{"t": r["t"].isoformat(timespec="seconds"), "app": r.get("app")} for r in _load() if r["t"] >= since]
 
 
+def ping_times() -> list[datetime.datetime]:
+    """Every stored ping's time (read once for several nights)."""
+    return [r["t"] for r in _load()]
+
+
 def estimate(date: datetime.date, times: list[datetime.datetime] | None = None) -> dict[str, Any] | None:
     """Sleep for the night ending on `date`, from ping times (sorted or not)."""
     if times is None:
-        times = [r["t"] for r in _load()]
+        times = ping_times()
     tz = _now().tzinfo
     start = datetime.datetime.combine(date - datetime.timedelta(days=1), WINDOW_FROM, tz)
     end = datetime.datetime.combine(date, WINDOW_TO, tz)

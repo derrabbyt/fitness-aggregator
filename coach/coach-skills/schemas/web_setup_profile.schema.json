@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_setup_profile.schema.json",
+  "title": "Web: Setup, Profile",
+  "description": "GET /api/coach/setup/profile. The coach profile (what /profile shows), by key. POST /api/coach/setup/profile {patch: {key: value | null}} runs chat's update_coach_profile (null removes the entry) and returns this view.",
+  "type": "object",
+  "required": ["entries", "max_key", "max_value", "max_entries"],
+  "additionalProperties": false,
+  "properties": {
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["key", "value"],
+        "additionalProperties": false,
+        "properties": { "key": { "type": "string", "minLength": 1 }, "value": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "max_key": { "type": "integer", "description": "Longest key, in characters." },
+    "max_value": { "type": "integer", "description": "Longest value, in characters." },
+    "max_entries": { "type": "integer" }
+  }
+}
