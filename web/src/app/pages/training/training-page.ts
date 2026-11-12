@@ -1,5 +1,6 @@
 import { ChangeDetectionStrategy, Component, effect, untracked } from '@angular/core';
 import { NgTemplateOutlet } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { viewResource } from '../../api/view-resource';
 import { DayNav } from '../../shell/day-nav';
 import { injectDay } from '../../shell/day-param';
@@ -12,18 +13,8 @@ import { SectionHeader } from '../../ui/section-header';
 import { State } from '../../ui/state';
 import { Tone } from '../../ui/tone';
 import { StrengthTrendChart } from '../../ui/strength-trend';
-import { LiftStatus, TrainingActivity, TrainingLift, TrainingView } from './training.types';
-
-const STATUS: Record<LiftStatus, { text: string; tone: Tone }> = {
-  progressing: { text: 'Progressing', tone: 'ok' },
-  same: { text: 'Same', tone: 'muted' },
-  declining: { text: 'Declining', tone: 'bad' },
-  stall: { text: 'Stall', tone: 'warn' },
-  paused: { text: 'Paused', tone: 'muted' },
-  new_baseline: { text: 'New baseline', tone: 'muted' },
-  not_judged: { text: 'Building', tone: 'muted' },
-  not_recent: { text: 'Not recent', tone: 'muted' },
-};
+import { LIFT_STATUS, setText } from './lift-format';
+import { TrainingActivity, TrainingLift, TrainingView } from './training.types';
 
 const TYPES: Record<TrainingActivity['type'], string> = {
   run: 'Run', wrestling: 'Wrestling', lift: 'Lifting', other: 'Session',
@@ -37,7 +28,7 @@ const TYPES: Record<TrainingActivity['type'], string> = {
 @Component({
   selector: 'app-training-page',
   imports: [DayNav, RefreshButton, StaleLine, Card, LineChart, SectionHeader, State, StrengthTrendChart,
-    NgTemplateOutlet],
+    NgTemplateOutlet, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <div class="page">
@@ -120,6 +111,7 @@ const TYPES: Record<TrainingActivity['type'], string> = {
 
     <ng-template #liftRow let-l>
       <li class="lift">
+        <a class="row" [routerLink]="['lift', l.exercise_id]" [queryParams]="day.query()">
         <div class="what">
           <div class="m name">{{ l.name }}</div>
           <div class="t2 small num">{{ topSet(l) }}</div>
@@ -128,6 +120,7 @@ const TYPES: Record<TrainingActivity['type'], string> = {
           <app-line-chart [points]="spark(l)" [height]="28" tone="muted" emptyText="" [label]="l.name + ' history'" />
         </div>
         <div class="status small m" [class]="'tone-' + st(l).tone">{{ st(l).text }}</div>
+        </a>
       </li>
     </ng-template>
   `,
@@ -137,6 +130,10 @@ const TYPES: Record<TrainingActivity['type'], string> = {
     .list li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-top: 1px solid var(--divider); }
     .list li:first-child { border-top: 0; padding-top: 0; }
     .list li:last-child { padding-bottom: 0; }
+    .list li.lift { display: block; }
+    .row { display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; border-radius: var(--radius-inner); }
+    .row:hover .name { text-decoration: underline; text-underline-offset: 3px; }
+    .row:focus-visible { outline: 2px solid var(--info); outline-offset: 4px; }
     .what { flex: 1; min-width: 0; }
     .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .spark { width: 64px; flex: none; }
@@ -168,7 +165,7 @@ export class TrainingPage {
   protected readonly dayLabel = dayLabel;
   protected readonly String = String;
   protected st(l: TrainingLift): { text: string; tone: Tone } {
-    return STATUS[l.status];
+    return LIFT_STATUS[l.status];
   }
   protected readonly types = TYPES;
 
@@ -179,16 +176,8 @@ export class TrainingPage {
     });
   }
 
-  /** "100 kg × 9"; bodyweight lifts show the effective load ("BW 80 kg × 8"). */
   protected topSet(l: TrainingLift): string {
-    const s = l.latest;
-    if (!s) return '–';
-    const kg = (n: number) => fmt(n, Number.isInteger(n) ? 0 : 1);
-    if (l.bodyweight_exercise) {
-      const extra = s.load_kg ? `+${kg(s.load_kg)} kg` : 'bodyweight';
-      return `${kg(s.effective_load_kg)} kg × ${s.reps} · ${extra}`;
-    }
-    return `${kg(s.load_kg)} kg × ${s.reps}`;
+    return setText(l.latest, l.bodyweight_exercise);
   }
 
   protected spark(l: TrainingLift): number[] {

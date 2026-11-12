@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "web_lift.schema.json",
+  "title": "Web: lift detail",
+  "description": "GET /api/coach/lift?exercise_id=…&day=YYYY-MM-DD&offset=0&limit=3, as of that day (features/web_lift.py): the lift's status, its history chart (heaviest working set as estimated 1RM, PRs and baseline resets marked), its sessions newest first with paging, and the state of its controls. 404 for an exercise not in the synced Hevy history. Edits: POST lift/classify {exercise_id, counts}, lift/pause {exercise_id, paused, reason?}, lift/reset {exercise_id, reason, date?}; they run the chat tools classify_exercises, set_exercise_paused and mark_baseline_reset.",
+  "type": "object",
+  "required": ["date", "freshness", "exercise_id", "name", "status", "not_judged_reason", "bodyweight_exercise", "last_session_date", "latest", "counts", "paused", "chart", "resets", "sessions", "controls"],
+  "additionalProperties": false,
+  "$defs": {
+    "set": {
+      "description": "A session's heaviest working set in the rep range. Bodyweight lifts: effective_load_kg = bodyweight + added load (- assistance); load_kg is what Hevy logged.",
+      "type": "object",
+      "required": ["load_kg", "reps", "effective_load_kg", "e1rm_kg"],
+      "additionalProperties": false,
+      "properties": {
+        "load_kg": { "type": "number" },
+        "reps": { "type": "integer", "minimum": 1 },
+        "effective_load_kg": { "type": "number" },
+        "e1rm_kg": { "type": "number", "description": "Epley: effective load x (1 + reps / 30)." }
+      }
+    }
+  },
+  "properties": {
+    "date": { "type": "string", "format": "date" },
+    "freshness": { "$ref": "web_freshness.schema.json" },
+    "exercise_id": { "type": "string" },
+    "name": { "type": "string" },
+    "status": { "$ref": "web_training.schema.json#/$defs/lift/properties/status" },
+    "not_judged_reason": { "$ref": "web_training.schema.json#/$defs/lift/properties/not_judged_reason" },
+    "bodyweight_exercise": { "type": "boolean" },
+    "last_session_date": { "type": ["string", "null"], "format": "date" },
+    "latest": { "$ref": "web_training.schema.json#/$defs/top_set" },
+    "counts": { "type": "boolean", "description": "False when classified as excluded (the Training list's Not counted)." },
+    "paused": { "type": "boolean" },
+    "chart": {
+      "type": "array",
+      "description": "Every session up to the day with a working set in the rep range (sessions at another location left out), oldest first.",
+      "items": {
+        "type": "object",
+        "required": ["date", "session_id", "load_kg", "reps", "effective_load_kg", "e1rm_kg", "pr", "baseline_reset"],
+        "additionalProperties": false,
+        "properties": {
+          "date": { "type": "string", "format": "date" },
+          "session_id": { "type": "string" },
+          "load_kg": { "type": "number" },
+          "reps": { "type": "integer", "minimum": 1 },
+          "effective_load_kg": { "type": "number" },
+          "e1rm_kg": { "type": "number" },
+          "pr": { "type": "boolean", "description": "Beat the best session since the baseline (never while the lift is paused)." },
+          "baseline_reset": { "type": "boolean", "description": "This session starts a new history after a baseline reset." }
+        }
+      }
+    },
+    "resets": {
+      "type": "array",
+      "description": "Baseline resets dated up to the day, oldest first.",
+      "items": {
+        "type": "object",
+        "required": ["from_date", "reason", "session_date"],
+        "additionalProperties": false,
+        "properties": {
+          "from_date": { "type": "string", "format": "date" },
+          "reason": { "type": ["string", "null"] },
+          "session_date": { "type": ["string", "null"], "format": "date", "description": "The session that started the new baseline; null until the lift is next trained." }
+        }
+      }
+    },
+    "sessions": {
+      "type": "object",
+      "required": ["items", "offset", "total", "next_offset"],
+      "additionalProperties": false,
+      "properties": {
+        "items": {
+          "type": "array",
+          "description": "Newest first, `limit` (default 3) from `offset`.",
+          "items": {
+            "type": "object",
+            "required": ["date", "session_id", "top_set", "status", "not_judged_reason", "pr"],
+            "additionalProperties": false,
+            "properties": {
+              "date": { "type": "string", "format": "date" },
+              "session_id": { "type": "string" },
+              "top_set": { "oneOf": [{ "$ref": "#/$defs/set" }, { "type": "null" }] },
+              "status": {
+                "enum": ["progressing", "same", "declining", "stall", "new_baseline", "not_judged"],
+                "description": "How that session was judged. stall: a counting lift's session that reached training.stall_sessions without progress."
+              },
+              "not_judged_reason": { "enum": ["after_break", "building_baseline", "no_working_sets", "other_location", null] },
+              "pr": { "type": "boolean" }
+            }
+          }
+        },
+        "offset": { "type": "integer", "minimum": 0 },
+        "total": { "type": "integer", "minimum": 0 },
+        "next_offset": { "type": ["integer", "null"], "description": "Offset of the next page (\"show more\"); null when this page is the last." }
+      }
+    },
+    "controls": {
+      "type": "object",
+      "required": ["classification", "paused_reason", "reset_reasons"],
+      "additionalProperties": false,
+      "properties": {
+        "classification": { "enum": ["counts", "excluded", null], "description": "null: not classified yet (counts)." },
+        "paused_reason": { "type": ["string", "null"] },
+        "reset_reasons": { "type": "array", "items": { "type": "string" }, "description": "The reasons a baseline reset takes (mark_baseline_reset)." }
+      }
+    }
+  }
+}
