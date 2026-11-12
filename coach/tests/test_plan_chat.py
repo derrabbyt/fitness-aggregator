@@ -14,7 +14,7 @@ from fa_coach import phases, progression, proposals
 from fakes import exercise, reply, session, tool_call, tool_calls
 from test_phase_start import SETUP
 from test_proposals import goal_writes, last_card, two_c_weeks
-from test_weekly_checkin import at, check_in, fill_week, phase, three_weeks, verdict  # noqa: F401
+from test_weekly_checkin import at, below_band, check_in, fill_week, phase, three_weeks, verdict  # noqa: F401
 
 
 def tool_result(model, n: int = -2):
@@ -132,7 +132,8 @@ async def test_load_skill_gives_another_skill_by_name(phase, model):
 # --- change requests -------------------------------------------------------------------
 
 
-async def test_a_blocked_request_says_which_guardrail_and_when_it_could_pass(phase, api, clock, model, outbox):
+async def test_a_blocked_request_says_which_guardrail_and_when_it_could_pass(phase, api, clock, model, outbox,
+                                                                           below_band):
     await three_weeks(phase, api, clock, model)
     await check_in(phase, clock, model, "2026-11-30", verdict("2026-W48", scenario="C", direction="increase"))
     clock.current = at("2026-11-30", 12)
@@ -382,7 +383,7 @@ async def test_a_calibration_change_that_leaves_the_base_leaves_the_mfp_goal(
     assert "2,286 kcal" in text and "goal stays 2,300 kcal" in text
 
 
-async def test_a_calibration_change_does_not_restart_the_lockout(phase, api, clock, model, outbox):
+async def test_a_calibration_change_does_not_restart_the_lockout(phase, api, clock, model, outbox, below_band):
     await three_weeks(phase, api, clock, model)
     await check_in(phase, clock, model, "2026-11-30", verdict("2026-W48", scenario="C", direction="increase"))
     result = await ask_for_wrestling_500(phase, clock, model, "2026-12-02")

@@ -91,15 +91,16 @@ async def test_an_approved_change_shows_when_it_applied(phase, api, clock, model
 
 
 async def test_a_blocked_proposal_is_a_hold_with_the_guardrails_reasons(phase, api, clock, model):
-    await two_c_weeks(phase, api, clock, model, delta=300)
+    await three_weeks(phase, api, clock, model, avg=81.85)  # below the band: the guard lets +100 through
+    await check_in(phase, clock, model, "2026-11-30", c_week("2026-W48"))  # too soon, one week
 
-    w = week(phase, "2026-W49")
+    w = week(phase, "2026-W48")
 
     assert (w["decision"]["outcome"], w["decision"]["change_kcal"]) == ("hold", None)
     [p] = w["proposals"]
     assert (p["status"], p["guardrail"]["passed"]) == ("blocked_by_guardrail", False)
-    assert [x["violation"] for x in p["guardrail"]["details"]] == ["exceeds_max_change", "size_or_direction_mismatch"]
-    assert "±200 kcal" in p["guardrail"]["details"][0]["text"]
+    assert [x["violation"] for x in p["guardrail"]["details"]] == ["lockout", "confirmation_not_met"]
+    assert "Mon 07 Dec" in p["guardrail"]["details"][0]["text"]
     assert p["mfp_goal_after_kcal"] is None and p["avg_daily_target_kcal"] is None
 
 

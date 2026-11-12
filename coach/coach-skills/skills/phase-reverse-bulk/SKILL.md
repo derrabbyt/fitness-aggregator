@@ -68,7 +68,9 @@ only and never decide the scenario.
 - **RB-SIZE** – Small step (`decisions.small_step_kcal`) when the trend is outside the band
   by less than `decisions.far_off_margin_kg_per_week`; large step
   (`decisions.large_step_kcal`) when it is further off. When unsure, choose the smaller
-  one: a shortfall is fixed next time, extra fat gain isn't.
+  one: a shortfall is fixed next time, extra fat gain isn't. Code enforces this rule and the
+  direction (increase below the band, decrease above it) on the stored verdict
+  (weekly-decision, WD-GUARD).
 - Changes go to carbs once fat is at `macros.fat_g_per_kg_max` (code handles the macro
   split; you only state the calorie change).
 
