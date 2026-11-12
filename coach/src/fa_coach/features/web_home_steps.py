@@ -10,10 +10,13 @@ in `phases.daily_target`.
 """
 
 import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .. import phases, views, weekdata
 from ..registry import registry
+
+if TYPE_CHECKING:
+    from ..core import Coach
 
 Date = datetime.date
 DAY = datetime.timedelta(days=1)
@@ -44,7 +47,7 @@ def steps_detail(coach, query: dict[str, str], now: datetime.datetime) -> dict[s
     }
 
 
-def day_steps(coach, day: Date) -> dict[str, Any]:
+def day_steps(coach: "Coach", day: Date) -> dict[str, Any]:
     """The day's steps, its step goal and its step kcal (None when not
     tracked or without a step model), with the values in force that day."""
     p = phases.params_on(coach, day)

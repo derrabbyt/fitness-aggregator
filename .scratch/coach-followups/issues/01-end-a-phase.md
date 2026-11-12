@@ -25,3 +25,4 @@ Spec: `.scratch/coach-followups/spec.md`.
 - **Card wording:** doesn't promise "day questions keep running": they still need an active phase until ticket 06.
 - **Not done here:** an ended phase's days showing targets/band on the web needs ticket 03 (`phases.targets` still reads the active phase only), although the card says the phase stays in the history with its targets.
 - **Skills:** coach-chat CC-PHASE-END (replaces "End the bulk → phase-review"); TOOLS.md row for `request_phase_end`.
+- **Review fixes:** `phases.end_active(coach, at, end_date)` is shared with a new phase start. Without a phase, training feedback's cut-off is the latest of the last `ended_at`, the last confirmed erase (`phase_end.last_erase_at`, the erase card's `decided_at`) and the job's first run without any phase (`db.once_at`), so an erase never lets an old first-run key bring back a backlog.

@@ -60,6 +60,7 @@ def activities(coach, start: Date, end: Date) -> list[dict[str, Any]]:
     current = phases.params(coach)
     out: list[dict[str, Any]] = []
     for day in reversed(weekdata.dates(start, end)):
+        # Not just params_on: outside a phase it gives core params, which have no session kcal.
         params = (phases.params_on(coach, day) if phases.on(coach, day) else current)["activity"]
         known = all(params.get(k) is not None for k in training_plan.SETUP_KCAL.values()) \
             and params.get("run_kcal_discount") is not None

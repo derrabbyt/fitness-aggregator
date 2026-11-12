@@ -14,11 +14,14 @@ deferred items about the week, and the measurements due the week after.
 """
 
 import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .. import history, messaging, phases, progression, weekdata, weekly_facts
 from ..registry import registry
 from . import context_notes, measurements, training_plan, web_home_steps, web_week, web_weight
+
+if TYPE_CHECKING:
+    from ..core import Coach
 
 Date = datetime.date
 DAY = datetime.timedelta(days=1)
@@ -37,7 +40,7 @@ def _last(w: web_week.Week) -> Date:
     return min(w.today, w.end)
 
 
-def _in_phase(coach, w: web_week.Week, day: Date) -> Date:
+def _in_phase(coach: "Coach", w: web_week.Week, day: Date) -> Date:
     """`day`, or the last day of the week's phase when it ended before."""
     phase = web_week.phase_during(coach, w)
     if phase and phase["end_date"] and phase["end_date"] < day.isoformat():
@@ -45,7 +48,7 @@ def _in_phase(coach, w: web_week.Week, day: Date) -> Date:
     return day
 
 
-def _params(coach, w: web_week.Week) -> dict[str, Any]:
+def _params(coach: "Coach", w: web_week.Week) -> dict[str, Any]:
     """The params in force on the week's last day so far inside its phase."""
     return phases.params_on(coach, _in_phase(coach, w, _last(w)))
 

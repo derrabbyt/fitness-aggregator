@@ -120,7 +120,14 @@ async def _tools(coach: "Coach", names: Iterable[str] | None, now: datetime.date
     if names is None:
         names = list(available)
     else:
-        names = [m for n in names for m in (by_source[n] if n in by_source and n not in available else [n])]
+        # A source's name ("live") stands for all of its tools, unless a registered tool has that name.
+        expanded: list[str] = []
+        for name in names:
+            if name in by_source and name not in available:
+                expanded += by_source[name]
+            else:
+                expanded.append(name)
+        names = expanded
     missing = [n for n in names if n not in available]
     if missing:
         raise KeyError(f"unknown tools: {missing}")

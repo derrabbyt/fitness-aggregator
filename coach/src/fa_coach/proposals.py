@@ -361,7 +361,8 @@ def _apply_calories(coach, phase, proposal, current, today: Date, now) -> dict[s
     p = phases.params(coach)
     average = current["avg_daily_target_kcal"] + delta
     surplus = current["surplus_kcal"] + delta
-    goal = phases.mfp_goal_for(p, current["base_maintenance_kcal"], surplus, phases.macro_reference_weight(coach, today))
+    goal = phases.mfp_goal_for(p, current["base_maintenance_kcal"], surplus,
+                               phases.macro_reference_weight(coach, phase, today))
     values = {k: current[k] for k in ("base_maintenance_kcal", "avg_activity_kcal", "maintenance_estimate_kcal",
                                       "step_kcal_per_step", "avg_day_steps")}
     values.update(surplus_kcal=surplus, avg_daily_target_kcal=average, mfp_goal=goal)
@@ -409,7 +410,7 @@ def _calibrated(coach, phase, new_values: dict[str, Any], current, today: Date) 
     shift = avg_activity(new_p) - avg_activity(old_p)
     base = current["base_maintenance_kcal"] - (shift if setup.get("maintenance_includes_activity", True) else 0)
     activity = current["avg_activity_kcal"] + shift
-    goal = phases.mfp_goal_for(new_p, base, current["surplus_kcal"], phases.macro_reference_weight(coach, today))
+    goal = phases.mfp_goal_for(new_p, base, current["surplus_kcal"], phases.macro_reference_weight(coach, phase, today))
     return {"setup": setup, "base_maintenance_kcal": base, "avg_activity_kcal": activity,
             "avg_daily_target_kcal": base + activity + current["surplus_kcal"], "mfp_goal": goal}
 
@@ -490,13 +491,13 @@ def withdraw_open(coach: "Coach", phase_row_id: str, now: datetime.datetime) -> 
     return ids
 
 
-def close_cards(coach, proposal_id: str, outcome: str) -> None:
+def close_cards(coach: "Coach", proposal_id: str, outcome: str) -> None:
     """Edit every message showing this proposal's buttons: no buttons, the outcome below."""
     for ref, text in card_edits(coach, proposal_id, outcome):
         coach.edit(ref, text)
 
 
-def card_edits(coach, proposal_id: str, outcome: str) -> list[tuple[str, str]]:
+def card_edits(coach: "Coach", proposal_id: str, outcome: str) -> list[tuple[str, str]]:
     """(ref, new text) for every message showing this proposal's buttons, read
     now (before an erase deletes the rows they come from)."""
     edits = []

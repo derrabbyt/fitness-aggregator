@@ -36,3 +36,4 @@ Spec: `.scratch/coach-followups/spec.md`.
   and the web week's blocked-proposal example uses the lockout.
 - `proposals._size_or_direction` is kept (scenario check; chat/user sources); for weekly verdicts
   its size branch is now normally redundant.
+- **Review fixes:** for a week that counts, the stored `direction` (what streaks count) is always code's (`streak_direction`), even when the model holds; the hold stays a hold, no proposal is forced, no code adjustment is recorded. `stored()` returns it as `direction`. `expected_change` returns the size label too. Changed test: `test_proposals::test_a_change_the_scenario_doesnt_call_for_is_blocked` no longer expects `confirmation_not_met` (W49 and W50 are both below the band, so the streak is met).
