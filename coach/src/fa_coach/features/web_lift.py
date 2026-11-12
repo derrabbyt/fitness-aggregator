@@ -32,7 +32,6 @@ from typing import Any
 from .. import progression, views
 from ..registry import registry
 from . import training_feedback, web_training
-from .web_setup import field, run_tool
 
 Date = datetime.date
 DAY = datetime.timedelta(days=1)
@@ -52,7 +51,7 @@ def lift(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any]
         raise views.WebError(404, f"There is no lift {exercise_id!r} in the synced Hevy history.")
     row = next(r for r in progression.week(coach, day - 6 * DAY, day, Date.min)["tracked_lifts"]
                if r["exercise_id"] == exercise_id)
-    head = web_training._lift(row, data)
+    head = web_training.lift_row(row, data)
     paused = data["paused"]
     stored = progression.settings(coach).get(exercise_id, {})
     entries = data["entries"]
@@ -134,7 +133,7 @@ def _resets(coach, exercise_id: str, day: Date, entries: list[dict[str, Any]]) -
 
 @registry.web_command("lift/reset")
 async def reset(coach, body: dict[str, Any], now: datetime.datetime) -> Any:
-    args = {"exercise_id": field(body, "exercise_id"), "reason": field(body, "reason")}
+    args = {"exercise_id": views.field(body, "exercise_id"), "reason": views.field(body, "reason")}
     if body.get("date"):
         args["date"] = body["date"]
-    return await run_tool(coach, "mark_baseline_reset", args, now)
+    return await views.run_tool(coach, "mark_baseline_reset", args, now)

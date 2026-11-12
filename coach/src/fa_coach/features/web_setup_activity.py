@@ -49,14 +49,14 @@ async def set_activity(coach, body: dict[str, Any], now: datetime.datetime) -> d
     lifting_kcal_per_session?}}: the changed values become one calibration
     proposal (card to Telegram). Returns {proposal, section}."""
     web_setup.require_editable(coach)
-    values = web_setup.field(body, "values")
+    values = views.field(body, "values")
     if not isinstance(values, dict) or not values:
         raise views.WebError(400, "values must name at least one activity value.")
     current = phases.params(coach)["activity"]
     changed = {k: v for k, v in values.items() if k not in current or current.get(k) != v}
     if not changed:
         raise views.WebError(400, "Those are the current values; nothing to change.")
-    result = await web_setup.run_tool(coach, "propose_change", {
+    result = await views.run_tool(coach, "propose_change", {
         "type": "calibration_change", "new_values": changed, "reason": REASON, "source": "user_request"}, now)
     if result["status"] == "blocked_by_guardrail":
         raise views.WebError(400, _as_percent(" ".join(d["text"] for d in result["guardrail"]["details"])))

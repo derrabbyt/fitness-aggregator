@@ -8,20 +8,29 @@ week it is asked for; nothing extra is stored. Edits are
 tools. The Coach core exposes them as `coach.view`, `coach.refresh` and
 `coach.command`; `web_adapter.py` maps them onto HTTP.
 
+Views must only read: the web adapter runs them outside its lock on purpose
+(see `web_adapter.py`), so a view computed during a sync may mix data from
+before and after the sync's writes until the page reloads or refreshes.
+
 Every view and part has a JSON schema in coach-skills/schemas
 (`web_<name>.schema.json`): the API contract the frontend's types follow.
 `errors(coach, name, data)` checks a rendered view against its schema and
 each part against its own (the tests do this for every view).
 
 Shared helpers for views: `day(query, now)` (the `?day=` parameter, default
-today, never in the future) and `freshness(coach, now)`.
+today, never in the future) and `freshness(coach, now)`; for web commands:
+`field(body, key)` (a required field) and `run_tool(coach, name, args, now)`
+(a chat tool, validated and refused the way chat does it).
 """
 
 import datetime
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
+from jsonschema import Draft202012Validator, FormatChecker
+
 from . import history
+from .ask import ToolError
 
 if TYPE_CHECKING:
     from .core import Coach
@@ -92,3 +101,24 @@ def freshness(coach: "Coach", now: datetime.datetime) -> dict[str, Any]:
     successful sync is missing or older than `data.sync_max_age_hours`."""
     fresh = history.freshness(coach.db, now, coach.skills.params()["data"]["sync_max_age_hours"])
     return {"last_sync_at": fresh["last_sync_at"], "age_hours": fresh["age_hours"], "stale": not fresh["fresh"]}
+
+
+async def run_tool(coach, name: str, args: dict[str, Any], now: datetime.datetime) -> Any:
+    """Run the chat tool `name` as the model's call would: its input schema
+    first, then the tool. A refusal becomes a 400 with the tool's reason."""
+    tool = coach.registry.tools[name]
+    problems = [f"{'/'.join(map(str, e.absolute_path)) or 'input'}: {e.message}"
+                for e in Draft202012Validator(tool.input_schema, format_checker=FormatChecker()).iter_errors(args)]
+    if problems:
+        raise WebError(400, "; ".join(problems))
+    try:
+        return await tool.fn(coach, args, now)
+    except ToolError as exc:
+        raise WebError(400, str(exc)) from None
+
+
+def field(body: dict[str, Any], key: str) -> Any:
+    """A required field of a command's body (400 when it's missing)."""
+    if key not in body:
+        raise WebError(400, f"{key} is missing.")
+    return body[key]

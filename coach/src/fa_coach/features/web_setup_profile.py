@@ -10,8 +10,9 @@ section.
 import datetime
 from typing import Any
 
+from .. import views
 from ..registry import registry
-from . import profile, web_setup
+from . import profile
 
 
 @registry.view_part("setup", "profile", schema="web_setup_summary", order=70)
@@ -31,5 +32,5 @@ def profile_view(coach, query: dict[str, str], now: datetime.datetime) -> dict[s
 
 @registry.web_command("setup/profile")
 async def update(coach, body: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
-    await web_setup.run_tool(coach, "update_coach_profile", {"patch": web_setup.field(body, "patch")}, now)
+    await views.run_tool(coach, "update_coach_profile", {"patch": views.field(body, "patch")}, now)
     return profile_view(coach, {}, now)

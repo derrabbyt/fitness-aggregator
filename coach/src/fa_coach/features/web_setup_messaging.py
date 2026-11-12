@@ -57,9 +57,9 @@ async def set_messaging(coach, body: dict[str, Any], now: datetime.datetime) -> 
     evening_reminder_time 'HH:MM', max_unprompted_messages_per_day,
     soft_floor_min_days; null clears it). Returns the section."""
     web_setup.require_editable(coach)
-    name = web_setup.field(body, "field")
+    name = views.field(body, "field")
     if name not in FIELDS:
         raise views.WebError(400, f"{name!r} isn't a messaging value ({', '.join(FIELDS)}).")
-    value = web_setup.field(body, "value")
-    await web_setup.run_tool(coach, "record_setup_value", {"key": f"logistics.{name}", "value": value}, now)
+    value = views.field(body, "value")
+    await views.run_tool(coach, "record_setup_value", {"key": f"logistics.{name}", "value": value}, now)
     return messaging(coach, {}, now)

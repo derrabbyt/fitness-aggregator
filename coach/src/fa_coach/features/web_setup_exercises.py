@@ -11,9 +11,9 @@ Neither needs an active phase (chat doesn't either). Both return the section.
 import datetime
 from typing import Any
 
-from .. import progression
+from .. import progression, views
 from ..registry import registry
-from . import lifts, web_setup
+from . import lifts
 
 WEB_REASON = "set on the web page"
 
@@ -59,18 +59,18 @@ def exercises(coach, query: dict[str, str], now: datetime.datetime) -> dict[str,
 @registry.web_command("setup/exercises/classify")
 async def classify(coach, body: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
     """{exercise_id, classification}: chat's classify_exercises for one exercise."""
-    item = {"exercise_id": web_setup.field(body, "exercise_id"),
-            "classification": web_setup.field(body, "classification"), "reason": WEB_REASON}
-    await web_setup.run_tool(coach, "classify_exercises", {"exercises": [item]}, now)
+    item = {"exercise_id": views.field(body, "exercise_id"),
+            "classification": views.field(body, "classification"), "reason": WEB_REASON}
+    await views.run_tool(coach, "classify_exercises", {"exercises": [item]}, now)
     return exercises(coach, {}, now)
 
 
 @registry.web_command("setup/exercises/pause")
 async def pause(coach, body: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
     """{exercise_id, paused, reason?}: chat's set_exercise_paused."""
-    args = {"exercise_id": web_setup.field(body, "exercise_id"), "paused": web_setup.field(body, "paused")}
+    args = {"exercise_id": views.field(body, "exercise_id"), "paused": views.field(body, "paused")}
     reason = (body.get("reason") or "").strip() if isinstance(body.get("reason"), str) else None
     if reason:
         args["reason"] = reason
-    await web_setup.run_tool(coach, "set_exercise_paused", args, now)
+    await views.run_tool(coach, "set_exercise_paused", args, now)
     return exercises(coach, {}, now)

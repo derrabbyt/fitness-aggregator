@@ -13,8 +13,9 @@ phase. Both return the section.
 import datetime
 from typing import Any
 
+from .. import views
 from ..registry import registry
-from . import context_notes, web_setup
+from . import context_notes
 
 _OPTIONAL = ("applies_to", "exercise_id", "follow_up_question")
 
@@ -42,13 +43,13 @@ def notes(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any
 
 @registry.web_command("setup/context-notes/add")
 async def add(coach, body: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
-    text = web_setup.field(body, "text")
-    args = {"applies_from": web_setup.field(body, "applies_from"), "tags": web_setup.field(body, "tags"),
+    text = views.field(body, "text")
+    args = {"applies_from": views.field(body, "applies_from"), "tags": views.field(body, "tags"),
             "suggest_unusable": body.get("suggest_unusable") or "no"}
     args.update({k: body[k] for k in _OPTIONAL if body.get(k) is not None})
     coach.current_message = text.strip() if isinstance(text, str) else None
     try:
-        await web_setup.run_tool(coach, "add_context_note", args, now)
+        await views.run_tool(coach, "add_context_note", args, now)
     finally:
         coach.current_message = None
     return notes(coach, {}, now)
@@ -56,5 +57,5 @@ async def add(coach, body: dict[str, Any], now: datetime.datetime) -> dict[str, 
 
 @registry.web_command("setup/context-notes/delete")
 async def delete(coach, body: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
-    await web_setup.run_tool(coach, "delete_context_note", {"id": web_setup.field(body, "id")}, now)
+    await views.run_tool(coach, "delete_context_note", {"id": views.field(body, "id")}, now)
     return notes(coach, {}, now)

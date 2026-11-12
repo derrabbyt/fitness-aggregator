@@ -15,7 +15,7 @@ from typing import Any
 
 from .. import phases, views
 from ..registry import registry
-from . import measurements, web_setup
+from . import measurements
 
 Date = datetime.date
 LOOK_AHEAD_DAYS = 7 * 26
@@ -84,7 +84,7 @@ def measurements_view(coach, query: dict[str, str], now: datetime.datetime) -> d
 
 @registry.web_command("setup/measurements/waist")
 async def add_waist(coach, body: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
-    cm = web_setup.field(body, "cm")
+    cm = views.field(body, "cm")
     if cm is None:
         raise views.WebError(400, "cm is missing.")
     if isinstance(cm, bool) or not isinstance(cm, int | float):

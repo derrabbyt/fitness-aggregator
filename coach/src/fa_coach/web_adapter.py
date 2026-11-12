@@ -12,9 +12,14 @@ Photos are private: no caching by shared caches, and neither their bytes nor
 their paths are logged (no access log; a failure logs only the exception).
 
 Errors are `{"error": "<plain reason>"}` with the status of `views.WebError`
-(500 for anything unexpected). Reads run straight away from stored data;
-refresh and commands run like a Telegram update: one core call at a time,
-and whatever they say is sent to Telegram.
+(500 for anything unexpected). Refresh and commands run like a Telegram
+update: one core call at a time, and whatever they say is sent to Telegram.
+
+Reads (`get_view`, `photo`) run outside the adapter lock on purpose, so the
+page never waits behind a sync or a model call. That is safe because they
+only read: each SQLite query sees a consistent snapshot. A view built while
+a sync is writing may show partly synced data (one query before the sync's
+write, the next after); the next load or a refresh shows it whole.
 """
 
 import contextlib

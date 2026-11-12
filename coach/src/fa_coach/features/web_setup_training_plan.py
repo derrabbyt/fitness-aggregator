@@ -80,13 +80,13 @@ def plan(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any]
 async def set_day(coach, body: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
     """{weekday, sessions: [{name, type, time?, optional?}], from?}: a lasting
     change to that weekday ([] = rest day). Returns the section."""
-    weekday = web_setup.field(body, "weekday")
+    weekday = views.field(body, "weekday")
     if weekday not in training_plan.WEEKDAYS:
         raise views.WebError(400, f"weekday must be one of {', '.join(training_plan.WEEKDAYS)}.")
-    args: dict[str, Any] = {"days": {weekday: web_setup.field(body, "sessions")}}
+    args: dict[str, Any] = {"days": {weekday: views.field(body, "sessions")}}
     if body.get("from") is not None:
         args["from"] = body["from"]
-    await web_setup.run_tool(coach, "update_training_plan", args, now)
+    await views.run_tool(coach, "update_training_plan", args, now)
     return plan(coach, {}, now)
 
 
@@ -99,12 +99,12 @@ async def set_session(coach, body: dict[str, Any], now: datetime.datetime) -> di
     unknown = sorted(set(body) - set(SESSION_FIELDS))
     if unknown:
         raise views.WebError(400, f"{', '.join(unknown)} isn't a session report field.")
-    day = web_setup.field(body, "date")
+    day = views.field(body, "date")
     this_week = {d.isoformat() for d in training_plan.week_dates(now.date())}
     if day not in this_week:
         raise views.WebError(400, OTHER_WEEK)
     try:
-        result = await web_setup.run_tool(coach, "set_session_status", body, now)
+        result = await views.run_tool(coach, "set_session_status", body, now)
     except views.WebError as refused:
         raise views.WebError(refused.status, _for_the_page(refused.message)) from None
     reported = result.get("reported")

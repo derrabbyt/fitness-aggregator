@@ -8,7 +8,7 @@ proposals approved in Telegram, and a phase starts only there.
 import datetime
 from typing import Any
 
-from .. import phases
+from .. import phases, views
 from ..registry import registry
 from . import web_setup
 
@@ -73,8 +73,8 @@ def phase_targets(coach, query: dict[str, str], now: datetime.datetime) -> dict[
 async def set_step_goal(coach, body: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
     """{step_goal}: recorded like chat's `record_setup_value`; returns the section."""
     web_setup.require_editable(coach)
-    value = web_setup.field(body, "step_goal")
-    await web_setup.run_tool(coach, "record_setup_value", {"key": "step_goal", "value": value}, now)
+    value = views.field(body, "step_goal")
+    await views.run_tool(coach, "record_setup_value", {"key": "step_goal", "value": value}, now)
     return phase_targets(coach, {}, now)
 
 

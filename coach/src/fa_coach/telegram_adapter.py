@@ -98,11 +98,7 @@ class TelegramAdapter:
             try:
                 return await call()
             finally:
-                for item in self.outbox.drain():
-                    try:
-                        await self._deliver(self.bot, item)
-                    except Exception:  # noqa: BLE001
-                        logger.exception("sending to Telegram failed")
+                await self._flush(self.bot)
 
     async def _run(self, bot, call: Callable[[], Awaitable[None]]) -> None:
         async with self.lock:
@@ -111,11 +107,15 @@ class TelegramAdapter:
             except Exception as exc:  # noqa: BLE001
                 logger.exception("coach call failed")
                 self.coach.say(f"⚠️ That failed ({type(exc).__name__}). Details are in the coach's log.")
-            for item in self.outbox.drain():
-                try:
-                    await self._deliver(bot, item)
-                except Exception:  # noqa: BLE001
-                    logger.exception("sending to Telegram failed")
+            await self._flush(bot)
+
+    async def _flush(self, bot) -> None:
+        """Send everything the core call queued; a failed send is logged, the rest still go."""
+        for item in self.outbox.drain():
+            try:
+                await self._deliver(bot, item)
+            except Exception:  # noqa: BLE001
+                logger.exception("sending to Telegram failed")
 
     async def _deliver(self, bot, item: Outgoing) -> None:
         chat_id = self.allowed  # private chat: chat id == user id
