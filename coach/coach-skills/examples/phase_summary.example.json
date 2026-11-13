@@ -195,7 +195,8 @@
     ],
     "photos_enabled": true,
     "photo_sets": 5,
-    "photo_reviews": 5
+    "photo_reviews": 5,
+    "photos_compared": { "start_set": "2026-11-09", "latest_set": "2027-01-04" }
   },
   "calibration": {
     "weeks_used": 8,

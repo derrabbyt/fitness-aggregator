@@ -10,6 +10,9 @@ latest estimate wins over any model estimate; otherwise the latest model one.
   [{date, pct, source, model_pct}]; `model_pct` is the latest model estimate
   a user's estimate overrides (else None).
 - `on(coach, day)`: that date's winning estimate, or None.
+- `latest(coach, day)`: the newest winning estimate on or before `day`, or None.
+- `detach(coach, review_ids)`: the estimates of those reviews lose their link
+  (an undone phase's reviews are erased; the estimates are about the person).
 """
 
 import datetime
@@ -65,3 +68,14 @@ def on(coach: "Coach", day: datetime.date | str) -> dict[str, Any] | None:
     day = day if isinstance(day, str) else day.isoformat()
     found = _by_date(coach, "WHERE date = ?", (day,))
     return found[0] if found else None
+
+
+def latest(coach: "Coach", day: datetime.date | str) -> dict[str, Any] | None:
+    day = day if isinstance(day, str) else day.isoformat()
+    found = _by_date(coach, "WHERE date <= ?", (day,))
+    return found[0] if found else None
+
+
+def detach(coach: "Coach", review_ids: list[int]) -> None:
+    for review_id in review_ids:
+        coach.db.execute("UPDATE body_fat_estimates SET review_id = NULL WHERE review_id = ?", (review_id,))

@@ -9,7 +9,7 @@ The reverse from test_weekly_checkin starts Mon 9 Nov 2026 09:00.
 
 import datetime
 
-from fa_coach import phases
+from fa_coach import body_fat, phases, reviews
 from fa_coach.features import training_feedback
 from fakes import reply, reply_json, session, tool_call
 from test_phase_end import at, bench, button, end_card, feedback, lifted, message
@@ -94,6 +94,28 @@ async def test_confirm_erases_the_active_phase_once_and_closes_its_proposal_card
     assert "Erased" in edits[0].text and "4 weekly verdicts and reports" in edits[0].text
     report_edits = [e for e in outbox.edits if e.ref == report.ref]
     assert report_edits and "Phase erased" in report_edits[-1].text and report_edits[-1].buttons == ()
+
+
+def review(coach, kind: str, key: str, phase_row_id: str, day: str) -> int:
+    return reviews.send(coach, kind=kind, key=key, phase_row_id=phase_row_id, period_start=day, period_end=day,
+                        facts={}, text=f"{kind} review {key}", now=at(day, 9))
+
+
+async def test_undo_erases_the_phases_reviews_and_keeps_the_body_fat_estimates(phase, clock, model, outbox):
+    pid = phases.active(phase)["id"]
+    photo = review(phase, "photo", "2026-11-09", pid, "2026-11-09")
+    body_fat.add(phase, "2026-11-09", 19.0, "model", at("2026-11-09", 9), review_id=photo)
+    review(phase, "block", f"{pid}:1", pid, "2026-11-20")
+    review(phase, "block", "other:1", "other", "2026-11-20")  # another phase's
+
+    await ask_undo(phase, model, at("2026-11-22", 10))
+    assert "- 2 reviews" in end_card(outbox).text
+    await confirm(phase, outbox, at("2026-11-22", 11))
+
+    assert [r["text"] for r in reviews.sent_between(phase, datetime.date(2026, 11, 1), datetime.date(2026, 12, 1))] \
+        == ["block review other:1"]
+    assert body_fat.on(phase, "2026-11-09")["pct"] == 19.0
+    assert "2 reviews" in [e for e in outbox.edits if e.ref == end_card(outbox).ref][-1].text
 
 
 async def test_undo_erases_only_its_phase(phase, clock, model, outbox):

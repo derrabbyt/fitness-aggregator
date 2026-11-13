@@ -23,8 +23,9 @@ Built in `features/photo_review.py` (tests `coach/tests/test_photo_review.py`). 
 - **When it runs:** photos arrive one by one, so job `photo-review` reviews the latest set
   once no new photo came for 10 minutes (`SETTLE`, an assumption), during the active phase
   with photos on, for a set dated on/after the phase start and at most 2 days back (no
-  backlog after a deploy). Once per set date (`once`); a model failure or an invalid answer
-  is logged and not retried (the next set gets its review). Decision model, schema
+  backlog after a deploy). Once per set date; a model failure or an invalid answer is
+  logged and retried on later runs, at most `photo_review.MAX_ATTEMPTS` (3) per set (one
+  `once` key per attempt), then given up (review fixes). Decision model, schema
   `photo_review`.
 - **Like for like:** the reference is the latest winning estimate up to the set's date
   (the user's own counts, also one given that day before the review). The comparison is

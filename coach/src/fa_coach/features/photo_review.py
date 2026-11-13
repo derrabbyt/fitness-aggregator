@@ -5,8 +5,9 @@ review"). Skill `photo-review`, output `photo_review.schema.json`.
   `SETTLE`; photos come one by one) during the active phase, with photos on,
   and the set is fresh (`FRESH_DAYS`), the decision model gets that set and
   one earlier set as images, the latest estimate before it and the waist
-  trend. Once per set date (`once`; a model failure isn't retried, the next
-  set gets its review).
+  trend. Once per set date; a model failure (an error or no usable answer)
+  is tried again on later runs, at most `MAX_ATTEMPTS` times per set (one
+  `once` key per attempt), then it is given up and logged.
 - Like for like (`comparison_set`): the most recent earlier set whose
   estimate (`body_fat.on`, the user's winning) is within `LIKE_FOR_LIKE_PCT`
   of the latest estimate up to the new set's date; without one, the phase
@@ -41,6 +42,8 @@ logger = logging.getLogger("fa-coach")
 
 Date = datetime.date
 SKILL = "photo-review"
+KIND = "photo"
+MAX_ATTEMPTS = 3  # a set whose review the model fails is tried again on later runs, at most this often
 SETTLE = datetime.timedelta(minutes=10)  # assumption: a set is complete 10 minutes after its last photo
 FRESH_DAYS = 2  # a set dated more than this many days back gets no review (no backlog after a deploy)
 LIKE_FOR_LIKE_PCT = 2.0  # spec: similar leanness = estimates within +-2 % body fat
@@ -67,15 +70,23 @@ async def photo_review(coach: "Coach", now: datetime.datetime) -> None:
     last = max(datetime.datetime.fromisoformat(p["received_at"]) for p in new["photos"])
     if now - last < SETTLE:
         return
-    if reviews.sent(coach, "photo", day) or not coach.db.once(f"photo-review:{day}", now):
+    if reviews.sent(coach, KIND, day):
         return
-    await _review(coach, phase, new, sets[:-1], now)
+    attempt = next((n for n in range(1, MAX_ATTEMPTS + 1) if coach.db.once(_attempt_key(day, n), now)), None)
+    if attempt is None:
+        return
+    if not await _review(coach, phase, new, sets[:-1], now) and attempt == MAX_ATTEMPTS:
+        logger.error("photo review %s: no usable answer after %d attempts, giving up", day, MAX_ATTEMPTS)
+
+
+def _attempt_key(day: str, n: int) -> str:
+    return f"photo-review:{day}" if n == 1 else f"photo-review:{day}:{n}"
 
 
 def comparison_set(coach: "Coach", phase: dict[str, Any], day: str,
                    earlier: list[dict[str, Any]]) -> tuple[dict[str, Any], str] | None:
     """(set, "similar_leanness" | "phase_start") to compare the `day` set with, or None."""
-    reference = _latest_estimate(coach, day)
+    reference = body_fat.latest(coach, day)
     if reference is not None:
         for photo_set in reversed(earlier):
             estimate = body_fat.on(coach, photo_set["date"])
@@ -85,19 +96,16 @@ def comparison_set(coach: "Coach", phase: dict[str, Any], day: str,
     return (start, "phase_start") if start is not None else None
 
 
-def _latest_estimate(coach: "Coach", day: str) -> dict[str, Any] | None:
-    return next((e for e in body_fat.estimates(coach) if e["date"] <= day), None)
-
-
 async def _review(coach: "Coach", phase: dict[str, Any], new: dict[str, Any], earlier: list[dict[str, Any]],
-                  now: datetime.datetime) -> None:
+                  now: datetime.datetime) -> bool:
+    """Ask the model and send the review; False when the model gave no usable answer (retried)."""
     day = new["date"]
     picked = comparison_set(coach, phase, day, earlier)
-    images = _images(coach, "New set", new)
+    shown = images(coach, "New set", new)
     compared = None
     if picked is not None:
         old, why = picked
-        images += _images(coach, "Comparison set", old)
+        shown += images(coach, "Comparison set", old)
         compared = {"id": old["date"], "date": old["date"], "photos": len(old["photos"]), "picked": why,
                     "estimate": body_fat.on(coach, old["date"])}
     p = phases.params(coach)
@@ -105,34 +113,35 @@ async def _review(coach: "Coach", phase: dict[str, Any], new: dict[str, Any], ea
         "photo_set": {"id": day, "date": day, "photos": len(new["photos"]),
                       "phase_week": phases.phase_week(phase, Date.fromisoformat(day))},
         "comparison_set": compared,
-        "previous_estimate": _latest_estimate(coach, day),
+        "previous_estimate": body_fat.latest(coach, day),
         "waist": measurements.waist_history(coach, Date.fromisoformat(day))[:WAIST_VALUES],
         "phase": {"phase_id": phase["phase_id"], "start_date": phase["start_date"]},
         "params": {"body_fat": p.get("body_fat"), "measurements": p["measurements"]},
     }
     try:
         answer = await coach.ask([SKILL], facts, tools=(), output_schema="photo_review", decision=True,
-                                 images=images, now=now)
+                                 images=shown, now=now)
     except ModelError as exc:
         logger.warning("photo review %s: %s", day, exc)
-        return
+        return False
     if not answer.ok:
         logger.warning("photo review %s: no usable answer: %s", day, "; ".join(answer.errors))
-        return
+        return False
     review = answer.data
     low, high = sorted((review["bf_estimate"]["low_pct"], review["bf_estimate"]["high_pct"]))
     pct = round((low + high) / 2 * 2) / 2  # the range's midpoint, to the half percent
     review_id = reviews.send(
-        coach, kind="photo", key=day, phase_row_id=phase["id"],
+        coach, kind=KIND, key=day, phase_row_id=phase["id"],
         period_start=compared["date"] if compared else day, period_end=day,
         facts={**facts, "review": review, "estimate_pct": pct}, text=_text(review, low, high, compared), now=now)
     if review_id is None:
-        return
+        return True
     body_fat.add(coach, day, pct, "model", now, review_id=review_id)
     advise_if_due(coach, day, now)
+    return True
 
 
-def _images(coach: "Coach", label: str, photo_set: dict[str, Any]) -> list[Image]:
+def images(coach: "Coach", label: str, photo_set: dict[str, Any]) -> list[Image]:
     out = []
     for n, photo in enumerate(photo_set["photos"], start=1):
         data = (coach.state_dir / photo["path"]).read_bytes()
@@ -160,8 +169,8 @@ def advise_if_due(coach: "Coach", day: str, now: datetime.datetime) -> bool:
     newest = body_fat.estimates(coach)
     if not near or not newest or newest[0]["date"] != day or newest[0]["pct"] < near[0]:
         return False
-    last = coach.db.value("SELECT MAX(at) FROM unprompted_messages WHERE kind = ?", (ADVICE_KIND,))
-    if last is not None and now - datetime.datetime.fromisoformat(last) < ADVICE_EVERY:
+    last = messaging.last_sent_at(coach, ADVICE_KIND)
+    if last is not None and now - last < ADVICE_EVERY:
         return False
     estimate = newest[0]
     whose = "your own estimate" if estimate["source"] == "user" else "from your photos"

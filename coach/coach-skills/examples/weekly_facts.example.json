@@ -455,7 +455,7 @@
     "latest_bf_estimate": {
       "low_pct": 13,
       "high_pct": 15,
-      "source": "photo",
+      "source": "model",
       "date": "2027-02-22"
     }
   },

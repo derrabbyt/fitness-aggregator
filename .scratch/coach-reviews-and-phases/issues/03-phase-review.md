@@ -35,7 +35,9 @@ Built in `coach/src/fa_coach/features/phase_review.py` (tests: `coach/tests/test
   (renamed from `_maintenance`); lifts and strength trend over the phase via
   `block_review.lifts_over` (extracted from `block_review.facts`, same output); waist,
   body-fat estimates (`body_fat.estimates`, the user's winning), photo set and photo
-  review counts. No images: the photo comparison is the photo reviews' estimates.
+  review counts. Since the review fixes, with photo sets in the phase the model also gets
+  the phase start set and the latest set as images (`measurements.photos_compared`,
+  `photo_review.images`). The end review runs on `phase_end.after_end`.
 - **Calibration drift** (an assumption on the method; thresholds in `reviews.calibration`,
   marked as assumptions): per usable phase week (the maintenance estimate's rules via the new
   `phases.unusable_days`, so the glycogen window is out) the trend-implied expenditure

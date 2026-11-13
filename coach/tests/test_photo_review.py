@@ -155,14 +155,28 @@ async def test_no_review_with_photos_off_without_a_phase_or_for_an_old_set(coach
     assert review_texts(coach) == []
 
 
-async def test_a_model_failure_sends_nothing_and_is_not_retried(coach, model, outbox):
+async def test_a_model_failure_is_retried_on_later_runs(coach, model, outbox):
     activate(coach)
     await send_set(coach, "2026-11-09")
-    model.script(ModelError("connection failed"))
+    model.script(ModelError("connection failed"), reply_json(review_json("2026-11-09", 18, 20)))
     await coach.run_due_jobs(at("2026-11-09", 8))
+    assert review_texts(coach) == [] and body_fat.estimates(coach) == []
+
     await coach.run_due_jobs(at("2026-11-09", 9))
 
-    assert len(photo_requests(model)) == 1
+    assert len(photo_requests(model)) == 2
+    assert len(review_texts(coach)) == 1 and body_fat.on(coach, "2026-11-09")["pct"] == 19.0
+
+
+async def test_after_3_failed_attempts_the_set_is_given_up(coach, model, outbox):
+    activate(coach)
+    await send_set(coach, "2026-11-09")
+    model.script(ModelError("down"), reply("not json"), ModelError("down"),
+                 reply_json(review_json("2026-11-09", 18, 20)))
+    for hour in (8, 9, 10, 11, 12):
+        await coach.run_due_jobs(at("2026-11-09", hour))
+
+    assert len(photo_requests(model)) == 3
     assert review_texts(coach) == [] and body_fat.estimates(coach) == []
 
 

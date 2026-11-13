@@ -8,7 +8,7 @@ CREATE TABLE reviews (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     key          TEXT NOT NULL UNIQUE,
     kind         TEXT NOT NULL CHECK (kind IN ('block', 'phase', 'photo')),
-    phase_row_id TEXT,              -- the phase it reviews; no foreign key (an erased phase's review stays)
+    phase_row_id TEXT,              -- the phase it reviews (photo: the active one); no foreign key, an undo erases them (phase_end.py)
     period_start TEXT NOT NULL,     -- ISO date: the first day it looks back over
     period_end   TEXT NOT NULL,     -- ISO date: the last day
     facts        TEXT NOT NULL,     -- JSON: the numbers code computed for it

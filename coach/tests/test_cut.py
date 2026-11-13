@@ -309,3 +309,21 @@ async def test_too_fast_eats_100_more_after_one_week(cut_phase, api, clock, mode
     assert stored["code_adjustments"][0].startswith("proposal +200 -> +100 kcal")
     result = report_input(model)["proposal_result"]
     assert (result["status"], result["delta_kcal"]) == ("open", 100), result
+
+
+# --- the web page ---------------------------------------------------------------------------
+
+
+async def test_the_web_weight_leaves_week_1_unjudged_like_the_check_in(cut_phase, api, clock):
+    """Week 1's water drop (-1.0 kg) isn't judged on Home or in the detail's band corridor; week 2 is."""
+    home = cut_phase.view("home", {"day": "2026-11-15"})["weight"]
+    assert (home["weekly_rate_kg"], home["vs_band"]) == (-1.0, "not_evaluated")
+    detail = cut_phase.view("home/weight", {"day": "2026-11-15", "weeks": "1"})
+    assert detail["vs_band"] == "not_evaluated"
+    assert all(d["band_low_kg"] is None for d in detail["series"])
+
+    fill_week(api, 2, kcal=1786, avg=78.8)
+    clock.current = datetime.datetime.fromisoformat("2026-11-22T20:00:00+01:00")
+    await cut_phase.sync()
+    home = cut_phase.view("home", {"day": "2026-11-22"})["weight"]
+    assert (home["weekly_rate_kg"], home["vs_band"]) == (-0.7, "in_band")

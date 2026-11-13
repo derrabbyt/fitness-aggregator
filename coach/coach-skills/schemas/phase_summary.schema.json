@@ -92,7 +92,7 @@
     "training": { "$ref": "block_facts.schema.json#/properties/training" },
     "measurements": {
       "type": "object",
-      "required": ["waist_cm_start", "waist", "body_fat_estimates", "photos_enabled", "photo_sets", "photo_reviews"],
+      "required": ["waist_cm_start", "waist", "body_fat_estimates", "photos_enabled", "photo_sets", "photo_reviews", "photos_compared"],
       "additionalProperties": false,
       "properties": {
         "waist_cm_start": { "type": ["number", "null"] },
@@ -109,7 +109,17 @@
         },
         "photos_enabled": { "type": "boolean" },
         "photo_sets": { "type": "integer" },
-        "photo_reviews": { "type": "integer" }
+        "photo_reviews": { "type": "integer" },
+        "photos_compared": {
+          "type": ["object", "null"],
+          "description": "The photo sets the model gets as images: the phase's first set (start_set) and its latest (latest_set; null when the phase has one set). Null without photo sets in the phase.",
+          "required": ["start_set", "latest_set"],
+          "additionalProperties": false,
+          "properties": {
+            "start_set": { "type": "string", "format": "date" },
+            "latest_set": { "type": ["string", "null"], "format": "date" }
+          }
+        }
       }
     },
     "calibration": {

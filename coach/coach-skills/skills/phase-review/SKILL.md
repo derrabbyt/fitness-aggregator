@@ -26,7 +26,10 @@ day). Take every number as given (CORE-NO-MATH).
    number. Null: not enough usable weeks yet.
 5. **PR-BODY** – Waist start vs now (reported, not a trigger). With photos on: the
    body-fat estimates over the phase (`body_fat_estimates`; the user's own win), with the
-   caveat that only like-for-like photo sets compare well. Code already sends the
+   caveat that only like-for-like photo sets compare well. With `photos_compared`, the
+   images after the input are the phase start set and the latest set (labelled): describe
+   the visible change between them in a few words (waist, definition), as an estimate,
+   next to the estimates; the start set alone (`latest_set` null) gets no comparison. Code already sends the
    body-fat advice; repeat it here only as one line if the phase's rule applies.
 6. **PR-CALIBRATION** – For each `calibration` item:
    - `drifted` with a `proposal`: say what the weeks show (`evidence`) and that the card

@@ -16,7 +16,8 @@
   - effect `end`: the phase gets status 'ended', `ended_at` and `end_date` =
     yesterday (`phases.end_active`; `phases.on(day)` reads the span); its open
     proposals are withdrawn (`proposals.withdraw_open`) and their cards edited.
-    Then the phase review of the ended phase goes out (features/phase_review.py).
+    Then the `after_end` hooks run (the phase review of the ended phase,
+    features/phase_review.py).
   - effect `erase` (an undo card, or an end card on the phase's start day,
     where an end would leave an empty phase): `erase` deletes the phase and
     everything that hangs on it in the same transaction; its open proposals'
@@ -39,9 +40,10 @@ A new table that hangs on a phase gets a row in `_erase_parts` (and a
 import datetime
 import logging
 import secrets
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
-from .. import phases, proposals
+from .. import body_fat, phases, proposals, reviews
 from ..ask import ToolError
 from ..ports import Button
 from ..registry import registry
@@ -57,6 +59,10 @@ MODE_END, MODE_UNDO = "end", "undo"
 MODES = (MODE_END, MODE_UNDO)
 EFFECT_END, EFFECT_ERASE = "end", "erase"
 ERASED = "⏹ Phase erased. Nothing changed from this proposal."
+
+# Run after a confirmed end, outside its transaction: fn(coach, phase as stored, now). The phase
+# review (features/phase_review.py) registers here. A failure is logged and never undoes the end.
+after_end: list[Callable[["Coach", dict[str, Any], datetime.datetime], Awaitable[None]]] = []
 
 
 # --- effect -----------------------------------------------------------------------------
@@ -89,6 +95,7 @@ def _erase_parts(coach: "Coach", phase: dict[str, Any]) -> list[tuple[str, str, 
         ("weekly_checkins", "weekly_checkins WHERE phase_row_id = ?", pid),
         ("targets", "targets WHERE phase_row_id = ?", pid),
         ("setup_changes", "setup_changes WHERE phase_row_id = ?", pid),  # "its setup" on the card
+        ("reviews", *reviews.phase_rows(phase["id"])),  # its block, phase and photo reviews
         ("phases", "phases WHERE id = ?", pid),
         ("phase_setups", "phase_setups WHERE id = ?", setup),
     ]
@@ -103,9 +110,10 @@ def erase_counts(coach: "Coach", phase: dict[str, Any]) -> dict[str, int]:
 def erase(coach: "Coach", phase: dict[str, Any]) -> dict[str, int]:
     """Delete `phase` and what hangs on it: its setup (and setup history),
     targets, proposals (and their cards and counter taps), weekly verdicts and
-    reports. Other phases, and the day questions and confirmations of its days,
+    reports, and its reviews (body-fat estimates stay, without their review). Other phases, and the day questions and confirmations of its days,
     stay. Returns the deleted rows per kind. Call inside the caller's
     transaction."""
+    body_fat.detach(coach, reviews.ids_for_phase(coach, phase["id"]))  # the estimates stay (about the person)
     return {kind: coach.db.execute(f"DELETE FROM {rows}", params).rowcount
             for kind, rows, params in _erase_parts(coach, phase)}
 
@@ -134,6 +142,7 @@ LABELS = {
     "targets": ("target", "targets"),
     "proposals": ("proposal", "proposals"),
     "weekly_checkins": ("weekly verdict and report", "weekly verdicts and reports"),
+    "reviews": ("review", "reviews"),
 }
 
 
@@ -163,8 +172,8 @@ def render_undo_card(coach: "Coach", phase: dict[str, Any], today: Date) -> str:
     lines = [f"Erase the phase “{_name(coach, phase)}” ({_span(phase)})?",
              "This deletes it as if it never ran:"]
     lines += [f"- {item}" for item in _counted(erase_counts(coach, phase))]
-    lines.append("Kept: everything synced from MyFitnessPal and Hevy, day questions and confirmations, waist and "
-                 "photos, your profile, notes and exercise settings, and other phases.")
+    lines.append("Kept: everything synced from MyFitnessPal and Hevy, day questions and confirmations, waist, "
+                 "photos and body-fat estimates, your profile, notes and exercise settings, and other phases.")
     if phase["status"] == "active":
         lines.append("From today there's no target. Weekly check-ins, evening reminders and waist/photo reminders "
                      "stop; training feedback and day questions keep running.")
@@ -259,7 +268,7 @@ async def endphase_command(coach: "Coach", args: str, now: datetime.datetime) ->
     "are withdrawn, check-ins and reminders stop, and the phase stays in the history. Mode undo only when the "
     "user's message explicitly asks to undo or erase a phase (e.g. 'undo it, that was a test'), never to end one: "
     "its card offers to delete the active phase, else the latest ended one, with its setup, targets, proposals, "
-    "weekly verdicts and reports, listing the counts. The MFP goal is untouched either "
+    "weekly verdicts and reports and reviews, listing the counts. The MFP goal is untouched either "
     "way. This tool itself changes nothing; tell the user the card is below.",
     {
         "type": "object",
@@ -326,18 +335,12 @@ async def confirm_phase_end(coach: "Coach", ref_id: str, now: datetime.datetime)
     for proposal_id in withdrawn:
         proposals.close_cards(coach, proposal_id, "⏹ Phase ended. Nothing changed from this proposal.")
     if ended is not None:
-        await _review(coach, ended, now)
-
-
-async def _review(coach: "Coach", phase_row_id: str, now: datetime.datetime) -> None:
-    """The phase review of the phase just ended (coach-reviews ticket 03). A failure never undoes
-    the end: it's logged, and the phase-review job catches up."""
-    from . import phase_review
-
-    try:
-        await phase_review.review_end(coach, phases.get(coach, phase_row_id), now)
-    except Exception:
-        logger.exception("phase review after the phase end failed")
+        stored = phases.get(coach, ended)
+        for hook in after_end:
+            try:
+                await hook(coach, stored, now)
+            except Exception:
+                logger.exception("after the phase end: %s failed", getattr(hook, "__name__", hook))
 
 
 @registry.button("cancel_phase_end")

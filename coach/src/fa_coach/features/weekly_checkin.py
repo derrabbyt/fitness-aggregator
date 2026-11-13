@@ -29,7 +29,7 @@ Hooks for later tickets:
   -> (text, buttons)`, run on the final report before it is sent (code
   decides the proposal buttons; `by_model` False = code's fallback text).
 - `phase_expected_change[phase_id]`: a phase's own guard rule in place of
-  `expected_change` (maintenance: features/maintenance.py).
+  `expected_change` (maintenance: features/maintenance.py; cut: features/phase_cut.py).
 - Deferred items come from `messaging.deferred` (the week's days); due
   measurements from `measurements.measurements_due` (the 7 days from the check-in day).
 
@@ -62,7 +62,7 @@ report_hooks: list[ReportHook] = []
 FinishHook = Callable[[Any, dict[str, Any], str, Buttons, bool], tuple[str, Buttons]]
 report_finish_hooks: list[FinishHook] = []
 # A phase's own decision guard rule (phase_id -> fn(weight, decisions), as `expected_change`);
-# phases not listed use `expected_change`. Maintenance: features/maintenance.py.
+# phases not listed use `expected_change`. Maintenance: features/maintenance.py; cut: features/phase_cut.py.
 ExpectedChange = Callable[[dict[str, Any], dict[str, Any]], tuple[str, float | None, str | None, str]]
 phase_expected_change: dict[str, ExpectedChange] = {}
 
