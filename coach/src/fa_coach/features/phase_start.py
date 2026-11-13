@@ -362,7 +362,7 @@ def _with_current_body_fat(coach, full: dict[str, Any], today: datetime.date) ->
     goal = full.get("goal")
     if not isinstance(goal, dict) or "body_fat_pct" not in goal or "current_body_fat_pct" in goal:
         return
-    latest = next((e for e in body_fat.estimates(coach) if e["date"] <= today.isoformat()), None)
+    latest = body_fat.latest(coach, today)
     if latest is None:
         raise ToolError("goal: current_body_fat_pct is needed (there is no body-fat estimate yet); "
                         "ask the user for their current body fat")

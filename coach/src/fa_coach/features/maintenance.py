@@ -1,7 +1,8 @@
 """Maintenance (skill phase-maintenance): the weekly decision guard's rule.
 
-Flat is the band (±0.1 kg/week); a small drift up to the limits (±0.2) is
-watched and stored as a hold, so it counts for no streak. Beyond a limit the
+Flat is the band (the phase's `weight_band_kg_per_week`); a small drift up
+to the limits (`weight_lower_limit_kg_per_week` / `weight_upper_limit_kg_per_week`)
+is watched and stored as a hold, so it counts for no streak. Beyond a limit the
 trend calls for `small_step_kcal` toward flat (MAINT-SIZE), and the core's
 confirmation (`decisions.confirmation_weeks` counted weeks) gates the
 proposal. Phase start needs nothing here: `start.surplus_kcal` 0 makes the

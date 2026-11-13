@@ -22,12 +22,17 @@ LEVELS = ("conservative", "moderate", "aggressive")
 MIN_GOAL_WEEKS = 1
 
 
+def _rate(p: dict[str, Any], deficit: float) -> float:
+    """The weekly weight change a daily deficit makes (kg/week, negative), unrounded."""
+    return -deficit * 7 / p["maintenance_estimate"]["kcal_per_kg"]
+
+
 def target_rate(p: dict[str, Any], deficit: float) -> float:
-    return round(-deficit * 7 / p["maintenance_estimate"]["kcal_per_kg"], 2)
+    return round(_rate(p, deficit), 2)
 
 
 def band(p: dict[str, Any], deficit: float) -> dict[str, float]:
-    rate, tolerance = -deficit * 7 / p["maintenance_estimate"]["kcal_per_kg"], p["cut"]["band_tolerance"]
+    rate, tolerance = _rate(p, deficit), p["cut"]["band_tolerance"]
     return {"low": round(rate * (1 + tolerance), 2), "high": round(rate * (1 - tolerance), 2)}
 
 

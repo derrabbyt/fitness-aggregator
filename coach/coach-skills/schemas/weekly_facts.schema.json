@@ -297,7 +297,7 @@
           "properties": {
             "low_pct": { "type": "number" },
             "high_pct": { "type": "number" },
-            "source": { "enum": ["photo", "user"] },
+            "source": { "enum": ["model", "user"] },
             "date": { "type": "string", "format": "date" }
           }
         }

@@ -14,9 +14,10 @@ and report see, computed in code for one 7-day week of the active phase.
 - `maintenance_base(coach, end, p)`: the maintenance estimate as base
   maintenance (the weekly facts' `targets.maintenance_estimate`; also the
   phase review's).
-- `weekly_rate(coach, end)` and `in_glycogen_window(phase, end, p)`: the
-  weekly weight rate and the "not evaluated" rule for the 7 days ending
-  `end`, shared with the web page's weight (`features/web_weight.py`).
+- `weekly_rate(coach, end)`, `in_glycogen_window(phase, end, p)` and
+  `in_unjudged_weeks(phase, end, p)`: the weekly weight rate and the "not
+  evaluated" rules for the 7 days ending `end`, shared with the web page's
+  weight (`features/web_weight.py`).
 """
 
 import datetime
@@ -244,11 +245,10 @@ def _measurements(coach, phase, end: Date, p) -> dict[str, Any]:
 def _latest_bf(coach, end: Date) -> dict[str, Any] | None:
     """The newest body-fat estimate up to `end` (the user's winning for its date,
     body_fat.py). Stored as one value, so the range is that value."""
-    latest = next((e for e in body_fat.estimates(coach) if e["date"] <= end.isoformat()), None)
+    latest = body_fat.latest(coach, end)
     if latest is None:
         return None
-    return {"low_pct": latest["pct"], "high_pct": latest["pct"],
-            "source": "photo" if latest["source"] == "model" else "user", "date": latest["date"]}
+    return {"low_pct": latest["pct"], "high_pct": latest["pct"], "source": latest["source"], "date": latest["date"]}
 
 
 def maintenance_base(coach, end: Date, p) -> dict[str, Any]:

@@ -29,20 +29,16 @@ The chat reads a stored review with `get_block_review` to talk about it.
 """
 
 import datetime
-import logging
 import statistics
 from typing import TYPE_CHECKING, Any
 
 from .. import history, phases, progression, reviews
 from ..ask import ToolError
-from ..ports import ModelError
 from ..registry import registry
 from . import context_notes, training_plan
 
 if TYPE_CHECKING:
     from ..core import Coach
-
-logger = logging.getLogger("fa-coach")
 
 Date = datetime.date
 DAY = datetime.timedelta(days=1)
@@ -56,8 +52,7 @@ IGNORED = ("no_working_sets", "other_location")
 
 def current_block(coach: "Coach", phase: dict[str, Any]) -> tuple[int, Date]:
     """(number, first day) of the phase's block in progress."""
-    rows = coach.db.all("SELECT period_end FROM reviews WHERE kind = ? AND phase_row_id = ? ORDER BY id",
-                        (KIND, phase["id"]))
+    rows = reviews.for_phase(coach, phase["id"], KIND)
     if not rows:
         return 1, Date.fromisoformat(phase["start_date"])
     return len(rows) + 1, Date.fromisoformat(rows[-1]["period_end"]) + DAY
@@ -120,14 +115,13 @@ async def end_block(coach: "Coach", args: dict[str, Any], now: datetime.datetime
 )
 async def get_block_review(coach: "Coach", args: dict[str, Any], now: datetime.datetime) -> dict[str, Any]:
     phase = phases.latest(coach)
-    rows = [] if phase is None else coach.db.all(
-        "SELECT id FROM reviews WHERE kind = ? AND phase_row_id = ? ORDER BY id", (KIND, phase["id"]))
+    rows = [] if phase is None else reviews.for_phase(coach, phase["id"], KIND)
     if not rows:
         raise ToolError("no block review was sent in this phase yet")
     number = args.get("number", len(rows))
     if number > len(rows):
         raise ToolError(f"only {len(rows)} block review(s) were sent in this phase")
-    review = reviews.get(coach, rows[number - 1]["id"])
+    review = rows[number - 1]
     return {"number": number, "period_start": review["period_start"], "period_end": review["period_end"],
             "sent_at": review["created_at"], "text": review["text"], "facts": review["facts"]}
 
@@ -138,25 +132,9 @@ async def _review(coach: "Coach", phase: dict[str, Any], number: int, start: Dat
     if reviews.sent(coach, KIND, key):
         return
     data = facts(coach, number, start, end, weeks, reason)
-    text = await _model_text(coach, data, now) or fallback_text(data)
+    text = await reviews.model_text(coach, SKILL, data, "block_facts", now) or fallback_text(data)
     reviews.send(coach, kind=KIND, key=key, phase_row_id=phase["id"], period_start=start.isoformat(),
                  period_end=end.isoformat(), facts=data, text=text, now=now)
-
-
-async def _model_text(coach: "Coach", data: dict[str, Any], now: datetime.datetime) -> str:
-    problems = coach.skills.errors(data, "block_facts")
-    if problems:
-        logger.error("block facts don't match the schema, code's summary goes out: %s", problems)
-        return ""
-    try:
-        answer = await coach.ask((SKILL,), data, tools=(), output_schema="coach_message", decision=True, now=now)
-    except ModelError as exc:
-        logger.warning("block review: model error %s", exc)
-        return ""
-    if answer.data is None or not answer.data["send"]:
-        logger.warning("block review not usable: %s", answer.errors or "send false")
-        return ""
-    return answer.data["text"].strip()
 
 
 def fallback_text(data: dict[str, Any]) -> str:

@@ -5,7 +5,7 @@
   from the day after week 10n (key "<phase id>:week-<10n>"; only the latest
   due one, no backlog). A phase end always gets one (key "<phase id>:end",
   the phase's whole span): confirming the end card runs it right away
-  (`review_end`, from features/phase_end.py); the job catches up on a phase
+  (`review_end`, on `phase_end.after_end`); the job catches up on a phase
   that ended within `END_CATCH_UP` without one (a crash, or a new phase
   start that ended it).
 - Facts (code, `phase_summary.schema.json`): weight against the band (the
@@ -13,6 +13,9 @@
   (block_review's lift summary over the phase), targets and the
   maintenance estimate (start vs now), waist and body-fat estimates (the
   photo reviews'; the user's win), photo counts, and the calibration drift.
+  With photo sets in the phase, the model also gets the phase start set
+  (the first in the phase) and the latest set as images
+  (`measurements.photos_compared`; one set alone goes as the start set).
 - Calibration drift (`calibration`): per usable phase week (fully logged,
   enough weigh-ins, no unusable or glycogen-window day: the maintenance
   estimate's rules) the trend-implied expenditure = intake - weekly weight
@@ -34,20 +37,17 @@
 
 import datetime
 import json
-import logging
 import statistics
 from typing import TYPE_CHECKING, Any
 
 from .. import body_fat, history, phases, proposals, reviews, weekly_facts
-from ..ports import ModelError
+from ..ports import Image
 from ..registry import registry
-from . import block_review, measurements, training_plan
+from . import block_review, measurements, phase_end, photo_review, training_plan
 from .proposals import send_card
 
 if TYPE_CHECKING:
     from ..core import Coach
-
-logger = logging.getLogger("fa-coach")
 
 Date = datetime.date
 DAY = datetime.timedelta(days=1)
@@ -88,6 +88,9 @@ async def review_end(coach: "Coach", phase: dict[str, Any], now: datetime.dateti
     await _review(coach, phase, PHASE_END, "end", Date.fromisoformat(phase["end_date"]), now)
 
 
+phase_end.after_end.append(review_end)
+
+
 async def _review(coach: "Coach", phase: dict[str, Any], reason: str, key: str, end: Date,
                   now: datetime.datetime) -> None:
     key = f"{phase['id']}:{key}"
@@ -95,7 +98,9 @@ async def _review(coach: "Coach", phase: dict[str, Any], reason: str, key: str, 
         return
     data = facts(coach, phase, reason, end)
     made = _propose(coach, phase, data, now) if reason == SCHEDULED else []
-    text = await _model_text(coach, phase, data, now) or fallback_text(coach, phase, data)
+    text = (await reviews.model_text(coach, SKILL, data, "phase_summary", now, phase=phase["phase_id"],
+                                     images=_images(coach, data["measurements"]["photos_compared"]))
+            or fallback_text(coach, phase, data))
     review_id = reviews.send(coach, kind=KIND, key=key, phase_row_id=phase["id"],
                              period_start=phase["start_date"], period_end=end.isoformat(), facts=data, text=text,
                              now=now)
@@ -111,7 +116,8 @@ async def _review(coach: "Coach", phase: dict[str, Any], reason: str, key: str, 
 def _propose(coach: "Coach", phase: dict[str, Any], data: dict[str, Any],
              now: datetime.datetime) -> list[dict[str, Any]]:
     """A calibration proposal per drifted value; returns the new open ones (their cards go out after the review)."""
-    if phases.active(coach) is None or phases.active(coach)["id"] != phase["id"]:
+    active = phases.active(coach)
+    if active is None or active["id"] != phase["id"]:
         return []
     made = []
     for key in CALIBRATED:
@@ -130,21 +136,15 @@ def _propose(coach: "Coach", phase: dict[str, Any], data: dict[str, Any],
 # --- text ---------------------------------------------------------------------------
 
 
-async def _model_text(coach: "Coach", phase: dict[str, Any], data: dict[str, Any], now: datetime.datetime) -> str:
-    problems = coach.skills.errors(data, "phase_summary")
-    if problems:
-        logger.error("phase summary doesn't match the schema, code's summary goes out: %s", problems)
-        return ""
-    try:
-        answer = await coach.ask((SKILL,), data, tools=(), output_schema="coach_message", decision=True,
-                                 phase=phase["phase_id"], now=now)
-    except ModelError as exc:
-        logger.warning("phase review: model error %s", exc)
-        return ""
-    if answer.data is None or not answer.data["send"]:
-        logger.warning("phase review not usable: %s", answer.errors or "send false")
-        return ""
-    return answer.data["text"].strip()
+def _images(coach: "Coach", compared: dict[str, Any] | None) -> list[Image]:
+    """The phase start set and the latest set as images (`photos_compared`), as the photo review sends them."""
+    if compared is None:
+        return []
+    by_date = {s["date"]: s for s in measurements.photo_sets(coach)}
+    out = photo_review.images(coach, "Phase start set", by_date[compared["start_set"]])
+    if compared["latest_set"] is not None:
+        out += photo_review.images(coach, "Latest set", by_date[compared["latest_set"]])
+    return out
 
 
 def fallback_text(coach: "Coach", phase: dict[str, Any], data: dict[str, Any]) -> str:
@@ -186,8 +186,7 @@ def facts(coach: "Coach", phase: dict[str, Any], reason: str, end: Date) -> dict
     p = phases.params_for(coach.skills, phase["phase_id"], phases.setup_on(coach, phase, end))
     week = phases.phase_week(phase, end)
     lifts, training = block_review.lifts_over(coach, start, end)
-    earlier = coach.db.value("SELECT COUNT(*) FROM reviews WHERE kind = ? AND phase_row_id = ?",
-                             (KIND, phase["id"]))
+    earlier = reviews.count(coach, phase["id"], KIND)
     time_goal = p.get("time_goal_weeks")
     setup = phase["setup"]
     return {
@@ -258,11 +257,14 @@ def _measurements(coach, phase, start: Date, end: Date, p) -> dict[str, Any]:
     estimates = [{"date": e["date"], "pct": e["pct"], "source": e["source"]}
                  for e in reversed(body_fat.estimates(coach)) if span[0] <= e["date"] <= span[1]]
     sets = [s for s in measurements.photo_sets(coach) if span[0] <= s["date"] <= span[1]]
-    photo_reviews = coach.db.value("SELECT COUNT(*) FROM reviews WHERE kind = 'photo' AND phase_row_id = ?",
-                                   (phase["id"],))
+    photo_reviews = reviews.count(coach, phase["id"], photo_review.KIND)
+    compared = None
+    if sets:
+        latest = sets[-1]["date"] if len(sets) > 1 else None
+        compared = {"start_set": sets[0]["date"], "latest_set": latest}
     return {"waist_cm_start": phase["setup"].get("waist_cm_start"), "waist": waist, "body_fat_estimates": estimates,
             "photos_enabled": bool(p["measurements"]["photos_enabled"]), "photo_sets": len(sets),
-            "photo_reviews": photo_reviews}
+            "photo_reviews": photo_reviews, "photos_compared": compared}
 
 
 # --- calibration drift --------------------------------------------------------------

@@ -12,6 +12,7 @@ value; no limit while it is unset):
   check-in, the one weekly message the user expects). The `after_send`
   hooks run after each message that went out.
 - `sent_today(coach, now)`: counted messages sent today (local date of `now`).
+- `last_sent_at(coach, kind)`: when the latest message of `kind` went out, or None.
 - `limit(coach)`, `can_send(coach, now)`.
 
 Deferred items (non-urgent observations held back for the weekly report):
@@ -47,6 +48,11 @@ def sent_today(coach: "Coach", now: datetime.datetime) -> int:
     return coach.db.value(
         "SELECT COUNT(*) FROM unprompted_messages WHERE day = ? AND exempt = 0", (now.date().isoformat(),)
     )
+
+
+def last_sent_at(coach: "Coach", kind: str) -> datetime.datetime | None:
+    at = coach.db.value("SELECT MAX(at) FROM unprompted_messages WHERE kind = ?", (kind,))
+    return datetime.datetime.fromisoformat(at) if at else None
 
 
 def can_send(coach: "Coach", now: datetime.datetime) -> bool:

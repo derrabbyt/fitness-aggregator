@@ -129,6 +129,37 @@ async def test_ending_a_phase_reviews_it_and_asks_what_comes_next(phase, make_co
     assert len(phase_requests(model)) == 1 and len(phase_reviews(coach)) == 1
 
 
+async def test_with_photos_the_review_compares_the_phase_start_set_with_the_latest(phase, make_coach, clock, model,
+                                                                                   outbox):
+    coach = reviewer(make_coach)
+    await coach.on_photo(b"before", None, at("2026-11-08", 7))  # before the phase: not its start set
+    for day in ("2026-11-09", "2026-11-23", "2026-12-06"):
+        for n in range(2):
+            await coach.on_photo(f"{day}-{n}".encode(), None, at(day, 7, n))
+    await coach.on_message("/endphase", at("2026-12-07", 10))
+    model.script(reply_json(message("Leaner in the end set.")))
+    await confirm(coach, outbox, at("2026-12-07", 11))
+
+    [request] = phase_requests(model)
+    assert [(i.label, i.data) for i in request.images] == [
+        ("Phase start set 2026-11-09, photo 1", b"2026-11-09-0"),
+        ("Phase start set 2026-11-09, photo 2", b"2026-11-09-1"),
+        ("Latest set 2026-12-06, photo 1", b"2026-12-06-0"),
+        ("Latest set 2026-12-06, photo 2", b"2026-12-06-1")]
+    assert request.input["measurements"]["photos_compared"] == {"start_set": "2026-11-09", "latest_set": "2026-12-06"}
+    assert coach.skills.errors(request.input, "phase_summary") == []
+
+
+async def test_without_photos_the_review_has_no_images(phase, make_coach, clock, model, outbox):
+    coach = reviewer(make_coach)
+    await coach.on_message("/endphase", at("2026-12-07", 10))
+    model.script(reply_json(message("Done.")))
+    await confirm(coach, outbox, at("2026-12-07", 11))
+
+    [request] = phase_requests(model)
+    assert request.images == () and request.input["measurements"]["photos_compared"] is None
+
+
 async def test_without_a_usable_model_answer_code_sends_its_own_end_review(phase, make_coach, clock, model, outbox):
     coach = reviewer(make_coach)
     await coach.on_message("/endphase", at("2026-12-07", 10))
