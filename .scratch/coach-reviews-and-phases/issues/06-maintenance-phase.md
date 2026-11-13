@@ -4,7 +4,7 @@
 
 **Blocked by:** follow-ups 01, follow-ups 05
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Skill params finalized; validator green
 - [x] Tests: flat holds, drift for 2 weeks proposes

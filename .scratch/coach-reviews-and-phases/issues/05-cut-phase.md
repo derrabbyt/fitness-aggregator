@@ -4,7 +4,7 @@
 
 **Blocked by:** follow-ups 01, follow-ups 03, follow-ups 05
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Skill `phase-cut` params + schema finalized; validator green
 - [x] Tests: start from level and from goal (cap, warning), band, the four weekly cases, macros, end_date

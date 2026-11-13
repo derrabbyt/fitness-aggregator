@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Model client supports image input (fake in tests)
 - [x] Tests: like-for-like pick, user estimate wins, advice threshold and 4-week limit

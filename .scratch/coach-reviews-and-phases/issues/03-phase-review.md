@@ -4,7 +4,7 @@
 
 **Blocked by:** 01, 04, follow-ups 01, follow-ups 03
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Schedule (10 weeks, on end) tests
 - [x] Calibration drift -> proposal test

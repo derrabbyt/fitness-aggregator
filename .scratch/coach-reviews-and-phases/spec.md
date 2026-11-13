@@ -1,6 +1,6 @@
 # Coach: block review, phase review with photos, cut and maintenance
 
-Status: ready-for-agent
+Status: resolved
 
 Sources: the questions of 2026-11-12, `SPEC.md` (Scheduled cadence, Reports, Reverse and bulk settings, Photos and measurements, Other phases), `docs/reference/training-principles/02-fat-loss-coaching-protocol.txt` (deficit levels, target met / stalled, cut macros), `.scratch/coach/spec.md` (Out of Scope), `GLOSSARY.md`.
 

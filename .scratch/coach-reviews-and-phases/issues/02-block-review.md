@@ -4,7 +4,7 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** resolved
 
 - [x] Schedule + end_block tests
 - [x] Facts tests (stalls, deload, volume)
