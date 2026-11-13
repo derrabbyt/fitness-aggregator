@@ -11,9 +11,13 @@ and report see, computed in code for one 7-day week of the active phase.
   and the guardrails count it.
 - `window_start(coach, change)`: the first day of week 1 after a calorie
   change (the lockout and confirmation window).
-- `weekly_rate(coach, end)` and `in_glycogen_window(phase, end, p)`: the
-  weekly weight rate and the "not evaluated" rule for the 7 days ending
-  `end`, shared with the web page's weight (`features/web_weight.py`).
+- `maintenance_base(coach, end, p)`: the maintenance estimate as base
+  maintenance (the weekly facts' `targets.maintenance_estimate`; also the
+  phase review's).
+- `weekly_rate(coach, end)`, `in_glycogen_window(phase, end, p)` and
+  `in_unjudged_weeks(phase, end, p)`: the weekly weight rate and the "not
+  evaluated" rules for the 7 days ending `end`, shared with the web page's
+  weight (`features/web_weight.py`).
 """
 
 import datetime
@@ -22,7 +26,7 @@ import statistics
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
-from . import history, phases, weekdata
+from . import body_fat, history, phases, weekdata
 from .features import context_notes, measurements
 
 if TYPE_CHECKING:
@@ -87,7 +91,7 @@ def compute(coach: "Coach", end: Date, now: datetime.datetime) -> dict[str, Any]
             "surplus_kcal": round(current["surplus_kcal"]),
             "base_maintenance_kcal": round(current["base_maintenance_kcal"]),
             "avg_daily_target_kcal": round(current["avg_daily_target_kcal"]),
-            "maintenance_estimate": _maintenance(coach, end, p),
+            "maintenance_estimate": maintenance_base(coach, end, p),
             "mfp_goal_kcal": current["mfp_goal_kcal"],
             **_step_model(current, p),
         },
@@ -140,6 +144,12 @@ def in_glycogen_window(phase: dict[str, Any], end: Date, p: dict[str, Any]) -> b
     return phases.phase_week(phase, end - 6 * DAY) <= p.get("glycogen_window_weeks", 0)
 
 
+def in_unjudged_weeks(phase: dict[str, Any], end: Date, p: dict[str, Any]) -> bool:
+    """Any of the 7 days ending `end` in the phase's first `unjudged_weeks` (the cut's week-1
+    water drop): the trend isn't judged against the band ("not evaluated"), without a glycogen window."""
+    return phases.phase_week(phase, end - 6 * DAY) <= p.get("unjudged_weeks", 0)
+
+
 def weight_band(p: dict[str, Any], week: int) -> dict[str, Any]:
     rows = [b for b in p["weight_band_kg_per_week"]
             if b["from_week"] <= week and (b["to_week"] is None or week <= b["to_week"])]
@@ -165,7 +175,8 @@ def _weight(coach, phase, start: Date, end: Date, week: dict, usable: bool, p) -
     prev = phases.trend_weight(coach, start - DAY)
     rate = weekly_rate(coach, end)
     band = weight_band(p, week["phase_week"])
-    evaluated = usable and not week["in_glycogen_window"] and rate is not None
+    evaluated = (usable and not week["in_glycogen_window"] and not in_unjudged_weeks(phase, end, p)
+                 and rate is not None)
     # The prediction made at the start of the week: last week's average plus
     # the planned daily surplus over 7 days.
     at_start = phases.targets(coach, start)
@@ -227,11 +238,20 @@ def _measurements(coach, phase, end: Date, p) -> dict[str, Any]:
         "waist_cm_latest": waist[-1] if waist else None,
         "waist_cm_prev": waist[-2] if len(waist) > 1 else None,
         "waist_cm_phase_start": phase["setup"].get("waist_cm_start"),
-        "latest_bf_estimate": None,
+        "latest_bf_estimate": _latest_bf(coach, end),
     }
 
 
-def _maintenance(coach, end: Date, p) -> dict[str, Any]:
+def _latest_bf(coach, end: Date) -> dict[str, Any] | None:
+    """The newest body-fat estimate up to `end` (the user's winning for its date,
+    body_fat.py). Stored as one value, so the range is that value."""
+    latest = body_fat.latest(coach, end)
+    if latest is None:
+        return None
+    return {"low_pct": latest["pct"], "high_pct": latest["pct"], "source": latest["source"], "date": latest["date"]}
+
+
+def maintenance_base(coach, end: Date, p) -> dict[str, Any]:
     """The back-calculated estimate as base maintenance (its window's average
     counted activity taken off); the weeks after the estimate's window up to
     `end` were left out (glycogen window or unusable)."""

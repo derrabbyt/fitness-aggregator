@@ -13,10 +13,12 @@ wrestling day (+600) 2900. Macros at 80.5 kg: protein 161 g, fat 72 g,
 carbs (2300 - 644 - 652.05) / 4 = 251 g."""
 
 import datetime
+import shutil
 
 import pytest
 
 from fa_coach import phases
+from fa_coach.skills import DEFAULT_ROOT, SkillsPackage
 from fakes import exercise, food, reply, run, session, tool_call, tool_calls
 
 SETUP = {
@@ -82,14 +84,23 @@ def card(outbox):
 # --- refusal and prefill ------------------------------------------------------
 
 
-async def test_a_draft_phase_with_open_values_is_refused_listing_them(coach, model, outbox):
+async def test_a_draft_phase_with_open_values_is_refused_listing_them(make_coach, model, outbox, tmp_path):
+    # Every shipped phase is decided now; a copy of the package with the cut back as a draft.
+    root = tmp_path / "coach-skills"
+    shutil.copytree(DEFAULT_ROOT, root)
+    params = root / "skills" / "phase-cut" / "params.yaml"
+    text = params.read_text().replace("draft: false", "draft: true").replace(
+        "weight_lower_limit_kg_per_week: null", "weight_lower_limit_kg_per_week: null  # TO DECIDE")
+    params.write_text(text)
+    coach = make_coach(skills=SkillsPackage(root))
+
     await coach.on_message("start cut")
 
     assert model.requests == []
     assert len(outbox.texts) == 1
     text = outbox.texts[0]
     assert "draft" in text.lower()
-    assert "weight_band_kg_per_week" in text and "weight_lower_limit_kg_per_week" in text
+    assert "weight_lower_limit_kg_per_week" in text
     assert phases.active(coach) is None
 
 

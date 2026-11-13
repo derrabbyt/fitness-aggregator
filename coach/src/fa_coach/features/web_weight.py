@@ -101,7 +101,7 @@ def _prediction(coach, day: Date) -> dict[str, Any] | None:
 def _series(coach, start: Date, end: Date) -> list[dict[str, Any]]:
     """Each day: the weigh-in (outliers marked), the 7-day trend and the band
     corridor: from the trend on the first judged day in the range (inside a
-    phase, past the glycogen window), rising by the band's low and
+    phase, past the glycogen window and the unjudged weeks), rising by the band's low and
     high rate a week for each day's phase week."""
     rows = {r["date"]: r for r in coach.db.all(
         "SELECT date, weight_kg, outlier FROM weigh_ins WHERE date BETWEEN ? AND ?",
@@ -155,19 +155,20 @@ class Bands:
         return weekly_facts.weight_band(p, week) if week >= 1 else None
 
     def judged(self, day: Date) -> bool:
-        """`day` has a band and is past the glycogen window."""
+        """`day` has a band and is past the glycogen window and the unjudged weeks (a cut's week 1)."""
         phase, p = self._phase(day)
-        return self.on(day) is not None and phases.phase_week(phase, day) > p.get("glycogen_window_weeks", 0)
+        unjudged = max(p.get("glycogen_window_weeks", 0), p.get("unjudged_weeks", 0))
+        return self.on(day) is not None and phases.phase_week(phase, day) > unjudged
 
     def vs_band(self, day: Date, rate: float | None) -> str | None:
         """The rate of the 7 days ending `day` against the band, as the weekly
         check-in judges a week: "not_evaluated" while any of those days is in
-        the glycogen window; None without a rate or a band."""
+        the glycogen window or the unjudged weeks; None without a rate or a band."""
         band = self.on(day)
         if rate is None or band is None:
             return None
         phase, p = self._phase(day)
-        if weekly_facts.in_glycogen_window(phase, day, p):
+        if weekly_facts.in_glycogen_window(phase, day, p) or weekly_facts.in_unjudged_weeks(phase, day, p):
             return "not_evaluated"
         return weekly_facts.vs_band(rate, band)
 

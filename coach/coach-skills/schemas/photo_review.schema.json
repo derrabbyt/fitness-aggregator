@@ -4,7 +4,7 @@
   "title": "Photo review",
   "description": "Output of the photo-review skill at each photo check-in. The skill receives the new photo set, the previous photo set and the previous estimate, and judges relative change. The estimate is stored and appears as weekly_facts.measurements.latest_bf_estimate.",
   "type": "object",
-  "required": ["schema_version", "date", "photo_set_id", "previous_photo_set_id", "comparability", "comparability_issues", "change_vs_previous", "bf_estimate", "confidence", "advise_ceiling", "notes"],
+  "required": ["schema_version", "date", "photo_set_id", "previous_photo_set_id", "comparability", "comparability_issues", "change_vs_previous", "bf_estimate", "confidence", "notes"],
   "additionalProperties": false,
   "properties": {
     "schema_version": { "const": 1 },
@@ -27,7 +27,6 @@
       }
     },
     "confidence": { "enum": ["low", "medium", "high"] },
-    "advise_ceiling": { "type": "boolean", "description": "True if the estimate is at or near the phase's body-fat advice level (reverse_bulk: body_fat.advise_near_pct)." },
     "notes": { "type": "string", "description": "2-4 sentences for the user: what changed, how reliable the comparison is, protocol fixes for next time." }
   }
 }

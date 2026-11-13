@@ -21,5 +21,9 @@
         { "number": 2, "url": "photos/2026-10-26/2", "caption": "side", "received_at": "2026-10-26T07:21:00+01:00" }
       ] }
     ]
-  }
+  },
+  "body_fat": [
+    { "date": "2026-11-09", "pct": 20.0, "source": "user", "model_pct": 21.5 },
+    { "date": "2026-10-26", "pct": 21.0, "source": "model", "model_pct": null }
+  ]
 }

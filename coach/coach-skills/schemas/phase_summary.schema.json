@@ -2,116 +2,135 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "phase_summary.schema.json",
   "title": "Phase summary",
-  "description": "Computed by code for the phase-review skill (every reviews.phase_review_every_weeks, or when the user ends a phase).",
+  "description": "Computed by code for the phase-review skill (features/phase_review.py): every reviews.phase_review_every_weeks weeks from the phase start (reason scheduled) and when a phase ends (reason phase_end). Covers the phase from start_date to end_date. The model never recalculates these numbers.",
   "type": "object",
-  "required": ["schema_version", "phase_id", "reason", "start_date", "end_date", "weeks_elapsed", "usable_weeks", "weight", "targets", "changes", "training", "measurements", "calibration_check", "photos", "params"],
+  "required": ["schema_version", "phase_id", "reason", "is_first_review_of_phase", "ask_what_next", "start_date", "end_date", "weeks_elapsed", "time_goal", "weight", "targets", "maintenance_estimate", "lifts", "training", "measurements", "calibration", "params"],
   "additionalProperties": false,
   "properties": {
     "schema_version": { "const": 1 },
     "phase_id": { "type": "string" },
     "reason": { "enum": ["scheduled", "phase_end"] },
     "is_first_review_of_phase": { "type": "boolean" },
+    "ask_what_next": { "type": "boolean", "description": "The phase ended and no new phase is active: ask what comes next." },
     "start_date": { "type": "string", "format": "date" },
-    "end_date": { "type": "string", "format": "date" },
-    "weeks_elapsed": { "type": "integer" },
-    "usable_weeks": { "type": "integer" },
-    "time_goal_weeks": { "type": ["integer", "null"] },
-    "weight": {
+    "end_date": { "type": "string", "format": "date", "description": "The last day reviewed: the end of phase week n x phase_review_every_weeks, or the ended phase's last day." },
+    "weeks_elapsed": { "type": "integer", "description": "Phase week of end_date." },
+    "time_goal": {
       "type": "object",
-      "required": ["start_trend_kg", "current_trend_kg", "change_kg", "avg_rate_kg_per_week_usable", "weeks_in_band", "weeks_below_band", "weeks_above_band", "weeks_above_limit"],
+      "required": ["weeks", "weeks_left", "goal", "end_date"],
       "additionalProperties": false,
       "properties": {
-        "start_trend_kg": { "type": "number" },
-        "current_trend_kg": { "type": "number" },
-        "change_kg": { "type": "number" },
-        "avg_rate_kg_per_week_usable": { "type": ["number", "null"] },
-        "weeks_in_band": { "type": "integer" },
-        "weeks_below_band": { "type": "integer" },
-        "weeks_above_band": { "type": "integer" },
-        "weeks_above_limit": { "type": "integer" }
+        "weeks": { "type": ["integer", "null"], "description": "Setup value time_goal_weeks." },
+        "weeks_left": { "type": ["integer", "null"] },
+        "goal": { "description": "A cut's goal from its setup ({weight_kg | body_fat_pct, date}), else null." },
+        "end_date": { "type": ["string", "null"], "format": "date", "description": "A mini-cut's end date." }
       }
     },
-    "targets": {
+    "weight": {
       "type": "object",
-      "required": ["start_avg_daily_kcal", "current_avg_daily_kcal", "maintenance_estimate_history"],
+      "required": ["start_trend_kg", "current_trend_kg", "change_kg", "avg_rate_kg_per_week", "band", "weeks"],
       "additionalProperties": false,
       "properties": {
-        "start_avg_daily_kcal": { "type": "number" },
-        "current_avg_daily_kcal": { "type": "number" },
-        "maintenance_estimate_history": {
-          "type": "array",
-          "items": {
-            "type": "object", "required": ["date", "base_kcal"], "additionalProperties": false,
-            "properties": { "date": { "type": "string", "format": "date" }, "base_kcal": { "type": "number" } }
+        "start_trend_kg": { "type": ["number", "null"], "description": "7-day trend the day before the start (else the setup's starting trend weight)." },
+        "current_trend_kg": { "type": ["number", "null"] },
+        "change_kg": { "type": ["number", "null"] },
+        "avg_rate_kg_per_week": { "type": ["number", "null"] },
+        "band": { "$ref": "weekly_facts.schema.json#/properties/weight/properties/band" },
+        "weeks": {
+          "type": "object",
+          "description": "Weekly check-ins of the phase by their verdict against the band.",
+          "required": ["in_band", "below_band", "above_band", "below_limit", "above_limit", "not_evaluated"],
+          "additionalProperties": false,
+          "properties": {
+            "in_band": { "type": "integer" }, "below_band": { "type": "integer" }, "above_band": { "type": "integer" },
+            "below_limit": { "type": "integer" }, "above_limit": { "type": "integer" }, "not_evaluated": { "type": "integer" }
           }
         }
       }
     },
-    "changes": {
-      "type": "array",
-      "items": {
-        "type": "object", "required": ["proposal_id", "applied_on", "type", "delta_kcal", "source"], "additionalProperties": false,
-        "properties": {
-          "proposal_id": { "type": "string" },
-          "applied_on": { "type": "string", "format": "date" },
-          "type": { "enum": ["calorie_change", "calibration_change"] },
-          "delta_kcal": { "type": ["number", "null"] },
-          "source": { "type": "string" }
-        }
-      }
-    },
-    "training": {
+    "targets": {
       "type": "object",
-      "required": ["lifts"],
+      "required": ["start_avg_daily_kcal", "current_avg_daily_kcal", "start_base_maintenance_kcal", "current_base_maintenance_kcal", "start_surplus_kcal", "current_surplus_kcal", "changes"],
       "additionalProperties": false,
       "properties": {
-        "lifts": {
+        "start_avg_daily_kcal": { "type": ["integer", "null"] },
+        "current_avg_daily_kcal": { "type": ["integer", "null"] },
+        "start_base_maintenance_kcal": { "type": ["integer", "null"] },
+        "current_base_maintenance_kcal": { "type": ["integer", "null"] },
+        "start_surplus_kcal": { "type": ["integer", "null"], "description": "Negative in a cut (the deficit)." },
+        "current_surplus_kcal": { "type": ["integer", "null"] },
+        "changes": {
           "type": "array",
+          "description": "Targets changes after the start, oldest first (approved calorie and calibration proposals).",
           "items": {
-            "type": "object", "required": ["exercise_id", "name", "baseline", "latest", "trend"], "additionalProperties": false,
+            "type": "object", "required": ["applied_on", "source", "proposal_id", "avg_daily_target_kcal", "surplus_change_kcal"], "additionalProperties": false,
             "properties": {
-              "exercise_id": { "type": "string" },
-              "name": { "type": "string" },
-              "baseline": { "$ref": "weekly_facts.schema.json#/$defs/set_summary" },
-              "latest": { "$ref": "weekly_facts.schema.json#/$defs/set_summary" },
-              "trend": { "enum": ["improving", "holding", "declining", "too_little_data"] },
-              "resets_in_phase": { "type": "integer", "minimum": 0 }
+              "applied_on": { "type": "string", "format": "date" },
+              "source": { "type": "string" },
+              "proposal_id": { "type": ["string", "null"] },
+              "avg_daily_target_kcal": { "type": "integer" },
+              "surplus_change_kcal": { "type": "integer", "description": "0 for a calibration change." }
             }
           }
         }
       }
     },
+    "maintenance_estimate": {
+      "type": "object",
+      "description": "The setup's estimate at the start, and the back-calculated one now as base maintenance (as weekly_facts targets.maintenance_estimate).",
+      "required": ["at_start_kcal", "base_kcal", "window_weeks", "updated_on", "excluded_weeks"],
+      "additionalProperties": false,
+      "properties": {
+        "at_start_kcal": { "type": ["number", "null"] },
+        "base_kcal": { "type": ["number", "null"] },
+        "window_weeks": { "type": "integer" },
+        "updated_on": { "type": ["string", "null"], "format": "date" },
+        "excluded_weeks": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "lifts": { "$ref": "block_facts.schema.json#/properties/lifts", "description": "As in the block review, over the whole phase so far." },
+    "training": { "$ref": "block_facts.schema.json#/properties/training" },
     "measurements": {
       "type": "object",
-      "required": ["waist_cm_start", "waist_cm_current", "bf_estimates"],
+      "required": ["waist_cm_start", "waist", "body_fat_estimates", "photos_enabled", "photo_sets", "photo_reviews", "photos_compared"],
       "additionalProperties": false,
       "properties": {
         "waist_cm_start": { "type": ["number", "null"] },
-        "waist_cm_current": { "type": ["number", "null"] },
-        "bf_estimates": {
-          "type": "array",
-          "items": { "$ref": "weekly_facts.schema.json#/properties/measurements/properties/latest_bf_estimate" }
+        "waist": {
+          "type": "array", "description": "Waist values in the phase, oldest first.",
+          "items": { "type": "object", "required": ["date", "cm"], "additionalProperties": false,
+                     "properties": { "date": { "type": "string", "format": "date" }, "cm": { "type": "number" } } }
+        },
+        "body_fat_estimates": {
+          "type": "array", "description": "One per date in the phase, oldest first: the photo review's (model) or the user's own (user, wins).",
+          "items": { "type": "object", "required": ["date", "pct", "source"], "additionalProperties": false,
+                     "properties": { "date": { "type": "string", "format": "date" }, "pct": { "type": "number" },
+                                     "source": { "enum": ["model", "user"] } } }
+        },
+        "photos_enabled": { "type": "boolean" },
+        "photo_sets": { "type": "integer" },
+        "photo_reviews": { "type": "integer" },
+        "photos_compared": {
+          "type": ["object", "null"],
+          "description": "The photo sets the model gets as images: the phase's first set (start_set) and its latest (latest_set; null when the phase has one set). Null without photo sets in the phase.",
+          "required": ["start_set", "latest_set"],
+          "additionalProperties": false,
+          "properties": {
+            "start_set": { "type": "string", "format": "date" },
+            "latest_set": { "type": ["string", "null"], "format": "date" }
+          }
         }
       }
     },
-    "calibration_check": {
+    "calibration": {
       "type": "object",
-      "description": "Code's check whether activity calibration drifted: compares maintenance back-calculation residuals in weeks with many vs few runs / wrestling sessions.",
-      "required": ["run_kcal_discount", "wrestling_kcal_per_session"],
+      "description": "Code's drift check: per usable week the trend-implied expenditure (intake - weight change x kcal_per_kg / 7, lifting and other counted activity taken off), regressed on raw run kcal and wrestling sessions.",
+      "required": ["weeks_used", "run_kcal_discount", "wrestling_kcal_per_session"],
       "additionalProperties": false,
       "properties": {
+        "weeks_used": { "type": "integer" },
         "run_kcal_discount": { "$ref": "#/$defs/calibration_item" },
         "wrestling_kcal_per_session": { "$ref": "#/$defs/calibration_item" }
-      }
-    },
-    "photos": {
-      "type": "object",
-      "required": ["enabled", "check_ins", "comparable_check_ins"],
-      "additionalProperties": false,
-      "properties": {
-        "enabled": { "type": "boolean" },
-        "check_ins": { "type": "integer" },
-        "comparable_check_ins": { "type": "integer" }
       }
     },
     "params": { "type": "object" }
@@ -119,13 +138,21 @@
   "$defs": {
     "calibration_item": {
       "type": "object",
-      "required": ["current", "suggested", "drifted", "evidence"],
+      "required": ["current", "implied", "suggested", "judged", "drifted", "evidence", "proposal"],
       "additionalProperties": false,
       "properties": {
-        "current": { "type": ["number", "null"] },
-        "suggested": { "type": ["number", "null"] },
+        "current": { "type": "number" },
+        "implied": { "type": ["number", "null"], "description": "null when not judged (too few usable weeks, or too little variation between them)." },
+        "suggested": { "type": ["number", "null"], "description": "The implied value when drifted." },
+        "judged": { "type": "boolean" },
         "drifted": { "type": "boolean" },
-        "evidence": { "type": "string" }
+        "evidence": { "type": "string" },
+        "proposal": {
+          "type": ["object", "null"],
+          "description": "The calibration proposal code made (scheduled reviews of the active phase only); its card goes out after the review.",
+          "required": ["id", "status"], "additionalProperties": false,
+          "properties": { "id": { "type": "string" }, "status": { "enum": ["open", "blocked_by_guardrail", "approved", "rejected", "superseded"] } }
+        }
       }
     }
   }

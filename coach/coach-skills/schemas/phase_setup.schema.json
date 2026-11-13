@@ -19,8 +19,22 @@
     "lifting_kcal_per_session": { "type": "number", "minimum": 0, "maximum": 2000, "description": "kcal counted per lifting session that shows up in Hevy." },
     "fat_g_per_kg_start": { "type": "number", "description": "Within the phase's macros.fat_g_per_kg_min..max." },
     "week1_increase_kcal": { "type": ["number", "null"], "description": "reverse_bulk only; within start.week1_increase_kcal." },
+    "cut_level": { "enum": ["conservative", "moderate", "aggressive"], "description": "cut only: the deficit level (phase-cut params cut.levels_kcal). With a goal too, the level decides the deficit and the goal is shown against it." },
+    "goal": {
+      "description": "cut only: a goal weight, or a goal body fat with the current body fat (the user's estimate; left out, code takes the latest body-fat estimate, the user's or from photos), and the date to reach it by. Code derives the rate and deficit it needs.",
+      "oneOf": [
+        { "type": "object", "required": ["weight_kg", "date"], "additionalProperties": false,
+          "properties": { "weight_kg": { "type": "number", "minimum": 30, "maximum": 250 }, "date": { "type": "string", "format": "date" } } },
+        { "type": "object", "required": ["body_fat_pct", "date"], "additionalProperties": false,
+          "properties": { "body_fat_pct": { "type": "number", "minimum": 3, "maximum": 60 }, "current_body_fat_pct": { "type": "number", "minimum": 3, "maximum": 60 }, "date": { "type": "string", "format": "date" } } },
+        { "type": "null" }
+      ]
+    },
+    "end_date": { "type": ["string", "null"], "format": "date", "description": "cut only, optional: the last day of a mini-cut. From the day after, the coach asks to end the phase." },
+    "deficit_kcal": { "type": "number", "minimum": 0, "maximum": 2000, "description": "cut only: computed by code at the preview from cut_level or goal (never recorded by the model)." },
     "time_goal_weeks": { "type": ["integer", "null"], "minimum": 1 },
     "step_goal": { "type": "integer", "minimum": 1000, "maximum": 40000, "description": "Steps where step kcal are 0 (default steps.step_goal). Changeable during a phase; it moves only where 0 is shown, not the energy." },
+    "block_weeks": { "type": "integer", "minimum": 2, "maximum": 12, "description": "Optional: weeks per training block (default reviews.block_weeks). Changeable during a phase, from the day it is set; a block review follows each block." },
     "photos_enabled": { "type": "boolean" },
     "waist_cm_start": { "type": ["number", "null"], "minimum": 40, "maximum": 200 },
     "logistics": {

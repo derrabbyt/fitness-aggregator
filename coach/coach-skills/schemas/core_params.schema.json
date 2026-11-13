@@ -123,10 +123,24 @@
     },
     "reviews": {
       "type": "object", "additionalProperties": false,
-      "required": ["block_length_weeks", "phase_review_every_weeks"],
+      "required": ["block_weeks", "phase_review_every_weeks", "calibration"],
       "properties": {
-        "block_length_weeks": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "integer" } },
-        "phase_review_every_weeks": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "integer" } }
+        "block_weeks": { "type": "integer", "minimum": 1, "description": "Default training block length in weeks (block n ends at the phase start + n x block_weeks, counted again from a block ended early); the setup value block_weeks overrides it." },
+        "phase_review_every_weeks": { "type": "integer", "minimum": 1, "description": "A phase review every this many weeks from the phase start (phase week n x this ends a review period); a phase end always gets one." },
+        "calibration": {
+          "type": "object", "additionalProperties": false,
+          "description": "The phase review's calibration drift check: the run discount and the wrestling kcal implied by the phase's usable weeks (intake minus the weight trend's energy, regressed on Strava kcal and wrestling sessions).",
+          "required": ["min_weeks", "run_discount_drift", "run_discount_plausible", "run_min_spread_kcal_per_day", "wrestling_drift_kcal", "wrestling_plausible_kcal", "wrestling_min_spread_sessions_per_week"],
+          "properties": {
+            "min_weeks": { "type": "integer", "minimum": 3 },
+            "run_discount_drift": { "type": "number", "exclusiveMinimum": 0 },
+            "run_discount_plausible": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number", "minimum": 0, "maximum": 1 } },
+            "run_min_spread_kcal_per_day": { "type": "number", "minimum": 0 },
+            "wrestling_drift_kcal": { "type": "number", "exclusiveMinimum": 0 },
+            "wrestling_plausible_kcal": { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number", "minimum": 0, "maximum": 3000 } },
+            "wrestling_min_spread_sessions_per_week": { "type": "number", "minimum": 0 }
+          }
+        }
       }
     },
     "messaging": {

@@ -18,8 +18,8 @@ coach-skills/
 ├── skills/                   one folder per skill, each with SKILL.md
 │   ├── coach-core/           always loaded; hard rules; params.yaml (phase-independent numbers)
 │   ├── phase-reverse-bulk/   active phase: A–E table; params.yaml
-│   ├── phase-cut/            draft
-│   ├── phase-maintenance/    draft
+│   ├── phase-cut/            cut / mini-cut: level or goal → deficit, band ± `cut.band_tolerance`; params.yaml
+│   ├── phase-maintenance/    hold weight: flat band, drift → small step; params.yaml
 │   ├── phase-start/          "start reverse" command → setup → preview → confirm
 │   ├── weekly-decision/      facts → verdict JSON
 │   ├── weekly-report/        verdict → Telegram report
@@ -27,7 +27,7 @@ coach-skills/
 │   ├── training-feedback/    after a logged session
 │   ├── new-exercise/         classifies an exercise that first shows up in Hevy
 │   ├── block-review/         end of each training block
-│   ├── phase-review/         every few weeks and at phase end
+│   ├── phase-review/         every `reviews.phase_review_every_weeks` weeks and at phase end
 │   ├── photo-review/         photo check-ins (optional)
 │   ├── context-log/          notes → tagged context notes
 │   └── coach-chat/           every free-text message in the coach chat
@@ -53,9 +53,9 @@ result as `params` inside the facts.
 | Evening (after reminder time, active phase only) | evening-recap | `daily_facts` (evening) | `coach_message` |
 | Lifting session synced (with or without a phase) | training-feedback | `daily_facts` (training) | `coach_message` |
 | Unclassified exercise in a synced session (during a phase) | new-exercise | new exercises + those already classified, tool `classify_exercises` | text (counts toward the daily limit, else deferred to the weekly report) |
-| End of training block | block-review | block's `weekly_facts` list | `coach_message` |
-| Every few weeks / phase end | phase-review | `phase_summary` | `coach_message` (+ calibration proposals via tool) |
-| Photo set received | photo-review | photos + previous set + previous estimate | `photo_review` (code sends `notes`) |
+| End of training block (every `reviews.block_weeks` weeks from the phase start; `end_block` ends one early) | block-review | `block_facts` | `coach_message` (code sends `text` once, no buttons; its own summary without a usable answer) |
+| Every `reviews.phase_review_every_weeks` weeks from the phase start, and every phase end (confirming the end card) | phase-review (the phase's skill in the prefix) | `phase_summary` | `coach_message` (code sends `text` once, its own summary without a usable answer; code makes a calibration proposal per drifted value and sends its card after the review) |
+| Photo set received (active phase, photos on; no new photo for `photo_review.SETTLE`) | photo-review | the new set + the like-for-like set code picked (images), latest estimate, waist trend | `photo_review` (code stores the estimate, sends `notes` + the range as the photo review; code sends the body-fat advice) |
 | Coach chat message | coach-chat + context-log (others via `load_skill`) | message + tools | text reply |
 | "start …" command, and every message while that setup is open | phase-start (target phase skill in the prefix) | message + `setup` (recorded, still needed, prefill from history, Hevy exercises with their classification, limits) + tools | text; after `start_phase` code sends the preview card with confirm / edit buttons |
 
@@ -73,9 +73,10 @@ short history.
 
 | Schema | Producer → consumer |
 | --- | --- |
-| `weekly_facts` | code → weekly-decision, weekly-report, block-review |
+| `weekly_facts` | code → weekly-decision, weekly-report |
+| `block_facts` | code → block-review |
 | `weekly_verdict` | weekly-decision → code (stored with its facts; drives confirmation counting) |
-| `proposal` | `propose_change` tool → store → buttons |
+| `proposal` | `propose_change` tool (and code: weekly decision, phase review calibration) → store → buttons |
 | `daily_facts` | code → evening-recap, training-feedback |
 | `coach_message` | message-writing skills → Telegram sender |
 | `context_note` | context-log → store → all facts |
@@ -127,7 +128,11 @@ changes the schema, the skills that reference it, the examples, and reruns
 | Adherence-gate weeks | skipped like unusable weeks for confirmation (code records the skip with each stored verdict) | SPEC says no changes when adherence fails, not how they count |
 | Sport-load weeks | a week with a `sport_load` context note gives no C/D call and is skipped for confirmation (neither counts nor breaks a streak) | SPEC says no C or D proposals from them |
 | Cut weight classes | `above_band` = losing too slowly, `below_limit` = too fast | signed band; numbers still TO DECIDE |
-| Maintenance macros | reused from reverse_bulk | not decided |
+| Maintenance | macros as the bulk's; drift beyond the limits for `decisions.confirmation_weeks` → `small_step_kcal` toward flat; small drift stored as hold | spec 2026-11-12 (kept small) |
+| `photo_review.SETTLE` (code) | 10 minutes without a new photo | photos arrive one by one; the set is complete after this |
+| `phase_review.END_CATCH_UP` (code) | 2 days | a phase end whose review didn't go out (a crash, or a new phase start that ended it) is caught up by the job within this long |
+| `phase_cut.ASK_HOUR` (code) | 09:00 | a mini-cut's end card goes out from this hour on the day after its `end_date`, not at night |
+| Calibration rounding (code, `phase_review._item`) | run discount to 0.05, wrestling kcal to 25 kcal | implied values are rounded before they're judged and proposed |
 
 ## Spec coverage
 
@@ -143,5 +148,5 @@ changes the schema, the skills that reference it, the examples, and reruns
 | Triggers | weekly-decision step 6 flags, evening-recap, training-feedback |
 | Calibration and guardrails | `maintenance_estimate`, `prediction_*`, TOOLS.md guardrails, phase-review calibration |
 | On-demand behaviours, reports | coach-chat, weekly-report, `coach_message` |
-| Other phases (draft) | phase-cut, phase-maintenance |
+| Other phases | phase-cut, phase-maintenance |
 | Dropped / left out | coach-core "Out of scope" |

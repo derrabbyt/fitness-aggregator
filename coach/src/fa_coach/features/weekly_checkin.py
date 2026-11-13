@@ -28,6 +28,8 @@ Hooks for later tickets:
 - `report_finish_hooks`: `fn(coach, report_input, text, buttons, by_model)
   -> (text, buttons)`, run on the final report before it is sent (code
   decides the proposal buttons; `by_model` False = code's fallback text).
+- `phase_expected_change[phase_id]`: a phase's own guard rule in place of
+  `expected_change` (maintenance: features/maintenance.py; cut: features/phase_cut.py).
 - Deferred items come from `messaging.deferred` (the week's days); due
   measurements from `measurements.measurements_due` (the 7 days from the check-in day).
 
@@ -59,6 +61,10 @@ ReportHook = Callable[[Any, dict[str, Any], dict[str, Any], datetime.datetime], 
 report_hooks: list[ReportHook] = []
 FinishHook = Callable[[Any, dict[str, Any], str, Buttons, bool], tuple[str, Buttons]]
 report_finish_hooks: list[FinishHook] = []
+# A phase's own decision guard rule (phase_id -> fn(weight, decisions), as `expected_change`);
+# phases not listed use `expected_change`. Maintenance: features/maintenance.py; cut: features/phase_cut.py.
+ExpectedChange = Callable[[dict[str, Any], dict[str, Any]], tuple[str, float | None, str | None, str]]
+phase_expected_change: dict[str, ExpectedChange] = {}
 
 
 # --- schedule ------------------------------------------------------------------------
@@ -239,8 +245,7 @@ def apply_band_rules(verdict: dict[str, Any], facts: dict[str, Any]) -> tuple[di
     proposal = verdict["proposal"]
     if verdict["direction"] == "hold":
         return verdict, changes
-    decisions = facts["params"]["decisions"]
-    want, step, size, why = expected_change(facts["weight"], decisions)
+    want, step, size, why = _expected(facts)
     if verdict["direction"] != want:
         changes.append(f"direction {verdict['direction']} -> hold ({why})")
         verdict["direction"] = "hold"
@@ -271,7 +276,12 @@ def streak_direction(verdict: dict[str, Any], facts: dict[str, Any], skip: str |
     verdict's for a skipped week, which no streak counts."""
     if skip is not None:
         return verdict["direction"]
-    return expected_change(facts["weight"], facts["params"]["decisions"])[0]
+    return _expected(facts)[0]
+
+
+def _expected(facts: dict[str, Any]) -> tuple[str, float | None, str | None, str]:
+    rule = phase_expected_change.get(facts["week"]["phase_id"], expected_change)
+    return rule(facts["weight"], facts["params"]["decisions"])
 
 
 async def _report(coach, checkin_id: int, facts, verdict, start: Date, end: Date, now: datetime.datetime) -> None:
