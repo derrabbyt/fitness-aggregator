@@ -50,8 +50,9 @@ Spec: `.scratch/coach-reviews-and-phases/spec.md`.
   and storing one that the limit then held back would show on the web a review
   never sent. The row is claimed (`INSERT OR IGNORE` on the unique `key`) before
   sending; no `once_keys` row.
-- `reviews.phase_row_id` has no foreign key (as `phase_end_requests`): an erased
-  phase's review stays.
+- `reviews.phase_row_id` has no foreign key (as `phase_end_requests`). Since the
+  review fixes an undo erases the phase's reviews (`phase_end._erase_parts`, "reviews"
+  on the card); body-fat estimates stay, unlinked from their review.
 - Week: `reviews` lists those sent on the week's dates (start..end, by the local
   date of `created_at`), each `{id, kind, title, period_start, period_end, text,
   sent_at}`. The page shows each as a collapsed card like the weekly report (title

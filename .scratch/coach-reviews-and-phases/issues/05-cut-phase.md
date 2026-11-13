@@ -32,7 +32,7 @@ Spec: `.scratch/coach-reviews-and-phases/spec.md`.
   every increase in a cut; stalled keeps the core small/large (100/200) by the distance.
 - **Week 1:** new phase param `unjudged_weeks` (cut: 1): vs_band `not_evaluated`, no glycogen
   window; the week still counts (code direction hold), no new skip reason. The web's weight
-  views don't know `unjudged_weeks` yet (they still show week 1's position).
+  views treat `unjudged_weeks` like the glycogen window (review fixes, `web_weight.Bands`).
 - **Fat:** the cut fixes fat at 0.6 g/kg (min = max = start), so phase start doesn't ask for
   it (generic: any phase with min = max).
 - **End date:** from the day after `end_date`, at 09:00 or later, the end card is sent once per
