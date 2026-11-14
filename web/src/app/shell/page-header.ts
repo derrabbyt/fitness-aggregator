@@ -7,7 +7,7 @@ import { Tabs } from './tabs';
  * Every page's header: title (+ sub line), the tab segments on desktop, and
  * slots for controls.
  *
- *   <app-page-header title="Week" sub="9–15 Nov">
+ *   <app-page-header title="Check-in" sub="9–15 Nov">
  *     <button prev …/> <button next …/>     ← either side of the title (e.g. day or week arrows)
  *     <app-refresh-button actions …/>       ← right-hand actions
  *   </app-page-header>

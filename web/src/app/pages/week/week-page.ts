@@ -137,7 +137,7 @@ export class WeekPage {
   protected readonly blocks = WEEK_BLOCKS;
 
   /** Tab name as the title, the week's range (and phase week) underneath, as on every tab. */
-  protected readonly title = computed(() => 'Week');
+  protected readonly title = computed(() => 'Check-in');
   protected readonly sub = computed(() => {
     const w = this.week.data();
     if (!w) return '';

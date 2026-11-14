@@ -5,7 +5,7 @@ import { Icon, IconName } from '../ui/icon';
 /** The four tabs; each owns the URL prefix `/<path>` (its detail views live under it). */
 export const TABS: readonly { path: string; label: string; icon: IconName }[] = [
   { path: 'home', label: 'Home', icon: 'home' },
-  { path: 'week', label: 'Week', icon: 'week' },
+  { path: 'week', label: 'Check-in', icon: 'week' },
   { path: 'training', label: 'Training', icon: 'dumbbell' },
   { path: 'setup', label: 'Setup', icon: 'sliders' },
 ];
