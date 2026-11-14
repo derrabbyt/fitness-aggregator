@@ -68,3 +68,17 @@ export function ago(hours: number): string {
   if (hours < 48) return `${Math.round(hours)} h`;
   return `${Math.round(hours / 24)} days`;
 }
+
+/** A week's added-up surplus or deficit (balance.py on the coach). */
+export interface Balance {
+  kcal: number | null;
+  days: number;
+  kg: number | null;
+}
+
+/** "+1,370 kcal surplus · ≈ +0.18 kg" / "−2,100 kcal deficit · ≈ −0.28 kg"; '' without a value. */
+export function balanceText(b: Balance | null | undefined): string {
+  if (!b || b.kcal == null) return '';
+  const kind = b.kcal > 0 ? 'surplus' : b.kcal < 0 ? 'deficit' : 'balance';
+  return `${signed(b.kcal)} kcal ${kind} · ≈ ${signed(b.kg, 2)} kg`;
+}

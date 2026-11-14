@@ -16,7 +16,7 @@ deferred items about the week, and the measurements due the week after.
 import datetime
 from typing import TYPE_CHECKING, Any
 
-from .. import history, messaging, phases, progression, weekdata, weekly_facts
+from .. import balance, history, messaging, phases, progression, weekdata, weekly_facts
 from ..registry import registry
 from . import context_notes, measurements, training_plan, web_home_steps, web_week, web_weight
 
@@ -127,13 +127,19 @@ def intake(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, An
         values = [d[key] for d in counted if d[key] is not None]
         return round(sum(values) / len(values)) if values else None
 
+    out_days = []
+    for d in days:
+        eaten = round(d["actual_kcal"]) if d["actual_kcal"] is not None else None
+        out_days.append({"date": d["date"], "eaten_kcal": eaten, "target_kcal": round(d["target_kcal"]),
+                         "logged": d["logged"],
+                         "balance_kcal": balance.of_day(coach, Date.fromisoformat(d["date"]), eaten, w.today)})
     targets = section["macro_targets"]
     low, high = p["nutrition"]["fiber_g_per_kg"]
     weight = targets["reference_weight_kg"]
     return {
         "source": source,
-        "days": [{"date": d["date"], "eaten_kcal": round(d["actual_kcal"]) if d["actual_kcal"] is not None else None,
-                  "target_kcal": round(d["target_kcal"]), "logged": d["logged"]} for d in days],
+        "days": out_days,
+        "balance": balance.total(coach, out_days),
         "average": {"eaten_kcal": avg("actual_kcal"), "target_kcal": avg("target_kcal"), "days": len(counted)},
         "adherence": {"result": result, "deviation_pct": section["deviation_pct"],
                       "tolerance_pct": p["adherence"]["weekly_intake_tolerance_pct"],

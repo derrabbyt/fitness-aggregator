@@ -4,7 +4,7 @@ import { DayNav } from '../../shell/day-nav';
 import { injectDay } from '../../shell/day-param';
 import { RefreshButton } from '../../shell/refresh-button';
 import { Card } from '../../ui/card';
-import { addDays, dayLabel, fmt, signed, weekday } from '../../ui/format';
+import { addDays, balanceText, dayLabel, fmt, signed, weekday } from '../../ui/format';
 import { Meter } from '../../ui/meter';
 import { SectionHeader } from '../../ui/section-header';
 import { State } from '../../ui/state';
@@ -36,6 +36,7 @@ import { FoodDetail } from './home.types';
               }
             </div>
             <div class="t2 small">{{ d.so_far.days_logged }} of {{ rows().length }} days logged</div>
+            @if (balanceText(d.so_far.balance); as b) { <div class="bal num small">{{ b }}</div> }
           </app-card>
 
           <app-section-header title="Days" />
@@ -50,6 +51,7 @@ import { FoodDetail } from './home.types';
                       @else {
                         <span class="m">{{ fmt(r.eaten) }}</span>
                         @if (r.target != null) { <span class="t2"> / {{ fmt(r.target) }}</span> }
+                        @if (r.balance != null) { <span class="t2 bal-day"> · {{ signed(r.balance) }}</span> }
                       }
                     </span>
                   </div>
@@ -82,6 +84,7 @@ import { FoodDetail } from './home.types';
     .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
     .later .row { margin-bottom: 0; color: var(--text-2); }
     .note { margin-top: 4px; }
+    .bal { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--divider); }
     p.warn { margin: -6px 2px 12px; }
   `,
 })
@@ -90,6 +93,7 @@ export class FoodDetailPage {
   protected readonly detail = viewResource<FoodDetail>('home/food');
   protected readonly fmt = fmt;
   protected readonly signed = signed;
+  protected readonly balanceText = balanceText;
 
   /** The whole check-in week: the days so far from the coach, the rest as faint rows. */
   protected readonly rows = computed(() => {
@@ -103,6 +107,7 @@ export class FoodDetailPage {
       out.push({
         date, name, later: !x, isDay: date === d.date,
         eaten: x?.eaten_kcal ?? null, target: x?.target_kcal ?? null, logged: x?.logged ?? 'missing',
+        balance: x && x.logged !== 'missing' ? x.balance_kcal : null,
       });
     }
     return out;

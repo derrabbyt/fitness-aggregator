@@ -4,6 +4,7 @@
  * block adds its optional key to HomeView and its type below.
  */
 import { Freshness } from '../../api/types';
+import { Balance } from '../../ui/format';
 import { StrengthTrend } from '../../ui/strength-trend';
 import { HomeWeight } from './weight.types';
 
@@ -89,8 +90,10 @@ export interface FoodDetail {
   start: string;
   end: string;
   iso_week: string;
-  days: { date: string; eaten_kcal: number | null; target_kcal: number | null; logged: Logged }[];
-  so_far: { days_logged: number; eaten_kcal: number | null; target_kcal: number | null; deviation_pct: number | null };
+  /** balance_kcal: eaten minus the day's estimated burn (+ surplus, − deficit); null without food or a phase. */
+  days: { date: string; eaten_kcal: number | null; target_kcal: number | null; logged: Logged; balance_kcal: number | null }[];
+  so_far: { days_logged: number; eaten_kcal: number | null; target_kcal: number | null; deviation_pct: number | null;
+    balance: Balance };
 }
 
 /**

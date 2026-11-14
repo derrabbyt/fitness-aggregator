@@ -16,25 +16,29 @@
       "maxItems": 7,
       "items": {
         "type": "object",
-        "required": ["date", "eaten_kcal", "target_kcal", "logged"],
+        "required": ["date", "eaten_kcal", "target_kcal", "logged", "balance_kcal"],
         "additionalProperties": false,
         "properties": {
           "date": { "type": "string", "format": "date" },
           "eaten_kcal": { "type": ["integer", "null"], "minimum": 0 },
           "target_kcal": { "type": ["integer", "null"] },
-          "logged": { "enum": ["complete", "partial", "missing"] }
+          "logged": { "enum": ["complete", "partial", "missing"] },
+          "balance_kcal": { "type": ["integer", "null"], "description": "Eaten minus the day's estimated burn (its target without the planned surplus): positive a surplus, negative a deficit. Null without food or outside a phase (balance.py)." }
         }
       }
     },
     "so_far": {
       "type": "object",
-      "required": ["days_logged", "eaten_kcal", "target_kcal", "deviation_pct"],
+      "required": ["days_logged", "eaten_kcal", "target_kcal", "deviation_pct", "balance"],
       "additionalProperties": false,
       "properties": {
         "days_logged": { "type": "integer", "minimum": 0 },
         "eaten_kcal": { "type": ["integer", "null"], "minimum": 0 },
         "target_kcal": { "type": ["integer", "null"] },
-        "deviation_pct": { "type": ["number", "null"] }
+        "deviation_pct": { "type": ["number", "null"] },
+        "balance": { "type": "object", "required": ["kcal", "days", "kg"], "additionalProperties": false,
+          "description": "The complete days' balances added up, and that as kg at maintenance_estimate.kcal_per_kg (a rough guide); kcal and kg null without any.",
+          "properties": { "kcal": { "type": ["integer", "null"] }, "days": { "type": "integer", "minimum": 0 }, "kg": { "type": ["number", "null"] } } }
       }
     }
   }

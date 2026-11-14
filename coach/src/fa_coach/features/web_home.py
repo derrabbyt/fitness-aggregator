@@ -11,7 +11,7 @@ day. Before a phase (or before its start) food has no targets.
 import datetime
 from typing import Any
 
-from .. import daycheck, history, phases, views, weekdata, weekly_facts
+from .. import balance, daycheck, history, phases, views, weekdata, weekly_facts
 from ..registry import registry
 
 Date = datetime.date
@@ -59,7 +59,8 @@ def build_up(target: dict[str, Any] | None) -> dict[str, int] | None:
 
 @registry.view("home/food", schema="web_home_food_detail")
 def food_detail(coach, query: dict[str, str], now: datetime.datetime) -> dict[str, Any]:
-    """The check-in week (the 7 days the weekly check-in judges) up to the day."""
+    """The check-in week (the 7 days the weekly check-in judges) up to the day,
+    each day with its surplus or deficit (balance.py) and the week's total."""
     day = views.day(query, now)
     start = check_in_week_start(coach, day)
     days = []
@@ -67,7 +68,8 @@ def food_detail(coach, query: dict[str, str], now: datetime.datetime) -> dict[st
         target = phases.daily_target(coach, d)
         eaten = _eaten(coach, d, now)
         days.append({"date": d.isoformat(), "eaten_kcal": eaten["kcal"],
-                     "target_kcal": target["kcal"] if target else None, "logged": eaten["logged"]})
+                     "target_kcal": target["kcal"] if target else None, "logged": eaten["logged"],
+                     "balance_kcal": balance.of_day(coach, d, eaten["kcal"], now.date())})
     counted = [d for d in days if d["logged"] == "complete"]
     eaten_total = sum(d["eaten_kcal"] for d in counted) if counted else None
     with_target = bool(counted) and all(d["target_kcal"] is not None for d in counted)
@@ -81,7 +83,7 @@ def food_detail(coach, query: dict[str, str], now: datetime.datetime) -> dict[st
         "iso_week": weekly_facts.iso_week(start + 6 * DAY),
         "days": days,
         "so_far": {"days_logged": len(counted), "eaten_kcal": eaten_total, "target_kcal": target_total,
-                   "deviation_pct": deviation},
+                   "deviation_pct": deviation, "balance": balance.total(coach, days)},
     }
 
 

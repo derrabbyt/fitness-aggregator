@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { Card } from '../../../ui/card';
-import { fmt, signed, weekday } from '../../../ui/format';
+import { balanceText, fmt, signed, weekday } from '../../../ui/format';
 import { Meter } from '../../../ui/meter';
 import { Favorable, Tone, targetTone } from '../../../ui/tone';
 import { WeekView } from '../week.types';
@@ -17,7 +17,8 @@ const MACROS: { key: 'protein' | 'carbs' | 'fat' | 'fiber'; label: string; favor
  * the adherence result beside it (green when the week counted, red when it
  * didn't, plain while the week isn't judged), each day eaten against its
  * target on a thin bar (a partly logged day is marked and doesn't count),
- * then the macros a day against their targets, as on Home.
+ * then the macros a day against their targets, as on Home. Each day also shows
+ * its surplus or deficit (eaten minus estimated burn), and the week adds them up.
  */
 @Component({
   selector: 'app-week-intake-block',
@@ -47,6 +48,7 @@ const MACROS: { key: 'protein' | 'carbs' | 'fat' | 'fiber'; label: string; favor
               @if (d.logged === 'missing') {
                 <span class="track"></span>
                 <span class="v small t2 num">– / {{ fmt(d.target_kcal) }}</span>
+                <span class="b small t2 num"></span>
               } @else {
                 <app-meter size="thin" [value]="d.eaten_kcal" [max]="d.target_kcal" tone="muted"
                            [label]="weekday(d.date) + ' eaten of target'" />
@@ -54,10 +56,14 @@ const MACROS: { key: 'protein' | 'carbs' | 'fat' | 'fiber'; label: string; favor
                   @if (d.logged === 'partial') { <span class="t2 partial">partly · </span> }
                   <span [class.t2]="d.logged === 'partial'">{{ fmt(d.eaten_kcal) }}</span><span class="t2"> / {{ fmt(d.target_kcal) }}</span>
                 </span>
+                <span class="b small t2 num" [attr.aria-label]="'balance ' + signed(d.balance_kcal)">{{ d.balance_kcal == null ? '' : signed(d.balance_kcal) }}</span>
               }
             </li>
           }
         </ul>
+        @if (balanceText(i.balance); as b) {
+          <div class="bal small num"><span class="t2">{{ i.source === 'so_far' ? 'Week so far' : 'Week' }}</span><span>{{ b }}</span></div>
+        }
 
         <div class="macros">
           @for (m of macros(); track m.key) {
@@ -82,7 +88,10 @@ const MACROS: { key: 'protein' | 'carbs' | 'fat' | 'fiber'; label: string; favor
     .verdict { font-size: 15px; white-space: nowrap; }
     .verdict:not(.ok):not(.bad):not(.warn) { color: var(--text-2); }
     .days { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 8px; }
-    .days li { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+    .days li { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto 44px; align-items: center; gap: 10px; }
+    .b { text-align: right; white-space: nowrap; }
+    .bal { display: flex; justify-content: space-between; gap: 12px; margin-top: 12px; padding-top: 10px;
+           border-top: 1px solid var(--divider); }
     .track { display: block; height: 4px; border-radius: 99px; background: var(--track); }
     .v { min-width: 104px; text-align: right; white-space: nowrap; }
     .partial { font-style: normal; }
@@ -96,6 +105,8 @@ export class WeekIntakeBlock {
 
   protected readonly fmt = fmt;
   protected readonly weekday = weekday;
+  protected readonly signed = signed;
+  protected readonly balanceText = balanceText;
   protected readonly intake = computed(() => this.view().intake ?? null);
 
   protected readonly verdictTone = computed<string>(() => {

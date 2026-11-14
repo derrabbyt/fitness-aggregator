@@ -4,7 +4,7 @@
   "title": "Web: Week intake",
   "description": "The `intake` part of GET /api/coach/week (null when no phase was active during the week or no day of it has a target yet). Each day of the week so far, eaten against its daily target: logged complete (counts), partial (a suspected partial day the user hasn't confirmed: shown, left out of the average and adherence; today is never partial) or missing. average: eaten and target per day over the complete days. adherence: result pass/fail as the check-in judged it (source check_in), not_judged for a week not judged yet; deviation_pct of the week's intake from target (null unless every day so far is complete). macros: average eaten per complete day against the week's average daily macro targets; fiber as a range (g/kg of the macro reference weight).",
   "type": ["object", "null"],
-  "required": ["source", "days", "average", "adherence", "macros"],
+  "required": ["source", "days", "balance", "average", "adherence", "macros"],
   "additionalProperties": false,
   "$defs": {
     "macro": {
@@ -19,18 +19,22 @@
   },
   "properties": {
     "source": { "enum": ["check_in", "so_far"] },
+    "balance": { "type": "object", "required": ["kcal", "days", "kg"], "additionalProperties": false,
+      "description": "The complete days' balances added up, and that as kg at maintenance_estimate.kcal_per_kg (a rough guide); kcal and kg null without any.",
+      "properties": { "kcal": { "type": ["integer", "null"] }, "days": { "type": "integer", "minimum": 0 }, "kg": { "type": ["number", "null"] } } },
     "days": {
       "type": "array",
       "maxItems": 7,
       "items": {
         "type": "object",
-        "required": ["date", "eaten_kcal", "target_kcal", "logged"],
+        "required": ["date", "eaten_kcal", "target_kcal", "logged", "balance_kcal"],
         "additionalProperties": false,
         "properties": {
           "date": { "type": "string", "format": "date" },
           "eaten_kcal": { "type": ["integer", "null"], "minimum": 0 },
           "target_kcal": { "type": "integer" },
-          "logged": { "enum": ["complete", "partial", "missing"] }
+          "logged": { "enum": ["complete", "partial", "missing"] },
+          "balance_kcal": { "type": ["integer", "null"], "description": "Eaten minus the day's estimated burn (its target without the planned surplus): positive a surplus, negative a deficit. Null without food or outside a phase (balance.py)." }
         }
       }
     },

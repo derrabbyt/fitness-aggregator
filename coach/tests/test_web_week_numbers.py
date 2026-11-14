@@ -14,7 +14,7 @@ average), fiber 25-41 g.
 
 import datetime
 
-from fa_coach import messaging, progression
+from fa_coach import messaging, phases, progression
 from fakes import exercise, food, reply, session, tool_call
 from test_web_home_training import TWO_WEEKS
 from test_web_week import week
@@ -82,6 +82,12 @@ async def test_a_judged_weeks_intake_is_each_day_against_target_the_average_adhe
     assert i["average"] == {"eaten_kcal": 2300, "target_kcal": 2386, "days": 7}
     assert i["adherence"] == {"result": "pass", "deviation_pct": -3.6, "tolerance_pct": 5, "days_logged": 7,
                               "days": 7}
+    # Each day's surplus or deficit: eaten - (target - planned surplus); the week adds them up.
+    surplus = [phases.daily_target(phase, datetime.date.fromisoformat(d["date"]))["surplus_kcal"] for d in i["days"]]
+    assert [d["balance_kcal"] for d in i["days"]] == [d["eaten_kcal"] - d["target_kcal"] + s
+                                                      for d, s in zip(i["days"], surplus)]
+    total = sum(d["balance_kcal"] for d in i["days"])
+    assert i["balance"] == {"kcal": total, "days": 7, "kg": round(total / 7500, 2)}
     assert i["macros"] == {"protein": {"eaten_g": 180, "target_g": 164}, "carbs": {"eaten_g": 250, "target_g": 267},
                            "fat": {"eaten_g": 70, "target_g": 74},
                            "fiber": {"eaten_g": 30, "target_g": 25, "target_max_g": 41}}

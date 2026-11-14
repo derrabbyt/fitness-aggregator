@@ -129,7 +129,10 @@ async def test_an_ended_phases_days_keep_their_target_and_band(phase, api, clock
     assert any(d["band_low_kg"] is not None for d in detail["series"])
     week = phase.view("week", {"week": "2026-W49"}, now=now)
     assert week["weight"]["band"] == week_before["weight"]["band"] is not None
-    assert week["intake"]["days"] == week_before["intake"]["days"]
+    # A day later: the last day is over now, so only it gains a surplus or deficit (balance.py).
+    def without_balance(days):
+        return [{k: v for k, v in d.items() if k != "balance_kcal"} for d in days]
+    assert without_balance(week["intake"]["days"]) == without_balance(week_before["intake"]["days"])
     assert home(phase, "2026-12-07", now)["food"]["kcal"]["target"] is None  # no target from the end on
 
 

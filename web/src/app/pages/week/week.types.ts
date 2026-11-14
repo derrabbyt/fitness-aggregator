@@ -4,6 +4,7 @@
  * a block adds its optional key to WeekView and its type below.
  */
 import { Freshness } from '../../api/types';
+import { Balance } from '../../ui/format';
 import { VsBand, WeightDay } from '../home/weight.types';
 
 export type WeekState = 'in_progress' | 'decided' | 'awaiting' | 'failed' | 'none';
@@ -60,7 +61,11 @@ export interface WeekWeight {
 /** web_week_intake.schema.json */
 export interface WeekIntake {
   source: WeekSource;
-  days: { date: string; eaten_kcal: number | null; target_kcal: number; logged: 'complete' | 'partial' | 'missing' }[];
+  /** balance_kcal: eaten minus the day's estimated burn (+ surplus, − deficit); null without food. */
+  days: { date: string; eaten_kcal: number | null; target_kcal: number; logged: 'complete' | 'partial' | 'missing';
+    balance_kcal: number | null }[];
+  /** The complete days' balances added up, and as kg (a rough guide). */
+  balance: Balance;
   average: { eaten_kcal: number | null; target_kcal: number | null; days: number };
   adherence: {
     result: 'pass' | 'fail' | 'not_judged';

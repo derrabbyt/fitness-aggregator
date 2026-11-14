@@ -208,7 +208,8 @@ async def test_food_detail_shows_each_day_of_the_check_in_week_so_far(phase, api
         ("2026-11-10", 2400, 2300, "complete"),
         ("2026-11-11", None, 2300, "missing"),
     ]
-    assert d["so_far"] == {"days_logged": 2, "eaten_kcal": 4650, "target_kcal": 4600, "deviation_pct": 1.1}
+    assert {k: v for k, v in d["so_far"].items() if k != "balance"} == {
+        "days_logged": 2, "eaten_kcal": 4650, "target_kcal": 4600, "deviation_pct": 1.1}
 
 
 async def test_food_detail_before_any_phase_lists_what_was_eaten(coach, api, clock):
@@ -220,7 +221,35 @@ async def test_food_detail_before_any_phase_lists_what_was_eaten(coach, api, clo
     assert views.errors(coach, "home/food", d) == []
     assert (d["start"], d["date"]) == ("2026-11-09", "2026-11-09")  # no check-in day: ISO week
     assert [(x["eaten_kcal"], x["target_kcal"]) for x in d["days"]] == [(2410, None)]
-    assert d["so_far"] == {"days_logged": 1, "eaten_kcal": 2410, "target_kcal": None, "deviation_pct": None}
+    assert d["so_far"] == {"days_logged": 1, "eaten_kcal": 2410, "target_kcal": None, "deviation_pct": None,
+                           "balance": {"kcal": None, "days": 0, "kg": None}}
+    assert d["days"][0]["balance_kcal"] is None  # no burn estimate outside a phase
+
+
+async def test_food_detail_shows_each_days_surplus_or_deficit_and_the_weeks_total(phase, api, clock):
+    api.days["2026-11-09"] = {"food": food(2250), "steps": 9000}
+    api.days["2026-11-10"] = {"food": food(2400), "steps": 9000}
+    await eat(phase, api, clock, "2026-11-11", "2026-11-11")
+
+    d = phase.view("home/food", {"day": "2026-11-11"})
+
+    # Balance = eaten - burned, burned = the day's target without its planned surplus.
+    surplus = phases.daily_target(phase, datetime.date(2026, 11, 9))["surplus_kcal"]
+    assert [x["balance_kcal"] for x in d["days"]] == [2250 - 2300 + surplus, 2400 - 2300 + surplus, None]
+    total = 4650 - 4600 + 2 * surplus
+    assert d["so_far"]["balance"] == {"kcal": total, "days": 2, "kg": round(total / 7500, 2)}
+
+
+async def test_today_has_no_surplus_or_deficit_until_the_day_is_over(phase, api, clock):
+    api.days["2026-11-09"] = {"food": food(2250), "steps": 9000}
+    api.days["2026-11-10"] = {"food": food(350), "steps": 2000}  # breakfast so far
+    await eat(phase, api, clock, "2026-11-10", "2026-11-10")
+    clock.current = at("2026-11-10", 9)
+
+    d = phase.view("home/food", {})
+
+    assert [x["balance_kcal"] is None for x in d["days"]] == [False, True]
+    assert d["so_far"]["balance"]["days"] == 1
 
 
 # --- refresh and errors -------------------------------------------------------------------
