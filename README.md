@@ -1,11 +1,5 @@
 # fitness-aggregator
 
-My fitness data from MyFitnessPal and Hevy: MCP connectors, a small web UI, a
-Telegram bot for logging food (text, voice, photos) and quick questions, and a
-coach (a second Telegram bot) that watches the data and proposes plan changes
-(`SPEC.md`, `.scratch/coach/`). Runs in Docker on my home server; development
-happens there too, with nothing but Docker and git on the host.
-
 | Connector | What | Source |
 |---|---|---|
 | `mfp` | MyFitnessPal: diary, food search and logging, exercise, weight, water, trends, export | [Mason-Levyy/myfitnesspal-mcp](https://github.com/Mason-Levyy/myfitnesspal-mcp) (pinned) |
